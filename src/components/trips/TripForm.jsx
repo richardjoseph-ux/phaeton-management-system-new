@@ -29,7 +29,10 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
   // Derived options
   const selectedClient = clients.find(c => c.id === form.client_account_id);
   const pickupOptions = [...new Set((selectedClient?.routes || []).map(r => r.pickup_location).filter(Boolean))];
-  const deliveryOptions = (selectedClient?.routes || []).filter(r => r.pickup_location === form.pickup_location);
+  // Keep original route index to avoid selection mismatch when filtering
+  const deliveryOptionsWithIndex = (selectedClient?.routes || [])
+    .map((r, idx) => ({ ...r, originalIdx: idx }))
+    .filter(r => r.pickup_location === form.pickup_location);
 
   // Get unique plate numbers (some plates may have multiple truck types)
   const uniquePlates = [...new Set(subcontractors.map(s => s.plate_number))];
@@ -131,8 +134,8 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
     setPickupSearch('');
   };
 
-  const handleDeliveryChange = (routeIdx) => {
-    const route = deliveryOptions[parseInt(routeIdx)];
+  const handleDeliveryChange = (originalIdx) => {
+    const route = (selectedClient?.routes || [])[parseInt(originalIdx)];
     if (route) {
       setForm(p => ({
         ...p,
@@ -187,7 +190,7 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
     p.toLowerCase().includes(pickupSearch.toLowerCase())
   );
 
-  const filteredDeliveries = deliveryOptions.filter((r, i) => 
+  const filteredDeliveries = deliveryOptionsWithIndex.filter((r) => 
     r.delivery_location.toLowerCase().includes(deliverySearch.toLowerCase()) ||
     r.delivery_code.toLowerCase().includes(deliverySearch.toLowerCase())
   );
@@ -344,12 +347,12 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
                       <CommandList>
                         <CommandEmpty>No delivery found.</CommandEmpty>
                         <CommandGroup>
-                          {filteredDeliveries.map((r, i) => (
+                          {filteredDeliveries.map((r) => (
                             <CommandItem
-                              key={i}
+                              key={r.originalIdx}
                               value={`${r.delivery_location} ${r.delivery_code}`}
                               onSelect={() => {
-                                handleDeliveryChange(i);
+                                handleDeliveryChange(r.originalIdx);
                                 setDeliveryOpen(false);
                               }}
                             >
