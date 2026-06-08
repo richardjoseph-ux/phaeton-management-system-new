@@ -148,26 +148,16 @@ export default function AdditionalServices() {
     setConnectionStatus(null);
     
     try {
-      // Extract sheet ID from URL
-      const match = urlToTest.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-      if (!match) {
-        setConnectionStatus({ success: false, message: 'Invalid Google Sheet URL format' });
-        setTestingConnection(false);
-        return;
-      }
-      
-      const sheetId = match[1];
-      
-      // Try to access the sheet metadata (public check)
-      const response = await fetch(`https://docs.google.com/feeds/download/spreadsheets/Export?key=${sheetId}&exportFormat=xlsx`, {
-        method: 'HEAD'
+      // Call backend function to test connection (avoids CORS issues)
+      const response = await base44.functions.invoke('testGoogleSheetConnection', {
+        sheetUrl: urlToTest
       });
       
-      if (response.ok || response.status === 200 || response.status === 302) {
-        setConnectionStatus({ success: true, message: 'Successfully accessed Google Sheet!' });
-      } else {
-        setConnectionStatus({ success: false, message: 'Cannot access sheet. Make sure it\'s shared with "Anyone with the link" or connect Google Sheets connector.' });
-      }
+      const result = response.data;
+      setConnectionStatus({ 
+        success: result.success, 
+        message: result.message 
+      });
     } catch (error) {
       setConnectionStatus({ success: false, message: 'Connection failed: ' + error.message });
     }
