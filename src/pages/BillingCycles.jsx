@@ -15,13 +15,14 @@ export default function BillingCycles() {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
-  const [form, setForm] = useState({ cycle_name: '', client_account_id: '', notes: '' });
+  const [form, setForm] = useState({ cycle_name: '', client_account_id: '', notes: '', billing_received_date: '', cheque_date: '', paid_status: 'Unpaid' });
   const [nextSeq, setNextSeq] = useState('0001');
   const [saving, setSaving] = useState(false);
   const [tripsOpen, setTripsOpen] = useState(false);
   const [selectedCycle, setSelectedCycle] = useState(null);
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
+  const [showPaid, setShowPaid] = useState('all'); // 'all', 'paid', 'unpaid'
 
   const load = async () => {
     setLoading(true);
@@ -60,7 +61,7 @@ export default function BillingCycles() {
 
   const openAdd = () => {
     setEditData(null);
-    setForm({ cycle_name: '', client_account_id: '', notes: '' });
+    setForm({ cycle_name: '', client_account_id: '', notes: '', billing_received_date: '', cheque_date: '', paid_status: 'Unpaid' });
     setNextSeq('0001');
     setFormOpen(true);
   };
@@ -70,6 +71,9 @@ export default function BillingCycles() {
       cycle_name: item.cycle_name || '',
       client_account_id: item.client_account_id || '',
       notes: item.notes || '',
+      billing_received_date: item.billing_received_date || '',
+      cheque_date: item.cheque_date || '',
+      paid_status: item.paid_status || 'Unpaid',
     });
     setFormOpen(true);
   };
@@ -77,6 +81,15 @@ export default function BillingCycles() {
   const handleSave = async () => {
     setSaving(true);
     if (editData) {
+      // If cheque date changed, update all trips with this billing cycle
+      if (editData.cheque_date !== form.cheque_date && form.cheque_date) {
+        const tripsToUpdate = await base44.entities.TripRecord.filter({ billing_cycle_id: editData.id });
+        await Promise.all(
+          tripsToUpdate.map(trip => 
+            base44.entities.TripRecord.update(trip.id, { first_cheque_date: form.cheque_date })
+          )
+        );
+      }
       await base44.entities.BillingCycle.update(editData.id, form);
     } else {
       await base44.entities.BillingCycle.create({ 
@@ -97,6 +110,13 @@ export default function BillingCycles() {
 
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
 
+  const filteredCycles = cycles.filter(cycle => {
+    if (showPaid === 'all') return true;
+    if (showPaid === 'paid') return cycle.paid_status === 'Paid';
+    if (showPaid === 'unpaid') return cycle.paid_status === 'Unpaid';
+    return true;
+  });
+
   const openTripsView = async (cycle) => {
     setSelectedCycle(cycle);
     setLoadingTrips(true);
@@ -112,9 +132,21 @@ export default function BillingCycles() {
         title="Billing Statements"
         subtitle="Manage billing statements per client account"
         actions={
-          <Button onClick={openAdd} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
-          </Button>
+          <div className="flex items-center gap-2">
+            <Select value={showPaid} onValueChange={setShowPaid}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="unpaid">Unpaid</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={openAdd} size="sm">
+              <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
+            </Button>
+          </div>
         }
       />
 
@@ -130,13 +162,13 @@ export default function BillingCycles() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                {['Statement Name', 'Client', 'Status', 'Notes', ''].map(h => (
+                {['Statement Name', 'Client', 'Billing Received', 'Cheque Date', 'Paid Status', 'Notes', ''].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {cycles.map(cycle => (
+              {filteredCycles.map(cycle => (
                 <tr key={cycle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3">
                     <button 
@@ -147,7 +179,11 @@ export default function BillingCycles() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={cycle.status || 'Open'} type="billing" /></td>
+                  <td className="px-4 py-3 text-sm">{cycle.billing_received_date || '—'}</td>
+                  <td className="px-4 py-3 text-sm">{cycle.cheque_date || '—'}</td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={cycle.paid_status || 'Unpaid'} type="billing" />
+                  </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
@@ -206,6 +242,30 @@ export default function BillingCycles() {
                 onChange={e => setForm(p => ({ ...p, cycle_name: e.target.value }))} 
                 placeholder="e.g., BS-FL26-0001" 
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Billing Received Date</Label>
+              <Input type="date" value={form.billing_received_date} onChange={e => setForm(p => ({ ...p, billing_received_date: e.target.value }))} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Cheque Date</Label>
+              <Input type="date" value={form.cheque_date} onChange={e => setForm(p => ({ ...p, cheque_date: e.target.value }))} />
+              {form.cheque_date && !editData && (
+                <p className="text-xs text-muted-foreground">This will be applied to all trips in this billing statement</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Payment Status</Label>
+              <Select value={form.paid_status} onValueChange={v => setForm(p => ({ ...p, paid_status: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Unpaid">Unpaid</SelectItem>
+                  <SelectItem value="Paid">Paid</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">

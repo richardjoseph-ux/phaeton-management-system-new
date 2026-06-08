@@ -17,6 +17,24 @@
       ],
       "default": "Open"
     },
+    "billing_received_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when billing was received"
+    },
+    "cheque_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of cheque payment"
+    },
+    "paid_status": {
+      "type": "string",
+      "enum": [
+        "Paid",
+        "Unpaid"
+      ],
+      "default": "Unpaid"
+    },
     "notes": {
       "type": "string"
     }
