@@ -22,7 +22,7 @@ export default function BillingCycles() {
   const [selectedCycle, setSelectedCycle] = useState(null);
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
-  const [showPaid, setShowPaid] = useState('all'); // 'all', 'paid', 'unpaid'
+  const [activeTab, setActiveTab] = useState('unpaid'); // 'paid', 'unpaid', 'closed'
 
   const load = async () => {
     setLoading(true);
@@ -120,9 +120,9 @@ export default function BillingCycles() {
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
 
   const filteredCycles = cycles.filter(cycle => {
-    if (showPaid === 'all') return true;
-    if (showPaid === 'paid') return cycle.paid_status === 'Paid';
-    if (showPaid === 'unpaid') return cycle.paid_status === 'Unpaid';
+    if (activeTab === 'paid') return cycle.paid_status === 'Paid' && cycle.status === 'Open';
+    if (activeTab === 'unpaid') return cycle.paid_status === 'Unpaid' && cycle.status === 'Open';
+    if (activeTab === 'closed') return cycle.status === 'Closed';
     return true;
   });
 
@@ -137,27 +137,50 @@ export default function BillingCycles() {
 
   return (
     <div className="p-6">
-      <PageHeader
-        title="Billing Statements"
-        subtitle="Manage billing statements per client account"
-        actions={
-          <div className="flex items-center gap-2">
-            <Select value={showPaid} onValueChange={setShowPaid}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Filter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="unpaid">Unpaid</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={openAdd} size="sm">
-              <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
-            </Button>
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Billing Statements</h1>
+            <p className="text-sm text-muted-foreground">Manage billing statements per client account</p>
           </div>
-        }
-      />
+          <Button onClick={openAdd} size="sm">
+            <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
+          </Button>
+        </div>
+        
+        <div className="flex items-center gap-2 border-b">
+          <button
+            onClick={() => setActiveTab('unpaid')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'unpaid' 
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Unpaid ({cycles.filter(c => c.paid_status === 'Unpaid' && c.status === 'Open').length})
+          </button>
+          <button
+            onClick={() => setActiveTab('paid')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'paid' 
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Paid ({cycles.filter(c => c.paid_status === 'Paid' && c.status === 'Open').length})
+          </button>
+          <button
+            onClick={() => setActiveTab('closed')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'closed' 
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Closed Cycle ({cycles.filter(c => c.status === 'Closed').length})
+          </button>
+        </div>
+      </div>
 
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
