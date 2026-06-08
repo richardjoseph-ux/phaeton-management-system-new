@@ -228,8 +228,8 @@ export default function Payroll() {
                       <td className="px-4 py-3 text-right text-orange-600">-₱{totals.hidden.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-amber-600">-₱{totals.admin.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-blue-600">-₱{totals.insurance.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">-₱{totals.other.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right text-green-600 font-semibold">{totals.hasSubsidy ? `+₱${totals.fuelSubsidy.toFixed(2)}` : '-'}</td>
+                      <td className="px-4 py-3 text-right">-₱{totals.other.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-green-600 font-semibold">+₱{totals.fuelSubsidy.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right font-bold text-emerald-700">₱{totals.net.toFixed(2)}</td>
                       <td className="px-4 py-3">
                         <button 
