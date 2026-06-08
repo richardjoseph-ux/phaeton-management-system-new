@@ -89,15 +89,19 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             }))
           : [emptyRoute()]
       });
+      // Set first pickup and first truck type as active when editing
+      const pickups = [...new Set(editData.routes?.map(r => r.pickup_location).filter(Boolean) || [])];
+      setActivePickup(pickups.length > 0 ? pickups[0] : '__all__');
+      setActiveTruck('__all__');
     } else {
       setForm({
         client_name: '', client_code: '', address: '', contact_person: '',
         contact_number: '', status: 'Active',
         routes: [emptyRoute()]
       });
+      setActivePickup('__all__');
+      setActiveTruck('__all__');
     }
-    setActivePickup('__all__');
-    setActiveTruck('__all__');
     setRouteSearch('');
   }, [editData, open]);
 
@@ -212,26 +216,36 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   };
 
   // ── Tab configs ───────────────────────────────────────────────────────────
-  const pickupTabList = [
-    { value: '__all__', label: `All Pickups (${form.routes.length})` },
-    ...pickupTabs.map(p => ({
-      value: p,
-      label: `${p} (${form.routes.filter(r => r.pickup_location === p).length})`
-    }))
-  ];
+  const pickupTabList = editData
+    ? pickupTabs.map(p => ({
+        value: p,
+        label: `${p} (${form.routes.filter(r => r.pickup_location === p).length})`
+      }))
+    : [
+        { value: '__all__', label: `All Pickups (${form.routes.length})` },
+        ...pickupTabs.map(p => ({
+          value: p,
+          label: `${p} (${form.routes.filter(r => r.pickup_location === p).length})`
+        }))
+      ];
 
   // For truck tabs, count routes that have a rate for that truck type (within current pickup filter)
   const routesInPickup = activePickup === '__all__'
     ? form.routes
     : form.routes.filter(r => r.pickup_location === activePickup);
 
-  const truckTabList = [
-    { value: '__all__', label: `All Trucks (${routesInPickup.length})` },
-    ...TRUCK_TYPES.map(t => ({
-      value: t,
-      label: `${t} (${routesInPickup.filter(r => r.rates?.[t] !== '' && r.rates?.[t] != null).length})`
-    }))
-  ];
+  const truckTabList = editData
+    ? TRUCK_TYPES.map(t => ({
+        value: t,
+        label: `${t} (${routesInPickup.filter(r => r.rates?.[t] !== '' && r.rates?.[t] != null).length})`
+      }))
+    : [
+        { value: '__all__', label: `All Trucks (${routesInPickup.length})` },
+        ...TRUCK_TYPES.map(t => ({
+          value: t,
+          label: `${t} (${routesInPickup.filter(r => r.rates?.[t] !== '' && r.rates?.[t] != null).length})`
+        }))
+      ];
 
   // Columns to show: in "All Trucks" view show all 4 rate cols; in specific truck view show only that one
   const rateColumns = activeTruck === '__all__' ? TRUCK_TYPES : [activeTruck];
