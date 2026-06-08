@@ -260,6 +260,7 @@ export default function Payroll() {
         onClose={() => setEditTrip(null)}
         onSaved={load}
         trip={editTrip}
+        fuelSubsidies={fuelSubsidies}
       />
     </div>
   );

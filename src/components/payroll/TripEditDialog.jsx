@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function TripEditDialog({ open, onClose, onSaved, trip }) {
+export default function TripEditDialog({ open, onClose, onSaved, trip, fuelSubsidies = [] }) {
   const [insuranceCharge, setInsuranceCharge] = useState('');
   const [otherCharges, setOtherCharges] = useState('');
   const [saving, setSaving] = useState(false);
@@ -26,7 +26,16 @@ export default function TripEditDialog({ open, onClose, onSaved, trip }) {
   const admin = afterTax * 0.06;
   const insurance = parseFloat(insuranceCharge) || 0;
   const other = parseFloat(otherCharges) || 0;
-  const net = gross - tax - hidden - admin - insurance - other;
+  
+  // Calculate fuel subsidy
+  const matchingSubsidy = fuelSubsidies.find(s => 
+    s.client_account_id === trip.client_account_id &&
+    trip.delivery_date >= s.start_date &&
+    trip.delivery_date <= s.end_date
+  );
+  const fuelSubsidy = matchingSubsidy ? gross * (matchingSubsidy.subsidy_percentage / 100) : 0;
+  
+  const net = gross - tax - hidden - admin - insurance - other + fuelSubsidy;
 
   const handleSave = async () => {
     setSaving(true);
@@ -73,6 +82,17 @@ export default function TripEditDialog({ open, onClose, onSaved, trip }) {
             <div>
               <Label>Client</Label>
               <div className="text-sm text-muted-foreground mt-1">{trip.client_name}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Delivery Date</Label>
+              <div className="text-sm text-muted-foreground mt-1">{new Date(trip.delivery_date).toLocaleDateString()}</div>
+            </div>
+            <div>
+              <Label>Delivery Code</Label>
+              <div className="text-sm text-muted-foreground mt-1 font-mono">{trip.delivery_code}</div>
             </div>
           </div>
 
@@ -123,6 +143,13 @@ export default function TripEditDialog({ open, onClose, onSaved, trip }) {
                   className="w-32 text-right"
                 />
               </div>
+
+              {fuelSubsidy > 0 && (
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-muted-foreground">Fuel Subsidy</span>
+                  <span className="text-green-600 font-semibold">+₱{fuelSubsidy.toFixed(2)}</span>
+                </div>
+              )}
 
               <div className="flex justify-between items-center pt-3 border-t bg-emerald-50 p-3 rounded">
                 <Label className="font-bold text-emerald-800">Net Payroll</Label>
