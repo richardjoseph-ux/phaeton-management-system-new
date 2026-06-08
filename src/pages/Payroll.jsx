@@ -34,8 +34,9 @@ export default function Payroll() {
   const calculateTotals = (trip) => {
     const gross = trip.gross_rate || 0;
     const tax = gross * 0.02;
-    const hidden = gross * 0.04;
-    const admin = gross * 0.06;
+    const afterTax = gross - tax;
+    const hidden = afterTax * 0.04;
+    const admin = afterTax * 0.06;
     const insurance = trip.insurance_charge || 0;
     const other = trip.other_charges || 0;
     const net = gross - tax - hidden - admin - insurance - other;

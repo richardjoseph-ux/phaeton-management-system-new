@@ -21,8 +21,9 @@ export default function TripEditDialog({ open, onClose, onSaved, trip }) {
 
   const gross = trip.gross_rate || 0;
   const tax = gross * 0.02;
-  const hidden = gross * 0.04;
-  const admin = gross * 0.06;
+  const afterTax = gross - tax;
+  const hidden = afterTax * 0.04;
+  const admin = afterTax * 0.06;
   const insurance = parseFloat(insuranceCharge) || 0;
   const other = parseFloat(otherCharges) || 0;
   const net = gross - tax - hidden - admin - insurance - other;
