@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -23,9 +23,23 @@ export default function AdditionalServices() {
     notes: ''
   });
   const [googleSheetUrl, setGoogleSheetUrl] = useState('');
+  const [savedSheetUrl, setSavedSheetUrl] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState(null);
 
   const queryClient = useQueryClient();
+
+  // Load saved Google Sheet URL on mount
+  useEffect(() => {
+    const loadSavedUrl = async () => {
+      const subsidies = await base44.entities.FuelSubsidy.list();
+      if (subsidies.length > 0 && subsidies[0].google_sheet_url) {
+        setSavedSheetUrl(subsidies[0].google_sheet_url);
+      }
+    };
+    loadSavedUrl();
+  }, []);
 
   const { data: subsidies, isLoading } = useQuery({
     queryKey: ['fuelSubsidies'],
@@ -87,16 +101,90 @@ export default function AdditionalServices() {
     });
   };
 
-  const handleGoogleSheetExport = async () => {
+  const handleSaveUrl = async () => {
     if (!googleSheetUrl.trim()) {
       alert('Please enter a Google Sheet URL');
+      return;
+    }
+    
+    // Validate URL format
+    const match = googleSheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (!match) {
+      alert('Invalid Google Sheet URL format');
+      return;
+    }
+    
+    try {
+      // Save to first fuel subsidy record as a global setting
+      const subsidies = await base44.entities.FuelSubsidy.list();
+      if (subsidies.length > 0) {
+        await base44.entities.FuelSubsidy.update(subsidies[0].id, { google_sheet_url: googleSheetUrl });
+      } else {
+        // Create a dummy record if none exists
+        await base44.entities.FuelSubsidy.create({ 
+          google_sheet_url: googleSheetUrl,
+          client_account_id: 'settings',
+          client_name: 'System Settings',
+          start_date: new Date().toISOString().split('T')[0],
+          end_date: new Date().toISOString().split('T')[0],
+          subsidy_percentage: 0
+        });
+      }
+      setSavedSheetUrl(googleSheetUrl);
+      alert('Google Sheet URL saved successfully!');
+    } catch (error) {
+      alert('Error saving URL: ' + error.message);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    const urlToTest = savedSheetUrl || googleSheetUrl;
+    if (!urlToTest.trim()) {
+      alert('Please enter or save a Google Sheet URL first');
+      return;
+    }
+    
+    setTestingConnection(true);
+    setConnectionStatus(null);
+    
+    try {
+      // Extract sheet ID from URL
+      const match = urlToTest.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (!match) {
+        setConnectionStatus({ success: false, message: 'Invalid Google Sheet URL format' });
+        setTestingConnection(false);
+        return;
+      }
+      
+      const sheetId = match[1];
+      
+      // Try to access the sheet metadata (public check)
+      const response = await fetch(`https://docs.google.com/feeds/download/spreadsheets/Export?key=${sheetId}&exportFormat=xlsx`, {
+        method: 'HEAD'
+      });
+      
+      if (response.ok || response.status === 200 || response.status === 302) {
+        setConnectionStatus({ success: true, message: 'Successfully accessed Google Sheet!' });
+      } else {
+        setConnectionStatus({ success: false, message: 'Cannot access sheet. Make sure it\'s shared with "Anyone with the link" or connect Google Sheets connector.' });
+      }
+    } catch (error) {
+      setConnectionStatus({ success: false, message: 'Connection failed: ' + error.message });
+    }
+    setTestingConnection(false);
+  };
+
+  const handleGoogleSheetExport = async () => {
+    const urlToUse = savedSheetUrl || googleSheetUrl;
+    if (!urlToUse.trim()) {
+      alert('Please enter and save a Google Sheet URL');
       return;
     }
     
     setExporting(true);
     try {
       // Extract sheet ID from URL
-      const match = googleSheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      const match = urlToUse.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
       if (!match) {
         alert('Invalid Google Sheet URL');
         setExporting(false);
@@ -316,10 +404,17 @@ export default function AdditionalServices() {
             <div className="bg-card rounded-lg shadow-sm border p-6">
               <h3 className="text-lg font-semibold mb-4">Export to Google Sheets</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Enter your Google Sheet URL to export fuel subsidy data. The data will be downloaded as a CSV file that you can import into Google Sheets.
+                Save your Google Sheet URL to export fuel subsidy data. The data will be downloaded as a CSV file that you can import into Google Sheets.
               </p>
               
               <div className="space-y-4 max-w-lg">
+                {savedSheetUrl && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-xs font-medium text-green-800 mb-1">Saved Google Sheet URL:</p>
+                    <p className="text-xs text-green-700 break-all">{savedSheetUrl}</p>
+                  </div>
+                )}
+                
                 <div>
                   <Label htmlFor="sheetUrl">Google Sheet URL</Label>
                   <Input
@@ -331,14 +426,50 @@ export default function AdditionalServices() {
                   />
                 </div>
                 
-                <Button 
-                  onClick={handleGoogleSheetExport} 
-                  disabled={exporting || !googleSheetUrl.trim()}
-                  className="gap-2"
-                >
-                  <Sheet className="w-4 h-4" />
-                  {exporting ? 'Exporting...' : 'Export Data'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleSaveUrl}
+                    variant="default"
+                    disabled={!googleSheetUrl.trim()}
+                    className="gap-2"
+                  >
+                    Save URL
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleTestConnection} 
+                    variant="outline"
+                    disabled={testingConnection || !(savedSheetUrl || googleSheetUrl)}
+                    className="gap-2"
+                  >
+                    {testingConnection ? 'Testing...' : 'Test Connection'}
+                  </Button>
+                </div>
+                
+                {connectionStatus && (
+                  <div className={`p-3 rounded-lg border ${
+                    connectionStatus.success 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <p className={`text-sm font-medium ${
+                      connectionStatus.success ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {connectionStatus.success ? '✓' : '✗'} {connectionStatus.message}
+                    </p>
+                  </div>
+                )}
+                
+                <div className="pt-4 border-t">
+                  <Button 
+                    onClick={handleGoogleSheetExport} 
+                    disabled={exporting || !(savedSheetUrl || googleSheetUrl)}
+                    className="gap-2 w-full"
+                  >
+                    <Sheet className="w-4 h-4" />
+                    {exporting ? 'Exporting...' : 'Export Data to CSV'}
+                  </Button>
+                </div>
               </div>
               
               <div className="mt-6 p-4 bg-muted/50 rounded-lg">

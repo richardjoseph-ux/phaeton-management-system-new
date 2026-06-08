@@ -39,6 +39,10 @@
     },
     "notes": {
       "type": "string"
+    },
+    "google_sheet_url": {
+      "type": "string",
+      "description": "Saved Google Sheet URL for exports"
     }
   },
   "required": [
