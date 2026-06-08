@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, CreditCard, Pencil, Lock, Unlock } from 'lucide-react';
+import { Plus, CreditCard, Pencil, Lock, Unlock, Eye, ClipboardList } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 
@@ -18,6 +18,10 @@ export default function BillingCycles() {
   const [form, setForm] = useState({ cycle_name: '', client_account_id: '', notes: '' });
   const [nextSeq, setNextSeq] = useState('0001');
   const [saving, setSaving] = useState(false);
+  const [tripsOpen, setTripsOpen] = useState(false);
+  const [selectedCycle, setSelectedCycle] = useState(null);
+  const [trips, setTrips] = useState([]);
+  const [loadingTrips, setLoadingTrips] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -93,6 +97,15 @@ export default function BillingCycles() {
 
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
 
+  const openTripsView = async (cycle) => {
+    setSelectedCycle(cycle);
+    setLoadingTrips(true);
+    const tripsData = await base44.entities.TripRecord.filter({ billing_cycle_id: cycle.id }, '-created_date', 200);
+    setTrips(tripsData);
+    setLoadingTrips(false);
+    setTripsOpen(true);
+  };
+
   return (
     <div className="p-6">
       <PageHeader
@@ -125,7 +138,14 @@ export default function BillingCycles() {
             <tbody>
               {cycles.map(cycle => (
                 <tr key={cycle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-semibold">{cycle.cycle_name}</td>
+                  <td className="px-4 py-3">
+                    <button 
+                      onClick={() => openTripsView(cycle)} 
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      {cycle.cycle_name}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
                   <td className="px-4 py-3"><StatusBadge status={cycle.status || 'Open'} type="billing" /></td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
@@ -198,6 +218,65 @@ export default function BillingCycles() {
             <Button onClick={handleSave} disabled={saving || !form.cycle_name || !form.client_account_id}>
               {saving ? 'Saving...' : editData ? 'Update' : 'Create'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={tripsOpen} onOpenChange={setTripsOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Trips for {selectedCycle?.cycle_name} - {getClientName(selectedCycle?.client_account_id)}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {loadingTrips ? (
+            <div className="text-center py-12 text-muted-foreground">Loading trips...</div>
+          ) : trips.length === 0 ? (
+            <div className="text-center py-12">
+              <ClipboardList className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-muted-foreground text-sm">No trips assigned to this billing statement</p>
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr className="border-b">
+                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Plate #</th>
+                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Owner / Driver</th>
+                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Truck</th>
+                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Route</th>
+                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Delivery Date</th>
+                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">DR #</th>
+                    <th className="text-right px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Net Payroll</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trips.map(trip => (
+                    <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="px-4 py-3 font-mono font-semibold text-primary">{trip.plate_number}</td>
+                      <td className="px-4 py-3">{trip.owner_name}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{trip.truck_type}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        <div>{trip.pickup_location}</div>
+                        <div className="text-muted-foreground/60">→ {trip.delivery_location}</div>
+                      </td>
+                      <td className="px-4 py-3 text-sm">{trip.delivery_date}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{trip.dr_number || '—'}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-emerald-700">
+                        ₱{trip.net_payroll?.toFixed(2) || '0.00'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button onClick={() => setTripsOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
