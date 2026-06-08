@@ -90,6 +90,15 @@ export default function BillingCycles() {
           )
         );
       }
+      // If billing received date changed, update all trips with this billing cycle
+      if (editData.billing_received_date !== form.billing_received_date && form.billing_received_date) {
+        const tripsToUpdate = await base44.entities.TripRecord.filter({ billing_cycle_id: editData.id });
+        await Promise.all(
+          tripsToUpdate.map(trip => 
+            base44.entities.TripRecord.update(trip.id, { billing_date: form.billing_received_date })
+          )
+        );
+      }
       await base44.entities.BillingCycle.update(editData.id, form);
     } else {
       await base44.entities.BillingCycle.create({ 
