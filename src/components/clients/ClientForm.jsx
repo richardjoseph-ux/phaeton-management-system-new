@@ -15,6 +15,28 @@ const emptyRoute = () => ({
   rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
 });
 
+function TabBar({ tabs, active, onSelect, label }) {
+  return (
+    <div className="flex gap-1 flex-wrap border-b border-border">
+      {tabs.map(tab => (
+        <button
+          key={tab.value}
+          type="button"
+          onClick={() => onSelect(tab.value)}
+          title={tab.label}
+          className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors max-w-[180px] truncate ${
+            active === tab.value
+              ? 'border-primary text-primary bg-primary/5'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function ClientForm({ open, onClose, onSaved, editData }) {
   const [form, setForm] = useState({
     client_name: '', client_code: '', address: '', contact_person: '',
@@ -23,14 +45,18 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   });
   const [saving, setSaving] = useState(false);
   const [activePickup, setActivePickup] = useState('__all__');
+  const [activeTruck, setActiveTruck] = useState('__all__');
   const fileInputRef = useRef(null);
 
-  // Derived: unique pickup locations
+  // Unique pickup locations
   const pickupTabs = [...new Set(form.routes.map(r => r.pickup_location).filter(Boolean))];
 
-  // Routes visible in current tab
+  // Indices visible after both filters
   const visibleIndices = form.routes.reduce((acc, r, i) => {
-    if (activePickup === '__all__' || r.pickup_location === activePickup) acc.push(i);
+    const pickupMatch = activePickup === '__all__' || r.pickup_location === activePickup;
+    // truck filter: show row if that truck type has a value (or if showing all trucks)
+    const truckMatch = activeTruck === '__all__' || (r.rates?.[activeTruck] !== '' && r.rates?.[activeTruck] != null);
+    if (pickupMatch && truckMatch) acc.push(i);
     return acc;
   }, []);
 
@@ -66,6 +92,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
       });
     }
     setActivePickup('__all__');
+    setActiveTruck('__all__');
   }, [editData, open]);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -131,6 +158,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
       }));
       setForm(p => ({ ...p, routes: imported.length ? imported : [emptyRoute()] }));
       setActivePickup('__all__');
+      setActiveTruck('__all__');
     };
     reader.readAsArrayBuffer(file);
     e.target.value = '';
@@ -157,6 +185,31 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     onSaved();
     onClose();
   };
+
+  // ── Tab configs ───────────────────────────────────────────────────────────
+  const pickupTabList = [
+    { value: '__all__', label: `All Pickups (${form.routes.length})` },
+    ...pickupTabs.map(p => ({
+      value: p,
+      label: `${p} (${form.routes.filter(r => r.pickup_location === p).length})`
+    }))
+  ];
+
+  // For truck tabs, count routes that have a rate for that truck type (within current pickup filter)
+  const routesInPickup = activePickup === '__all__'
+    ? form.routes
+    : form.routes.filter(r => r.pickup_location === activePickup);
+
+  const truckTabList = [
+    { value: '__all__', label: `All Trucks (${routesInPickup.length})` },
+    ...TRUCK_TYPES.map(t => ({
+      value: t,
+      label: `${t} (${routesInPickup.filter(r => r.rates?.[t] !== '' && r.rates?.[t] != null).length})`
+    }))
+  ];
+
+  // Columns to show: in "All Trucks" view show all 4 rate cols; in specific truck view show only that one
+  const rateColumns = activeTruck === '__all__' ? TRUCK_TYPES : [activeTruck];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -204,7 +257,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
           {/* Routes + Rates */}
           <div>
             {/* Toolbar */}
-            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Routes &amp; Rates</p>
               <div className="flex items-center gap-2">
                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
@@ -220,37 +273,12 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
               </div>
             </div>
 
-            {/* Pickup Tabs */}
-            <div className="flex gap-1 flex-wrap mb-0 border-b border-border">
-              <button
-                type="button"
-                onClick={() => setActivePickup('__all__')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors ${
-                  activePickup === '__all__'
-                    ? 'border-primary text-primary bg-primary/5'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                All ({form.routes.length})
-              </button>
-              {pickupTabs.map(p => {
-                const count = form.routes.filter(r => r.pickup_location === p).length;
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setActivePickup(p)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors max-w-[160px] truncate ${
-                      activePickup === p
-                        ? 'border-primary text-primary bg-primary/5'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
-                    title={p}
-                  >
-                    {p} ({count})
-                  </button>
-                );
-              })}
+            {/* Level 1: Pickup Tabs */}
+            <TabBar tabs={pickupTabList} active={activePickup} onSelect={(v) => { setActivePickup(v); setActiveTruck('__all__'); }} />
+
+            {/* Level 2: Truck Type Sub-Tabs */}
+            <div className="bg-muted/30 px-2 pt-1 pb-0 border-x border-border">
+              <TabBar tabs={truckTabList} active={activeTruck} onSelect={setActiveTruck} />
             </div>
 
             {/* Table */}
@@ -264,8 +292,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Destination</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Route Code</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Trip Route</th>
-                    {TRUCK_TYPES.map(t => (
-                      <th key={t} className="text-center px-3 py-2.5 text-xs font-semibold text-primary border-r">{t}</th>
+                    {rateColumns.map(t => (
+                      <th key={t} className={`text-center px-3 py-2.5 text-xs font-semibold border-r ${activeTruck === t ? 'text-white bg-primary' : 'text-primary'}`}>{t}</th>
                     ))}
                     <th className="px-2 py-2.5"></th>
                   </tr>
@@ -273,8 +301,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                 <tbody>
                   {visibleIndices.length === 0 ? (
                     <tr>
-                      <td colSpan={activePickup === '__all__' ? 9 : 8} className="text-center py-6 text-xs text-muted-foreground">
-                        No routes yet. Click "Add Route" to add one.
+                      <td colSpan={10} className="text-center py-6 text-xs text-muted-foreground">
+                        No routes found for this filter. {activeTruck !== '__all__' && 'Routes without a rate for this truck type are hidden.'}
                       </td>
                     </tr>
                   ) : visibleIndices.map(idx => {
@@ -315,14 +343,14 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                             placeholder="Optional"
                           />
                         </td>
-                        {TRUCK_TYPES.map(t => (
-                          <td key={t} className="px-2 py-1.5 border-r">
+                        {rateColumns.map(t => (
+                          <td key={t} className={`px-2 py-1.5 border-r ${activeTruck === t ? 'bg-primary/5' : ''}`}>
                             <Input
-                              className="h-7 text-xs text-right min-w-[75px]"
+                              className="h-7 text-xs text-right min-w-[80px]"
                               type="number"
                               min="0"
                               step="1"
-                              placeholder="0"
+                              placeholder="—"
                               value={route.rates?.[t] ?? ''}
                               onChange={e => setRouteRate(idx, t, e.target.value)}
                             />
@@ -341,8 +369,11 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                 </tbody>
               </table>
             </div>
+
             <p className="text-xs text-muted-foreground mt-1.5">
-              Rates in ₱. Import template columns: <span className="font-mono">Pickup Location, Delivery Location, Delivery Code, Trip Route Code, AUV Rate, Sub-4W Rate, 6-Wheel Rate, 10-Wheel Rate</span>
+              {activeTruck !== '__all__'
+                ? `Showing only routes with a rate for ${activeTruck}. Switch to "All Trucks" to see and edit all routes.`
+                : 'Rates in ₱. Leave blank if a truck type does not serve a route.'}
             </p>
           </div>
 
