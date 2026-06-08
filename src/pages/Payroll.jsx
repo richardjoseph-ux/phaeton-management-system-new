@@ -91,37 +91,49 @@ export default function Payroll() {
 
     setExporting(true);
     try {
-      // Prepare trip data for backend
-      const tripData = filteredTrips.map(trip => ({
-        plate_number: trip.plate_number,
-        owner_name: trip.owner_name,
-        truck_type: trip.truck_type,
-        delivery_date: trip.delivery_date,
-        dr_number: trip.dr_number,
-        pickup_location: trip.pickup_location,
-        delivery_location: trip.delivery_location,
-        delivery_code: trip.delivery_code,
-        billing_cycle_name: trip.billing_cycle_name,
-        gross_rate: trip.gross_rate,
-        insurance_charge: trip.insurance_charge,
-        other_charges: trip.other_charges
-      }));
+      // Prepare trip data with all calculations
+      const tripData = filteredTrips.map(trip => {
+        const totals = calculateTotals(trip);
+        return {
+          plate_number: trip.plate_number,
+          owner_name: trip.owner_name,
+          truck_type: trip.truck_type,
+          client_name: trip.client_name,
+          delivery_date: trip.delivery_date,
+          dr_number: trip.dr_number,
+          pickup_location: trip.pickup_location,
+          delivery_location: trip.delivery_location,
+          delivery_code: trip.delivery_code,
+          billing_cycle_name: trip.billing_cycle_name,
+          gross_rate: trip.gross_rate,
+          insurance_charge: trip.insurance_charge,
+          other_charges: trip.other_charges,
+          fuel_subsidy: totals.fuelSubsidy
+        };
+      });
 
-      // Call backend function to generate styled Excel
-      const response = await base44.functions.invoke('generatePayrollExcel', {
+      // Call backend function to prepare Excel for Google Sheets
+      const response = await base44.functions.invoke('exportToGoogleSheet', {
+        sheetUrl: googleSheetUrl,
         trips: tripData
       });
 
-      // Create download link
-      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Payroll_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-
-      alert('Excel file downloaded. Please import it into your Google Sheet manually, or connect Google Sheets connector for automatic sync.');
+      if (response.data.success) {
+        // Download the Excel file
+        const blob = new Blob([new Uint8Array(response.data.excelData)], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Trip_Records_${new Date().toISOString().split('T')[0]}.xlsx`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+        
+        alert(`Exported ${tripData.length} trips! File downloaded - you can now import it to your Google Sheet.`);
+      } else {
+        alert('Export failed: ' + response.data.message);
+      }
     } catch (error) {
       alert('Error exporting: ' + error.message);
     }
