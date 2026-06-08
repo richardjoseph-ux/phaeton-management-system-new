@@ -38,9 +38,16 @@ export default function TripEncoding() {
     !search ||
     t.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
     t.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
+    t.truck_type?.toLowerCase().includes(search.toLowerCase()) ||
     t.client_name?.toLowerCase().includes(search.toLowerCase()) ||
+    t.pickup_location?.toLowerCase().includes(search.toLowerCase()) ||
+    t.delivery_location?.toLowerCase().includes(search.toLowerCase()) ||
+    t.delivery_code?.toLowerCase().includes(search.toLowerCase()) ||
+    t.particular?.toLowerCase().includes(search.toLowerCase()) ||
     t.dr_number?.toLowerCase().includes(search.toLowerCase()) ||
-    t.waybill_number?.toLowerCase().includes(search.toLowerCase())
+    t.waybill_number?.toLowerCase().includes(search.toLowerCase()) ||
+    t.trip_route_code?.toLowerCase().includes(search.toLowerCase()) ||
+    t.billing_cycle_name?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleEdit = (trip) => { setEditData(trip); setFormOpen(true); };
