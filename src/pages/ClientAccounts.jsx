@@ -94,42 +94,33 @@ export default function ClientAccounts() {
 
               {expanded[client.id] && (
                 <div className="border-t px-5 py-4 bg-muted/20">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {/* Rates */}
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Rates per Truck Type</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {TRUCK_TYPES.map(t => (
-                          <div key={t} className="flex items-center justify-between p-2 bg-card border rounded text-sm">
-                            <span className="text-muted-foreground text-xs">{t}</span>
-                            <span className="font-semibold">
-                              {client.rates?.[t] ? `₱${Number(client.rates[t]).toFixed(2)}` : '—'}
-                            </span>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Routes & Rates</p>
+                    {client.routes?.length ? (
+                      <div className="space-y-3">
+                        {client.routes.map((r, i) => (
+                          <div key={i} className="p-3 bg-card border rounded-lg text-xs">
+                            <div className="flex items-center gap-1 font-semibold text-sm mb-1">
+                              <span>{r.pickup_location}</span>
+                              <span className="text-muted-foreground">→</span>
+                              <span>{r.delivery_location}</span>
+                              {r.delivery_code && <span className="ml-2 font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{r.delivery_code}</span>}
+                              {r.trip_route_code && <span className="font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{r.trip_route_code}</span>}
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 mt-2">
+                              {TRUCK_TYPES.map(t => (
+                                <div key={t} className="flex flex-col items-center p-1.5 bg-muted/50 border rounded text-center">
+                                  <span className="text-muted-foreground text-xs mb-0.5">{t}</span>
+                                  <span className="font-semibold text-sm">
+                                    {r.rates?.[t] ? `₱${Number(r.rates[t]).toLocaleString()}` : '—'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                    {/* Routes */}
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Route Configurations</p>
-                      {client.routes?.length ? (
-                        <div className="space-y-2">
-                          {client.routes.map((r, i) => (
-                            <div key={i} className="p-2 bg-card border rounded text-xs">
-                              <div className="flex items-center gap-1 font-medium">
-                                <span>{r.pickup_location}</span>
-                                <span className="text-muted-foreground">→</span>
-                                <span>{r.delivery_location}</span>
-                              </div>
-                              <div className="flex gap-3 mt-0.5 text-muted-foreground">
-                                <span>Code: <span className="font-mono">{r.delivery_code}</span></span>
-                                {r.trip_route_code && <span>Route: <span className="font-mono">{r.trip_route_code}</span></span>}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : <p className="text-xs text-muted-foreground">No routes configured</p>}
-                    </div>
+                    ) : <p className="text-xs text-muted-foreground">No routes configured</p>}
                   </div>
                 </div>
               )}

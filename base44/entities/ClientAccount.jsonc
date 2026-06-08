@@ -27,7 +27,7 @@
     },
     "routes": {
       "type": "array",
-      "description": "Route configurations for this client",
+      "description": "Route configurations for this client, each with its own rates",
       "items": {
         "type": "object",
         "properties": {
@@ -42,25 +42,25 @@
           },
           "trip_route_code": {
             "type": "string"
+          },
+          "rates": {
+            "type": "object",
+            "description": "Rate per truck type for this specific route",
+            "properties": {
+              "AUV": {
+                "type": "number"
+              },
+              "Sub-4W": {
+                "type": "number"
+              },
+              "6-Wheel": {
+                "type": "number"
+              },
+              "10-Wheel": {
+                "type": "number"
+              }
+            }
           }
-        }
-      }
-    },
-    "rates": {
-      "type": "object",
-      "description": "Rate per truck type",
-      "properties": {
-        "AUV": {
-          "type": "number"
-        },
-        "Sub-4W": {
-          "type": "number"
-        },
-        "6-Wheel": {
-          "type": "number"
-        },
-        "10-Wheel": {
-          "type": "number"
         }
       }
     }

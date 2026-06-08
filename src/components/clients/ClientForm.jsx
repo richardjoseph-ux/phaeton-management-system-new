@@ -9,14 +9,16 @@ import { Plus, Trash2 } from 'lucide-react';
 
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
-const emptyRoute = () => ({ pickup_location: '', delivery_location: '', delivery_code: '', trip_route_code: '' });
+const emptyRoute = () => ({
+  pickup_location: '', delivery_location: '', delivery_code: '', trip_route_code: '',
+  rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
+});
 
 export default function ClientForm({ open, onClose, onSaved, editData }) {
   const [form, setForm] = useState({
     client_name: '', client_code: '', address: '', contact_person: '',
     contact_number: '', status: 'Active',
-    routes: [emptyRoute()],
-    rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
+    routes: [emptyRoute()]
   });
   const [saving, setSaving] = useState(false);
 
@@ -29,20 +31,26 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         contact_person: editData.contact_person || '',
         contact_number: editData.contact_number || '',
         status: editData.status || 'Active',
-        routes: editData.routes?.length ? editData.routes : [emptyRoute()],
-        rates: {
-          AUV: editData.rates?.AUV ?? '',
-          'Sub-4W': editData.rates?.['Sub-4W'] ?? '',
-          '6-Wheel': editData.rates?.['6-Wheel'] ?? '',
-          '10-Wheel': editData.rates?.['10-Wheel'] ?? '',
-        }
+        routes: editData.routes?.length
+          ? editData.routes.map(r => ({
+              pickup_location: r.pickup_location || '',
+              delivery_location: r.delivery_location || '',
+              delivery_code: r.delivery_code || '',
+              trip_route_code: r.trip_route_code || '',
+              rates: {
+                AUV: r.rates?.AUV ?? '',
+                'Sub-4W': r.rates?.['Sub-4W'] ?? '',
+                '6-Wheel': r.rates?.['6-Wheel'] ?? '',
+                '10-Wheel': r.rates?.['10-Wheel'] ?? '',
+              }
+            }))
+          : [emptyRoute()]
       });
     } else {
       setForm({
         client_name: '', client_code: '', address: '', contact_person: '',
         contact_number: '', status: 'Active',
-        routes: [emptyRoute()],
-        rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
+        routes: [emptyRoute()]
       });
     }
   }, [editData, open]);
@@ -55,18 +63,25 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     return { ...p, routes };
   });
 
+  const setRouteRate = (idx, truckType, v) => setForm(p => {
+    const routes = [...p.routes];
+    routes[idx] = { ...routes[idx], rates: { ...routes[idx].rates, [truckType]: v } };
+    return { ...p, routes };
+  });
+
   const addRoute = () => setForm(p => ({ ...p, routes: [...p.routes, emptyRoute()] }));
   const removeRoute = (idx) => setForm(p => ({ ...p, routes: p.routes.filter((_, i) => i !== idx) }));
-
-  const setRate = (k, v) => setForm(p => ({ ...p, rates: { ...p.rates, [k]: v } }));
 
   const handleSave = async () => {
     setSaving(true);
     const data = {
       ...form,
-      rates: Object.fromEntries(
-        Object.entries(form.rates).map(([k, v]) => [k, v === '' ? null : parseFloat(v)])
-      )
+      routes: form.routes.map(r => ({
+        ...r,
+        rates: Object.fromEntries(
+          Object.entries(r.rates).map(([k, v]) => [k, v === '' ? null : parseFloat(v)])
+        )
+      }))
     };
     if (editData) {
       await base44.entities.ClientAccount.update(editData.id, data);
@@ -80,7 +95,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editData ? 'Edit Client Account' : 'Create Client Account'}</DialogTitle>
         </DialogHeader>
@@ -120,44 +135,28 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             </div>
           </div>
 
-          {/* Rates */}
-          <div>
-            <h3 className="text-sm font-semibold mb-3 text-foreground">Rates per Truck Type (₱)</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {TRUCK_TYPES.map(t => (
-                <div key={t} className="space-y-1.5">
-                  <Label>{t}</Label>
-                  <Input
-                    type="number" min="0" step="0.01"
-                    placeholder="0.00"
-                    value={form.rates[t]}
-                    onChange={e => setRate(t, e.target.value)}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Routes */}
+          {/* Routes with embedded rates */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Route Configurations</h3>
+              <h3 className="text-sm font-semibold text-foreground">Routes & Rates</h3>
               <Button type="button" variant="outline" size="sm" onClick={addRoute}>
                 <Plus className="w-3.5 h-3.5 mr-1" /> Add Route
               </Button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {form.routes.map((route, idx) => (
-                <div key={idx} className="border rounded-lg p-3 bg-muted/30 relative">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">Route {idx + 1}</span>
+                <div key={idx} className="border rounded-lg p-4 bg-muted/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Route {idx + 1}</span>
                     {form.routes.length > 1 && (
                       <button onClick={() => removeRoute(idx)} className="text-red-400 hover:text-red-600">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+
+                  {/* Route fields */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Pickup Location *</Label>
                       <Input className="h-8 text-sm" value={route.pickup_location} onChange={e => setRoute(idx, 'pickup_location', e.target.value)} />
@@ -173,6 +172,25 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                     <div className="space-y-1">
                       <Label className="text-xs">Trip Route Code</Label>
                       <Input className="h-8 text-sm" value={route.trip_route_code} onChange={e => setRoute(idx, 'trip_route_code', e.target.value)} placeholder="Optional" />
+                    </div>
+                  </div>
+
+                  {/* Per-route rates */}
+                  <div className="border-t pt-3">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Rates (₱) per Truck Type</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {TRUCK_TYPES.map(t => (
+                        <div key={t} className="space-y-1">
+                          <Label className="text-xs">{t}</Label>
+                          <Input
+                            className="h-8 text-sm"
+                            type="number" min="0" step="1"
+                            placeholder="0"
+                            value={route.rates?.[t] ?? ''}
+                            onChange={e => setRouteRate(idx, t, e.target.value)}
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>

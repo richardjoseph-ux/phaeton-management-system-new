@@ -116,7 +116,12 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
   const handleSave = async () => {
     setSaving(true);
     const client = clients.find(c => c.id === form.client_account_id);
-    const grossRate = client?.rates?.[form.truck_type] || 0;
+    const matchedRoute = (client?.routes || []).find(r =>
+      r.pickup_location === form.pickup_location &&
+      r.delivery_location === form.delivery_location &&
+      r.delivery_code === form.delivery_code
+    );
+    const grossRate = matchedRoute?.rates?.[form.truck_type] || client?.rates?.[form.truck_type] || 0;
     const taxDeduction = grossRate * 0.02;
     const hiddenFee = grossRate * 0.04;
     const adminFee = grossRate * 0.06;
@@ -271,7 +276,12 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
           {/* Rate Preview */}
           {form.truck_type && form.client_account_id && (() => {
             const client = clients.find(c => c.id === form.client_account_id);
-            const gross = client?.rates?.[form.truck_type] || 0;
+            const matchedRoute = (client?.routes || []).find(r =>
+              r.pickup_location === form.pickup_location &&
+              r.delivery_location === form.delivery_location &&
+              r.delivery_code === form.delivery_code
+            );
+            const gross = matchedRoute?.rates?.[form.truck_type] || client?.rates?.[form.truck_type] || 0;
             if (!gross) return null;
             return (
               <div className="col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
