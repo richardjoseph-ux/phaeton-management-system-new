@@ -107,31 +107,24 @@ export default function Payroll() {
           delivery_code: trip.delivery_code,
           billing_cycle_name: trip.billing_cycle_name,
           gross_rate: trip.gross_rate,
+          tax_2_percent: totals.tax,
+          hidden_fee_4_percent: totals.hidden,
+          admin_fee_6_percent: totals.admin,
           insurance_charge: trip.insurance_charge,
           other_charges: trip.other_charges,
-          fuel_subsidy: totals.fuelSubsidy
+          fuel_subsidy: totals.fuelSubsidy,
+          net_payroll: totals.net
         };
       });
 
-      // Call backend function to prepare Excel for Google Sheets
+      // Call backend function to export to Google Sheet
       const response = await base44.functions.invoke('exportToGoogleSheet', {
         sheetUrl: googleSheetUrl,
         trips: tripData
       });
 
       if (response.data.success) {
-        // Download the Excel file
-        const blob = new Blob([new Uint8Array(response.data.excelData)], { 
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-        });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Trip_Records_${new Date().toISOString().split('T')[0]}.xlsx`;
-        link.click();
-        window.URL.revokeObjectURL(url);
-        
-        alert(`Exported ${tripData.length} trips! File downloaded - you can now import it to your Google Sheet.`);
+        alert(`Exported ${tripData.length} trips to Google Sheet successfully!`);
       } else {
         alert('Export failed: ' + response.data.message);
       }
