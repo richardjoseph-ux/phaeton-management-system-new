@@ -35,7 +35,9 @@ export default function AdditionalServices() {
     const loadSavedUrl = async () => {
       const subsidies = await base44.entities.FuelSubsidy.list();
       if (subsidies.length > 0 && subsidies[0].google_sheet_url) {
-        setSavedSheetUrl(subsidies[0].google_sheet_url);
+        const url = subsidies[0].google_sheet_url;
+        setSavedSheetUrl(url);
+        setGoogleSheetUrl(url); // Pre-fill the input field
       }
     };
     loadSavedUrl();
@@ -131,7 +133,7 @@ export default function AdditionalServices() {
         });
       }
       setSavedSheetUrl(googleSheetUrl);
-      alert('Google Sheet URL saved successfully!');
+      alert('Google Sheet URL saved successfully! The URL will persist across page reloads.');
     } catch (error) {
       alert('Error saving URL: ' + error.message);
     }
@@ -398,13 +400,6 @@ export default function AdditionalServices() {
               </p>
               
               <div className="space-y-4 max-w-lg">
-                {savedSheetUrl && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-xs font-medium text-green-800 mb-1">Saved Google Sheet URL:</p>
-                    <p className="text-xs text-green-700 break-all">{savedSheetUrl}</p>
-                  </div>
-                )}
-                
                 <div>
                   <Label htmlFor="sheetUrl">Google Sheet URL</Label>
                   <Input
@@ -414,6 +409,9 @@ export default function AdditionalServices() {
                     value={googleSheetUrl}
                     onChange={(e) => setGoogleSheetUrl(e.target.value)}
                   />
+                  {savedSheetUrl && (
+                    <p className="text-xs text-green-600 mt-1">✓ URL saved and will persist</p>
+                  )}
                 </div>
                 
                 <div className="flex gap-2">

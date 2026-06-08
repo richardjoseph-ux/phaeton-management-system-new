@@ -40,7 +40,7 @@ export default function Payroll() {
       }
     };
     loadSettings();
-  }, []);
+  }, [load]);
 
   const filteredTrips = trips.filter(t => {
     if (selectedCycles.length === 0) return true;
