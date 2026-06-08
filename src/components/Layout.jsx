@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   Truck, Users, Building2, FileText, BarChart3, Menu, X,
-  ChevronRight, LogOut, CreditCard, ClipboardList
+  ChevronRight, LogOut, CreditCard, ClipboardList, Fuel
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -13,6 +13,7 @@ const navItems = [
   { path: '/clients', label: 'Client Accounts', icon: Building2, roles: ['admin'] },
   { path: '/billing', label: 'Billing Cycles', icon: CreditCard, roles: ['admin', 'user'] },
   { path: '/payroll', label: 'Payroll', icon: FileText, roles: ['admin'] },
+  { path: '/additional-services', label: 'Additional Services', icon: Fuel, roles: ['admin'] },
   { path: '/reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'user'] },
   { path: '/users', label: 'User Management', icon: Users, roles: ['admin'] },
 ];
