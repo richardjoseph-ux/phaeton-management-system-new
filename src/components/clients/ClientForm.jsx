@@ -92,7 +92,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
       // Set first pickup and first truck type as active when editing
       const pickups = [...new Set(editData.routes?.map(r => r.pickup_location).filter(Boolean) || [])];
       setActivePickup(pickups.length > 0 ? pickups[0] : '__all__');
-      setActiveTruck('__all__');
+      setActiveTruck(TRUCK_TYPES[0]);
     } else {
       setForm({
         client_name: '', client_code: '', address: '', contact_person: '',
