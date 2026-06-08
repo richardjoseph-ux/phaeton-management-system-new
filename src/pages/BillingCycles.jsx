@@ -15,7 +15,7 @@ export default function BillingCycles() {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
-  const [form, setForm] = useState({ cycle_name: '', period_start: '', period_end: '', client_account_id: '', notes: '' });
+  const [form, setForm] = useState({ cycle_name: '', client_account_id: '', notes: '' });
   const [nextSeq, setNextSeq] = useState('0001');
   const [saving, setSaving] = useState(false);
 
@@ -56,7 +56,7 @@ export default function BillingCycles() {
 
   const openAdd = () => {
     setEditData(null);
-    setForm({ cycle_name: '', period_start: '', period_end: '', client_account_id: '', notes: '' });
+    setForm({ cycle_name: '', client_account_id: '', notes: '' });
     setNextSeq('0001');
     setFormOpen(true);
   };
@@ -64,8 +64,6 @@ export default function BillingCycles() {
     setEditData(item);
     setForm({
       cycle_name: item.cycle_name || '',
-      period_start: item.period_start || '',
-      period_end: item.period_end || '',
       client_account_id: item.client_account_id || '',
       notes: item.notes || '',
     });
@@ -119,7 +117,7 @@ export default function BillingCycles() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                {['Statement Name', 'Client', 'Period Start', 'Period End', 'Status', 'Notes', ''].map(h => (
+                {['Statement Name', 'Client', 'Status', 'Notes', ''].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -129,8 +127,6 @@ export default function BillingCycles() {
                 <tr key={cycle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-semibold">{cycle.cycle_name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
-                  <td className="px-4 py-3 text-sm">{cycle.period_start || '—'}</td>
-                  <td className="px-4 py-3 text-sm">{cycle.period_end || '—'}</td>
                   <td className="px-4 py-3"><StatusBadge status={cycle.status || 'Open'} type="billing" /></td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
                   <td className="px-4 py-3">
@@ -191,16 +187,7 @@ export default function BillingCycles() {
                 placeholder="e.g., BS-FL26-0001" 
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Period Start</Label>
-                <Input type="date" value={form.period_start} onChange={e => setForm(p => ({ ...p, period_start: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Period End</Label>
-                <Input type="date" value={form.period_end} onChange={e => setForm(p => ({ ...p, period_end: e.target.value }))} />
-              </div>
-            </div>
+
             <div className="space-y-1.5">
               <Label>Notes</Label>
               <Input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} placeholder="Optional notes" />

@@ -6,14 +6,6 @@
       "type": "string",
       "description": "Billing statement name (e.g., BS-FL26-0001)"
     },
-    "period_start": {
-      "type": "string",
-      "format": "date"
-    },
-    "period_end": {
-      "type": "string",
-      "format": "date"
-    },
     "client_account_id": {
       "type": "string"
     },
