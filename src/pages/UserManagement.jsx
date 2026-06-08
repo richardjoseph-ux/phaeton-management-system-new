@@ -11,7 +11,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
 
   const load = async () => {
     setLoading(true);

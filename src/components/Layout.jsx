@@ -20,12 +20,12 @@ const navItems = [
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
 
   const role = currentUser?.role || 'user';
   const visibleNav = navItems.filter(item => item.roles.includes(role));
 
-  const handleLogout = () => base44.auth.logout('/');
+  const handleLogout = () => base44.auth.logout('/login');
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
