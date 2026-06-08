@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, Pencil } from 'lucide-react';
+import { FileText, Download, Pencil, Sheet } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { jsPDF } from 'jspdf';
 import moment from 'moment';
@@ -14,6 +14,8 @@ export default function Payroll() {
   const [loading, setLoading] = useState(true);
   const [selectedCycles, setSelectedCycles] = useState([]);
   const [editTrip, setEditTrip] = useState(null);
+  const [googleSheetUrl, setGoogleSheetUrl] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -28,7 +30,17 @@ export default function Payroll() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load(); 
+    // Load Google Sheet URL from FuelSubsidy settings
+    const loadSettings = async () => {
+      const subsidies = await base44.entities.FuelSubsidy.list();
+      if (subsidies.length > 0 && subsidies[0].google_sheet_url) {
+        setGoogleSheetUrl(subsidies[0].google_sheet_url);
+      }
+    };
+    loadSettings();
+  }, []);
 
   const filteredTrips = trips.filter(t => {
     if (selectedCycles.length === 0) return true;
@@ -71,7 +83,13 @@ export default function Payroll() {
     return sum + trip.gross_rate || 0;
   }, 0);
 
-  const exportExcel = async () => {
+  const exportToGoogleSheet = async () => {
+    if (!googleSheetUrl.trim()) {
+      alert('No Google Sheet URL configured. Please set it in Additional Services > Google Sheets Export tab.');
+      return;
+    }
+
+    setExporting(true);
     try {
       // Prepare trip data for backend
       const tripData = filteredTrips.map(trip => ({
@@ -102,9 +120,12 @@ export default function Payroll() {
       link.download = `Payroll_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
       link.click();
       window.URL.revokeObjectURL(url);
+
+      alert('Excel file downloaded. Please import it into your Google Sheet manually, or connect Google Sheets connector for automatic sync.');
     } catch (error) {
-      alert('Error exporting Excel: ' + error.message);
+      alert('Error exporting: ' + error.message);
     }
+    setExporting(false);
   };
 
   const exportPDF = () => {
@@ -163,8 +184,8 @@ export default function Payroll() {
         subtitle="View and manage trip payroll by billing cycle"
         actions={
           <div className="flex gap-2">
-            <Button onClick={exportExcel} size="sm" variant="outline">
-              <Download className="w-4 h-4 mr-1.5" /> Export Excel
+            <Button onClick={exportToGoogleSheet} size="sm" variant="outline" disabled={exporting}>
+              <Sheet className="w-4 h-4 mr-1.5" /> {exporting ? 'Exporting...' : 'Export to Google Sheet'}
             </Button>
             <Button onClick={exportPDF} size="sm" variant="outline">
               <FileText className="w-4 h-4 mr-1.5" /> Export PDF
