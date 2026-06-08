@@ -174,8 +174,8 @@ export default function Payroll() {
           <p className="text-xl font-bold mt-1">{filteredTrips.length}</p>
         </div>
         <div className="bg-card border rounded-lg p-4">
-          <p className="text-xs text-muted-foreground">Gross Amount</p>
-          <p className="text-xl font-bold mt-1 text-blue-700">₱{grandGross.toFixed(2)}</p>
+          <p className="text-xs text-muted-foreground">Gross Amount - 2% Tax</p>
+          <p className="text-xl font-bold mt-1 text-blue-700">₱{filteredTrips.reduce((sum, trip) => sum + calculateTotals(trip).afterTax, 0).toFixed(2)}</p>
         </div>
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Total Fuel Subsidy</p>
