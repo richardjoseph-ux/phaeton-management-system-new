@@ -15,6 +15,7 @@ const emptyRoute = () => ({
 });
 
 export default function ClientForm({ open, onClose, onSaved, editData }) {
+  const [activeTab, setActiveTab] = useState('info');
   const [form, setForm] = useState({
     client_name: '', client_code: '', address: '', contact_person: '',
     contact_number: '', status: 'Active',
@@ -23,6 +24,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setActiveTab('info');
     if (editData) {
       setForm({
         client_name: editData.client_name || '',
@@ -93,113 +95,169 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     onClose();
   };
 
+  const tabs = [
+    { id: 'info', label: 'Account Info' },
+    { id: 'routes', label: `Routes (${form.routes.length})` },
+    { id: 'rates', label: 'Rates' },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>{editData ? 'Edit Client Account' : 'Create Client Account'}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
-          {/* Basic Info */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Client Name *</Label>
-              <Input value={form.client_name} onChange={e => set('client_name', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Client Code</Label>
-              <Input value={form.client_code} onChange={e => set('client_code', e.target.value.toUpperCase())} />
-            </div>
-            <div className="col-span-2 space-y-1.5">
-              <Label>Address</Label>
-              <Input value={form.address} onChange={e => set('address', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Contact Person</Label>
-              <Input value={form.contact_person} onChange={e => set('contact_person', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Contact Number</Label>
-              <Input value={form.contact_number} onChange={e => set('contact_number', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={v => set('status', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Routes with embedded rates */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Routes & Rates</h3>
-              <Button type="button" variant="outline" size="sm" onClick={addRoute}>
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add Route
-              </Button>
-            </div>
-            <div className="space-y-4">
-              {form.routes.map((route, idx) => (
-                <div key={idx} className="border rounded-lg p-4 bg-muted/20">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Route {idx + 1}</span>
-                    {form.routes.length > 1 && (
-                      <button onClick={() => removeRoute(idx)} className="text-red-400 hover:text-red-600">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Route fields */}
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Pickup Location *</Label>
-                      <Input className="h-8 text-sm" value={route.pickup_location} onChange={e => setRoute(idx, 'pickup_location', e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Delivery Location *</Label>
-                      <Input className="h-8 text-sm" value={route.delivery_location} onChange={e => setRoute(idx, 'delivery_location', e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Delivery Code *</Label>
-                      <Input className="h-8 text-sm" value={route.delivery_code} onChange={e => setRoute(idx, 'delivery_code', e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Trip Route Code</Label>
-                      <Input className="h-8 text-sm" value={route.trip_route_code} onChange={e => setRoute(idx, 'trip_route_code', e.target.value)} placeholder="Optional" />
-                    </div>
-                  </div>
-
-                  {/* Per-route rates */}
-                  <div className="border-t pt-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Rates (₱) per Truck Type</p>
-                    <div className="grid grid-cols-4 gap-2">
-                      {TRUCK_TYPES.map(t => (
-                        <div key={t} className="space-y-1">
-                          <Label className="text-xs">{t}</Label>
-                          <Input
-                            className="h-8 text-sm"
-                            type="number" min="0" step="1"
-                            placeholder="0"
-                            value={route.rates?.[t] ?? ''}
-                            onChange={e => setRouteRate(idx, t, e.target.value)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Tabs */}
+        <div className="flex border-b">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <DialogFooter>
+        <div className="overflow-y-auto flex-1 py-4">
+
+          {/* TAB: Account Info */}
+          {activeTab === 'info' && (
+            <div className="grid grid-cols-2 gap-4 px-1">
+              <div className="space-y-1.5">
+                <Label>Client Name *</Label>
+                <Input value={form.client_name} onChange={e => set('client_name', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Client Code</Label>
+                <Input value={form.client_code} onChange={e => set('client_code', e.target.value.toUpperCase())} />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>Address</Label>
+                <Input value={form.address} onChange={e => set('address', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Contact Person</Label>
+                <Input value={form.contact_person} onChange={e => set('contact_person', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Contact Number</Label>
+                <Input value={form.contact_number} onChange={e => set('contact_number', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={v => set('status', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Routes */}
+          {activeTab === 'routes' && (
+            <div className="px-1">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-muted-foreground">Define pickup and delivery locations for this client.</p>
+                <Button type="button" variant="outline" size="sm" onClick={addRoute}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Route
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {form.routes.map((route, idx) => (
+                  <div key={idx} className="border rounded-lg p-4 bg-muted/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Route {idx + 1}</span>
+                      {form.routes.length > 1 && (
+                        <button onClick={() => removeRoute(idx)} className="text-red-400 hover:text-red-600">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Pickup Location *</Label>
+                        <Input className="h-8 text-sm" value={route.pickup_location} onChange={e => setRoute(idx, 'pickup_location', e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Delivery Location *</Label>
+                        <Input className="h-8 text-sm" value={route.delivery_location} onChange={e => setRoute(idx, 'delivery_location', e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Delivery Code *</Label>
+                        <Input className="h-8 text-sm" value={route.delivery_code} onChange={e => setRoute(idx, 'delivery_code', e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Trip Route Code</Label>
+                        <Input className="h-8 text-sm" value={route.trip_route_code} onChange={e => setRoute(idx, 'trip_route_code', e.target.value)} placeholder="Optional" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Rates — Excel-style table */}
+          {activeTab === 'rates' && (
+            <div className="px-1">
+              <p className="text-sm text-muted-foreground mb-3">Set rates per route and truck type (₱).</p>
+              {form.routes.some(r => r.pickup_location || r.delivery_location) ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="text-left px-3 py-2 border text-xs font-semibold text-muted-foreground">Pick Up</th>
+                        <th className="text-left px-3 py-2 border text-xs font-semibold text-muted-foreground">Destination</th>
+                        <th className="text-left px-3 py-2 border text-xs font-semibold text-muted-foreground">Route</th>
+                        {TRUCK_TYPES.map(t => (
+                          <th key={t} className="text-center px-3 py-2 border text-xs font-semibold text-muted-foreground">{t}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {form.routes.map((route, idx) => (
+                        <tr key={idx} className="hover:bg-muted/20">
+                          <td className="px-3 py-2 border text-xs text-muted-foreground">{route.pickup_location || <span className="italic text-muted-foreground/50">—</span>}</td>
+                          <td className="px-3 py-2 border text-xs text-muted-foreground">{route.delivery_location || <span className="italic text-muted-foreground/50">—</span>}</td>
+                          <td className="px-3 py-2 border text-xs font-mono text-muted-foreground">{route.delivery_code || route.trip_route_code || <span className="italic text-muted-foreground/50">—</span>}</td>
+                          {TRUCK_TYPES.map(t => (
+                            <td key={t} className="px-2 py-1.5 border">
+                              <Input
+                                className="h-7 text-sm text-right w-24"
+                                type="number"
+                                min="0"
+                                step="1"
+                                placeholder="0"
+                                value={route.rates?.[t] ?? ''}
+                                onChange={e => setRouteRate(idx, t, e.target.value)}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-10 text-muted-foreground text-sm">
+                  Add routes first in the <button className="text-primary underline" onClick={() => setActiveTab('routes')}>Routes tab</button> to configure rates.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t pt-4">
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving || !form.client_name}>
             {saving ? 'Saving...' : editData ? 'Update' : 'Create Account'}
