@@ -1,0 +1,98 @@
+{
+  "name": "TripRecord",
+  "type": "object",
+  "properties": {
+    "plate_number": {
+      "type": "string"
+    },
+    "subcontractor_id": {
+      "type": "string"
+    },
+    "owner_name": {
+      "type": "string"
+    },
+    "truck_type": {
+      "type": "string",
+      "enum": [
+        "AUV",
+        "Sub-4W",
+        "6-Wheel",
+        "10-Wheel"
+      ]
+    },
+    "client_account_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "pickup_location": {
+      "type": "string"
+    },
+    "delivery_location": {
+      "type": "string"
+    },
+    "delivery_code": {
+      "type": "string"
+    },
+    "trip_route_code": {
+      "type": "string"
+    },
+    "first_cheque_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "delivery_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "billing_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "particular": {
+      "type": "string",
+      "description": "Name of drop-off / particular"
+    },
+    "dr_number": {
+      "type": "string",
+      "description": "DR Number"
+    },
+    "waybill_number": {
+      "type": "string"
+    },
+    "billing_cycle_id": {
+      "type": "string"
+    },
+    "billing_cycle_name": {
+      "type": "string"
+    },
+    "gross_rate": {
+      "type": "number"
+    },
+    "tax_deduction": {
+      "type": "number",
+      "description": "2% tax"
+    },
+    "hidden_fee": {
+      "type": "number",
+      "description": "4% hidden company fee"
+    },
+    "admin_fee": {
+      "type": "number",
+      "description": "6% admin fee"
+    },
+    "net_payroll": {
+      "type": "number",
+      "description": "Net amount after all deductions (88% of gross)"
+    },
+    "encoded_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "plate_number",
+    "client_account_id",
+    "delivery_date"
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "name": "ClientAccount",
+  "type": "object",
+  "properties": {
+    "client_name": {
+      "type": "string"
+    },
+    "client_code": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "contact_person": {
+      "type": "string"
+    },
+    "contact_number": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Inactive"
+      ],
+      "default": "Active"
+    },
+    "routes": {
+      "type": "array",
+      "description": "Route configurations for this client",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pickup_location": {
+            "type": "string"
+          },
+          "delivery_location": {
+            "type": "string"
+          },
+          "delivery_code": {
+            "type": "string"
+          },
+          "trip_route_code": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rates": {
+      "type": "object",
+      "description": "Rate per truck type",
+      "properties": {
+        "AUV": {
+          "type": "number"
+        },
+        "Sub-4W": {
+          "type": "number"
+        },
+        "6-Wheel": {
+          "type": "number"
+        },
+        "10-Wheel": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  "required": [
+    "client_name"
+  ]
+}

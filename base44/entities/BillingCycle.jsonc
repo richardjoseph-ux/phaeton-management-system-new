@@ -1,0 +1,35 @@
+{
+  "name": "BillingCycle",
+  "type": "object",
+  "properties": {
+    "cycle_name": {
+      "type": "string",
+      "description": "Name/label for this billing cycle"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "client_account_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Open",
+        "Closed"
+      ],
+      "default": "Open"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "cycle_name"
+  ]
+}

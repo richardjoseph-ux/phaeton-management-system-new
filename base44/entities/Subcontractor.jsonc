@@ -1,0 +1,59 @@
+{
+  "name": "Subcontractor",
+  "type": "object",
+  "properties": {
+    "sub_id": {
+      "type": "string",
+      "description": "Auto-generated ID e.g. PT-SUB-001"
+    },
+    "plate_number": {
+      "type": "string",
+      "description": "Vehicle plate number"
+    },
+    "truck_type": {
+      "type": "string",
+      "enum": [
+        "AUV",
+        "Sub-4W",
+        "6-Wheel",
+        "10-Wheel"
+      ],
+      "description": "Type of truck/vehicle"
+    },
+    "owner_name": {
+      "type": "string",
+      "description": "Owner or driver name"
+    },
+    "contact_number": {
+      "type": "string"
+    },
+    "garage_location": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Inactive"
+      ],
+      "default": "Active"
+    },
+    "is_insured": {
+      "type": "boolean",
+      "default": false
+    },
+    "insurance_start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "insurance_end_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "plate_number",
+    "truck_type",
+    "owner_name"
+  ]
+}
