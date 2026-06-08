@@ -115,7 +115,7 @@ export default function Payroll() {
             <SelectTrigger><SelectValue placeholder="Select billing cycle" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Billing Cycles</SelectItem>
-              {billingCycles.map(b => <SelectItem key={b.id} value={b.id}>{b.cycle_name}</SelectItem>)}
+              {billingCycles.filter(b => b.status === 'Open').map(b => <SelectItem key={b.id} value={b.id}>{b.cycle_name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
