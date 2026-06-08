@@ -14,6 +14,7 @@ const navItems = [
   { path: '/billing', label: 'Billing Cycles', icon: CreditCard, roles: ['admin', 'user'] },
   { path: '/payroll', label: 'Payroll', icon: FileText, roles: ['admin'] },
   { path: '/reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'user'] },
+  { path: '/users', label: 'User Management', icon: Users, roles: ['admin'] },
 ];
 
 export default function Layout() {

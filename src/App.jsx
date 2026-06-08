@@ -14,6 +14,7 @@ import ClientAccounts from '@/pages/ClientAccounts';
 import BillingCycles from '@/pages/BillingCycles';
 import Payroll from '@/pages/Payroll';
 import Reports from '@/pages/Reports';
+import UserManagement from '@/pages/UserManagement';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -44,6 +45,7 @@ const AuthenticatedApp = () => {
         <Route path="/billing" element={<BillingCycles />} />
         <Route path="/payroll" element={<Payroll />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/users" element={<UserManagement />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
