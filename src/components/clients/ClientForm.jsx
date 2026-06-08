@@ -357,11 +357,9 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                           </td>
                         ))}
                         <td className="px-2 py-1.5 text-center">
-                          {form.routes.length > 1 && (
-                            <button onClick={() => removeRoute(idx)} className="text-red-400 hover:text-red-600 p-0.5">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button onClick={() => removeRoute(idx)} className="text-red-400 hover:text-red-600 p-0.5">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </td>
                       </tr>
                     );
