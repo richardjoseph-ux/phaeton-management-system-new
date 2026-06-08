@@ -22,17 +22,23 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
   const [saving, setSaving] = useState(false);
   const [pickupOpen, setPickupOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [pickupSearch, setPickupSearch] = useState('');
   const [deliverySearch, setDeliverySearch] = useState('');
+  const [codeSearch, setCodeSearch] = useState('');
 
   // Derived options
   const selectedClient = clients.find(c => c.id === form.client_account_id);
   const pickupOptions = [...new Set((selectedClient?.routes || []).map(r => r.pickup_location).filter(Boolean))];
-  // Keep original route index to avoid selection mismatch when filtering
-  const deliveryOptionsWithIndex = (selectedClient?.routes || [])
-    .map((r, idx) => ({ ...r, originalIdx: idx }))
-    .filter(r => r.pickup_location === form.pickup_location);
+  // Filter routes by client and pickup location
+  const routesForPickup = (selectedClient?.routes || []).filter(r => r.pickup_location === form.pickup_location);
+  // Get unique delivery locations for current client + pickup
+  const deliveryLocations = [...new Set(routesForPickup.map(r => r.delivery_location).filter(Boolean))];
+  // Get delivery codes for selected delivery location
+  const codesForDelivery = routesForPickup
+    .filter(r => r.delivery_location === form.delivery_location)
+    .map(r => ({ code: r.delivery_code, trip_route_code: r.trip_route_code || '' }));
 
   // Get unique plate numbers (some plates may have multiple truck types)
   const uniquePlates = [...new Set(subcontractors.map(s => s.plate_number))];
@@ -134,17 +140,23 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
     setPickupSearch('');
   };
 
-  const handleDeliveryChange = (originalIdx) => {
-    const route = (selectedClient?.routes || [])[parseInt(originalIdx)];
-    if (route) {
-      setForm(p => ({
-        ...p,
-        delivery_location: route.delivery_location,
-        delivery_code: route.delivery_code,
-        trip_route_code: route.trip_route_code || '',
-      }));
-    }
+  const handleDeliveryChange = (location) => {
+    setForm(p => ({
+      ...p,
+      delivery_location: location,
+      delivery_code: '',
+      trip_route_code: '',
+    }));
     setDeliverySearch('');
+  };
+
+  const handleCodeChange = (codeObj) => {
+    setForm(p => ({
+      ...p,
+      delivery_code: codeObj.code,
+      trip_route_code: codeObj.trip_route_code,
+    }));
+    setCodeSearch('');
   };
 
   const handleBillingCycleChange = (cycleId) => {
@@ -190,9 +202,12 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
     p.toLowerCase().includes(pickupSearch.toLowerCase())
   );
 
-  const filteredDeliveries = deliveryOptionsWithIndex.filter((r) => 
-    r.delivery_location.toLowerCase().includes(deliverySearch.toLowerCase()) ||
-    r.delivery_code.toLowerCase().includes(deliverySearch.toLowerCase())
+  const filteredDeliveries = deliveryLocations.filter(loc => 
+    loc.toLowerCase().includes(deliverySearch.toLowerCase())
+  );
+
+  const filteredCodes = codesForDelivery.filter(obj => 
+    obj.code.toLowerCase().includes(codeSearch.toLowerCase())
   );
 
   return (
@@ -328,7 +343,7 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
                 </Popover>
               </div>
               <div className="space-y-1.5">
-                <Label>Delivery Location</Label>
+                <Label>Delivery Location *</Label>
                 <Popover open={deliveryOpen} onOpenChange={setDeliveryOpen}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={deliveryOpen} className="w-full justify-between h-9" disabled={!form.pickup_location}>
@@ -339,28 +354,28 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
                   <PopoverContent className="w-full p-0" align="start">
                     <Command>
                       <CommandInput 
-                        placeholder="Search delivery..." 
+                        placeholder="Search delivery location..." 
                         value={deliverySearch}
                         onValueChange={setDeliverySearch}
                         className="h-9"
                       />
                       <CommandList>
-                        <CommandEmpty>No delivery found.</CommandEmpty>
+                        <CommandEmpty>No delivery location found.</CommandEmpty>
                         <CommandGroup>
-                          {filteredDeliveries.map((r) => (
+                          {filteredDeliveries.map((loc) => (
                             <CommandItem
-                              key={r.originalIdx}
-                              value={`${r.delivery_location} ${r.delivery_code}`}
+                              key={loc}
+                              value={loc}
                               onSelect={() => {
-                                handleDeliveryChange(r.originalIdx);
+                                handleDeliveryChange(loc);
                                 setDeliveryOpen(false);
                               }}
                             >
-                              {r.delivery_location} ({r.delivery_code})
+                              {loc}
                               <Check
                                 className={cn(
                                   "ml-auto h-4 w-4",
-                                  form.delivery_location === r.delivery_location && form.delivery_code === r.delivery_code ? "opacity-100" : "opacity-0"
+                                  form.delivery_location === loc ? "opacity-100" : "opacity-0"
                                 )}
                               />
                             </CommandItem>
@@ -372,8 +387,48 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
                 </Popover>
               </div>
               <div className="space-y-1.5">
-                <Label>Delivery Code</Label>
-                <Input value={form.delivery_code} readOnly className="bg-muted" placeholder="Auto-filled" />
+                <Label>Delivery Code *</Label>
+                <Popover open={codeOpen} onOpenChange={setCodeOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={codeOpen} className="w-full justify-between h-9" disabled={!form.delivery_location}>
+                      {form.delivery_code || 'Select code...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput 
+                        placeholder="Search delivery code..." 
+                        value={codeSearch}
+                        onValueChange={setCodeSearch}
+                        className="h-9"
+                      />
+                      <CommandList>
+                        <CommandEmpty>No code found.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredCodes.map((obj, idx) => (
+                            <CommandItem
+                              key={idx}
+                              value={obj.code}
+                              onSelect={() => {
+                                handleCodeChange(obj);
+                                setCodeOpen(false);
+                              }}
+                            >
+                              {obj.code}
+                              <Check
+                                className={cn(
+                                  "ml-auto h-4 w-4",
+                                  form.delivery_code === obj.code ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-1.5">
                 <Label>Trip Route Code</Label>
@@ -457,7 +512,7 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || !form.plate_number || !form.client_account_id || !form.delivery_date}>
+          <Button onClick={handleSave} disabled={saving || !form.plate_number || !form.client_account_id || !form.delivery_location || !form.delivery_code || !form.delivery_date}>
             {saving ? 'Saving...' : editData ? 'Update Trip' : 'Save Trip'}
           </Button>
         </DialogFooter>
