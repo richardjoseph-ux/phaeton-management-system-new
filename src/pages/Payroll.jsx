@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, Download, Pencil } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { jsPDF } from 'jspdf';
@@ -113,30 +112,36 @@ export default function Payroll() {
 
       {/* Filter */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Checkbox
-            checked={selectedCycles.length === 0}
-            onCheckedChange={(checked) => {
-              if (checked) setSelectedCycles([]);
-              else setSelectedCycles(billingCycles.filter(b => b.status === 'Open').map(b => b.id));
-            }}
-            id="all-cycles"
-          />
-          <label htmlFor="all-cycles" className="text-sm font-medium cursor-pointer">Select All Open Cycles</label>
-        </div>
-        <div className="flex flex-wrap gap-4">
+        <p className="text-sm font-medium text-muted-foreground mb-3">Billing Cycles</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedCycles([])}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              selectedCycles.length === 0
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            All Open Cycles
+          </button>
           {billingCycles.filter(b => b.status === 'Open').map(b => (
-            <div key={b.id} className="flex items-center gap-2">
-              <Checkbox
-                checked={selectedCycles.includes(b.id)}
-                onCheckedChange={(checked) => {
-                  if (checked) setSelectedCycles([...selectedCycles, b.id]);
-                  else setSelectedCycles(selectedCycles.filter(id => id !== b.id));
-                }}
-                id={b.id}
-              />
-              <label htmlFor={b.id} className="text-sm cursor-pointer">{b.cycle_name}</label>
-            </div>
+            <button
+              key={b.id}
+              onClick={() => {
+                if (selectedCycles.includes(b.id)) {
+                  setSelectedCycles(selectedCycles.filter(id => id !== b.id));
+                } else {
+                  setSelectedCycles([...selectedCycles, b.id]);
+                }
+              }}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                selectedCycles.includes(b.id)
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {b.cycle_name}
+            </button>
           ))}
         </div>
       </div>
