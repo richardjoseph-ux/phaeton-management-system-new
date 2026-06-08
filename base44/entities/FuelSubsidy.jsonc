@@ -1,0 +1,50 @@
+{
+  "name": "FuelSubsidy",
+  "type": "object",
+  "properties": {
+    "client_account_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "subsidy_percentage": {
+      "type": "number",
+      "description": "Percentage of gross rate for fuel subsidy"
+    },
+    "total_gross_rate": {
+      "type": "number",
+      "description": "Total gross rate for all trips in the period"
+    },
+    "subsidy_amount": {
+      "type": "number",
+      "description": "Calculated subsidy amount"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Paid"
+      ],
+      "default": "Pending"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "client_account_id",
+    "start_date",
+    "end_date",
+    "subsidy_percentage"
+  ]
+}
