@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Upload, Download } from 'lucide-react';
 
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
@@ -21,6 +22,17 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     routes: [emptyRoute()]
   });
   const [saving, setSaving] = useState(false);
+  const [activePickup, setActivePickup] = useState('__all__');
+  const fileInputRef = useRef(null);
+
+  // Derived: unique pickup locations
+  const pickupTabs = [...new Set(form.routes.map(r => r.pickup_location).filter(Boolean))];
+
+  // Routes visible in current tab
+  const visibleIndices = form.routes.reduce((acc, r, i) => {
+    if (activePickup === '__all__' || r.pickup_location === activePickup) acc.push(i);
+    return acc;
+  }, []);
 
   useEffect(() => {
     if (editData) {
@@ -53,6 +65,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         routes: [emptyRoute()]
       });
     }
+    setActivePickup('__all__');
   }, [editData, open]);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -69,9 +82,61 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     return { ...p, routes };
   });
 
-  const addRoute = () => setForm(p => ({ ...p, routes: [...p.routes, emptyRoute()] }));
+  const addRoute = () => {
+    const newRoute = emptyRoute();
+    if (activePickup !== '__all__') newRoute.pickup_location = activePickup;
+    setForm(p => ({ ...p, routes: [...p.routes, newRoute] }));
+  };
+
   const removeRoute = (idx) => setForm(p => ({ ...p, routes: p.routes.filter((_, i) => i !== idx) }));
 
+  // ── Excel Export ──────────────────────────────────────────────────────────
+  const handleExport = () => {
+    const rows = form.routes.map(r => ({
+      'Pickup Location': r.pickup_location,
+      'Delivery Location': r.delivery_location,
+      'Delivery Code': r.delivery_code,
+      'Trip Route Code': r.trip_route_code,
+      'AUV Rate': r.rates?.AUV ?? '',
+      'Sub-4W Rate': r.rates?.['Sub-4W'] ?? '',
+      '6-Wheel Rate': r.rates?.['6-Wheel'] ?? '',
+      '10-Wheel Rate': r.rates?.['10-Wheel'] ?? '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Routes');
+    XLSX.writeFile(wb, `${form.client_name || 'client'}_routes.xlsx`);
+  };
+
+  // ── Excel Import ──────────────────────────────────────────────────────────
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const wb = XLSX.read(evt.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws);
+      const imported = rows.map(row => ({
+        pickup_location: String(row['Pickup Location'] || '').trim(),
+        delivery_location: String(row['Delivery Location'] || '').trim(),
+        delivery_code: String(row['Delivery Code'] || '').trim(),
+        trip_route_code: String(row['Trip Route Code'] || '').trim(),
+        rates: {
+          AUV: row['AUV Rate'] ?? '',
+          'Sub-4W': row['Sub-4W Rate'] ?? '',
+          '6-Wheel': row['6-Wheel Rate'] ?? '',
+          '10-Wheel': row['10-Wheel Rate'] ?? '',
+        }
+      }));
+      setForm(p => ({ ...p, routes: imported.length ? imported : [emptyRoute()] }));
+      setActivePickup('__all__');
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  };
+
+  // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
     const data = {
@@ -136,20 +201,66 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             </div>
           </div>
 
-          {/* Routes + Rates Table */}
+          {/* Routes + Rates */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Routes &amp; Rates</p>
-              <Button type="button" variant="outline" size="sm" onClick={addRoute}>
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add Route
-              </Button>
+              <div className="flex items-center gap-2">
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current.click()}>
+                  <Upload className="w-3.5 h-3.5 mr-1" /> Import Excel
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={handleExport}>
+                  <Download className="w-3.5 h-3.5 mr-1" /> Export Excel
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={addRoute}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Route
+                </Button>
+              </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border">
+            {/* Pickup Tabs */}
+            <div className="flex gap-1 flex-wrap mb-0 border-b border-border">
+              <button
+                type="button"
+                onClick={() => setActivePickup('__all__')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors ${
+                  activePickup === '__all__'
+                    ? 'border-primary text-primary bg-primary/5'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                All ({form.routes.length})
+              </button>
+              {pickupTabs.map(p => {
+                const count = form.routes.filter(r => r.pickup_location === p).length;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setActivePickup(p)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors max-w-[160px] truncate ${
+                      activePickup === p
+                        ? 'border-primary text-primary bg-primary/5'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                    title={p}
+                  >
+                    {p} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto rounded-b-lg border border-t-0">
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-muted/60 border-b">
-                    <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Pick Up</th>
+                    {activePickup === '__all__' && (
+                      <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Pick Up</th>
+                    )}
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Destination</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Route Code</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Trip Route</th>
@@ -160,66 +271,79 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {form.routes.map((route, idx) => (
-                    <tr key={idx} className="border-b last:border-b-0 hover:bg-muted/20">
-                      <td className="px-2 py-1.5 border-r">
-                        <Input
-                          className="h-7 text-xs min-w-[120px]"
-                          value={route.pickup_location}
-                          onChange={e => setRoute(idx, 'pickup_location', e.target.value)}
-                          placeholder="e.g. DSV Parañaque"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 border-r">
-                        <Input
-                          className="h-7 text-xs min-w-[120px]"
-                          value={route.delivery_location}
-                          onChange={e => setRoute(idx, 'delivery_location', e.target.value)}
-                          placeholder="e.g. Baguio City"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 border-r">
-                        <Input
-                          className="h-7 text-xs min-w-[90px]"
-                          value={route.delivery_code}
-                          onChange={e => setRoute(idx, 'delivery_code', e.target.value)}
-                          placeholder="e.g. BGO"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 border-r">
-                        <Input
-                          className="h-7 text-xs min-w-[90px]"
-                          value={route.trip_route_code}
-                          onChange={e => setRoute(idx, 'trip_route_code', e.target.value)}
-                          placeholder="Optional"
-                        />
-                      </td>
-                      {TRUCK_TYPES.map(t => (
-                        <td key={t} className="px-2 py-1.5 border-r">
-                          <Input
-                            className="h-7 text-xs text-right min-w-[75px]"
-                            type="number"
-                            min="0"
-                            step="1"
-                            placeholder="0"
-                            value={route.rates?.[t] ?? ''}
-                            onChange={e => setRouteRate(idx, t, e.target.value)}
-                          />
-                        </td>
-                      ))}
-                      <td className="px-2 py-1.5 text-center">
-                        {form.routes.length > 1 && (
-                          <button onClick={() => removeRoute(idx)} className="text-red-400 hover:text-red-600 p-0.5">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                  {visibleIndices.length === 0 ? (
+                    <tr>
+                      <td colSpan={activePickup === '__all__' ? 9 : 8} className="text-center py-6 text-xs text-muted-foreground">
+                        No routes yet. Click "Add Route" to add one.
                       </td>
                     </tr>
-                  ))}
+                  ) : visibleIndices.map(idx => {
+                    const route = form.routes[idx];
+                    return (
+                      <tr key={idx} className="border-b last:border-b-0 hover:bg-muted/20">
+                        {activePickup === '__all__' && (
+                          <td className="px-2 py-1.5 border-r">
+                            <Input
+                              className="h-7 text-xs min-w-[120px]"
+                              value={route.pickup_location}
+                              onChange={e => setRoute(idx, 'pickup_location', e.target.value)}
+                              placeholder="e.g. DSV Parañaque"
+                            />
+                          </td>
+                        )}
+                        <td className="px-2 py-1.5 border-r">
+                          <Input
+                            className="h-7 text-xs min-w-[120px]"
+                            value={route.delivery_location}
+                            onChange={e => setRoute(idx, 'delivery_location', e.target.value)}
+                            placeholder="e.g. Baguio City"
+                          />
+                        </td>
+                        <td className="px-2 py-1.5 border-r">
+                          <Input
+                            className="h-7 text-xs min-w-[90px]"
+                            value={route.delivery_code}
+                            onChange={e => setRoute(idx, 'delivery_code', e.target.value)}
+                            placeholder="e.g. BGO"
+                          />
+                        </td>
+                        <td className="px-2 py-1.5 border-r">
+                          <Input
+                            className="h-7 text-xs min-w-[90px]"
+                            value={route.trip_route_code}
+                            onChange={e => setRoute(idx, 'trip_route_code', e.target.value)}
+                            placeholder="Optional"
+                          />
+                        </td>
+                        {TRUCK_TYPES.map(t => (
+                          <td key={t} className="px-2 py-1.5 border-r">
+                            <Input
+                              className="h-7 text-xs text-right min-w-[75px]"
+                              type="number"
+                              min="0"
+                              step="1"
+                              placeholder="0"
+                              value={route.rates?.[t] ?? ''}
+                              onChange={e => setRouteRate(idx, t, e.target.value)}
+                            />
+                          </td>
+                        ))}
+                        <td className="px-2 py-1.5 text-center">
+                          {form.routes.length > 1 && (
+                            <button onClick={() => removeRoute(idx)} className="text-red-400 hover:text-red-600 p-0.5">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-muted-foreground mt-1.5">Rates are in ₱ per truck type for each route.</p>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Rates in ₱. Import template columns: <span className="font-mono">Pickup Location, Delivery Location, Delivery Code, Trip Route Code, AUV Rate, Sub-4W Rate, 6-Wheel Rate, 10-Wheel Rate</span>
+            </p>
           </div>
 
         </div>
