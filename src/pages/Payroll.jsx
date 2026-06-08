@@ -19,28 +19,29 @@ export default function Payroll() {
 
   const load = async () => {
     setLoading(true);
-    const [t, b, s] = await Promise.all([
-      base44.entities.TripRecord.list('-delivery_date', 500),
-      base44.entities.BillingCycle.list('-created_date', 100),
-      base44.entities.FuelSubsidy.list('-created_date', 100),
-    ]);
-    setTrips(t);
-    setBillingCycles(b);
-    setFuelSubsidies(s);
+    try {
+      const [t, b, s] = await Promise.all([
+        base44.entities.TripRecord.list('-delivery_date', 500),
+        base44.entities.BillingCycle.list('-created_date', 100),
+        base44.entities.FuelSubsidy.list('-created_date', 100),
+      ]);
+      setTrips(t);
+      setBillingCycles(b);
+      setFuelSubsidies(s);
+      // Extract Google Sheet URL from subsidies
+      if (s.length > 0 && s[0].google_sheet_url) {
+        setGoogleSheetUrl(s[0].google_sheet_url);
+      }
+    } catch (error) {
+      console.error('Error loading payroll data:', error);
+      alert('Failed to load data. Please wait a moment and try again.');
+    }
     setLoading(false);
   };
 
   useEffect(() => { 
     load(); 
-    // Load Google Sheet URL from FuelSubsidy settings
-    const loadSettings = async () => {
-      const subsidies = await base44.entities.FuelSubsidy.list();
-      if (subsidies.length > 0 && subsidies[0].google_sheet_url) {
-        setGoogleSheetUrl(subsidies[0].google_sheet_url);
-      }
-    };
-    loadSettings();
-  }, [load]);
+  }, []);
 
   const filteredTrips = trips.filter(t => {
     if (selectedCycles.length === 0) return true;
