@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { FileText, Download, Pencil } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { jsPDF } from 'jspdf';
+import { utils, writeFile } from 'xlsx';
+import moment from 'moment';
 import TripEditDialog from '@/components/payroll/TripEditDialog';
 
 export default function Payroll() {
@@ -70,6 +72,93 @@ export default function Payroll() {
     return sum + trip.gross_rate || 0;
   }, 0);
 
+  const exportExcel = () => {
+    const wb = utils.book_new();
+    
+    // Group filtered trips by Plate Number
+    const tripsByPlate = filteredTrips.reduce((acc, trip) => {
+      if (!acc[trip.plate_number]) acc[trip.plate_number] = [];
+      acc[trip.plate_number].push(trip);
+      return acc;
+    }, {});
+
+    const cycleLabel = selectedCycles.length === 0 ? 'All Open Cycles' : 
+      selectedCycles.map(id => billingCycles.find(b => b.id === id)?.cycle_name).filter(Boolean).join(', ');
+
+    Object.entries(tripsByPlate).forEach(([plate, plateTrips]) => {
+      const ownerName = plateTrips[0]?.owner_name || '';
+      
+      // Find earliest and latest dates for payroll period
+      const dates = plateTrips.map(t => new Date(t.delivery_date)).sort((a,b) => a-b);
+      const payrollPeriod = dates.length ? `${moment(dates[0]).format('MMMM D, YYYY')} - ${moment(dates[dates.length-1]).format('MMMM D, YYYY')}` : '';
+
+      // Meta information rows (matching template)
+      const metaRows = [
+        ["Block 3 Lot 1, Pacita 2-B, Cyan St., ", "", "", "Owners Name:", "", ownerName],
+        ["Brgy. San Lorenzo Ruiz, City of San Pedro", "", "", "Plate #:", "", plate],
+        ["Laguna, Philippines", "", "", "BS/SOA#:", "", cycleLabel],
+        ["Tin:", "274-546-612-00000", "", "Payroll Period:", "", payrollPeriod],
+        ["Mobile #: 0931-974-6058", "", "", "Date:", "", moment().format('MMMM D, YYYY')],
+        [] // Spacer
+      ];
+
+      // Header rows with merged DESTINATION
+      const headerRows = [
+        ["NO.", "DATE", "DR NO.", "VEHICLE TYPE", "DESTINATION", "", "RATE", "FUEL SUBSIDY"],
+        ["", "", "", "", "FROM", "TO", "", ""]
+      ];
+
+      // Map trip data
+      const tripRows = plateTrips.map((trip, index) => {
+        const totals = calculateTotals(trip);
+        return [
+          index + 1,
+          moment(trip.delivery_date).format('MMMM D, YYYY'),
+          trip.dr_number || '-',
+          trip.truck_type || '',
+          trip.pickup_location,
+          trip.delivery_location || trip.delivery_code,
+          totals.net,
+          totals.fuelSubsidy > 0 ? totals.fuelSubsidy : ""
+        ];
+      });
+
+      // Totals row
+      const totalsRow = [
+        "TOTALS",
+        "",
+        "",
+        "",
+        "",
+        "",
+        plateTrips.reduce((sum, t) => sum + calculateTotals(t).net, 0),
+        plateTrips.reduce((sum, t) => sum + calculateTotals(t).fuelSubsidy, 0)
+      ];
+
+      const allSheetData = [...metaRows, ...headerRows, ...tripRows, [], totalsRow];
+      const ws = utils.aoa_to_sheet(allSheetData);
+
+      // Merge "DESTINATION" in Row 5 (index 5) across columns E (4) and F (5)
+      ws['!merges'] = [{ s: { r: 5, c: 4 }, e: { r: 5, c: 5 } }];
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 5 },  // NO.
+        { wch: 15 }, // DATE
+        { wch: 12 }, // DR NO.
+        { wch: 12 }, // VEHICLE TYPE
+        { wch: 20 }, // FROM
+        { wch: 20 }, // TO
+        { wch: 15 }, // RATE
+        { wch: 15 }  // FUEL SUBSIDY
+      ];
+
+      utils.book_append_sheet(wb, ws, plate.substring(0, 31));
+    });
+
+    writeFile(wb, `Payroll_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   const exportPDF = () => {
     const doc = new jsPDF();
     const cycleLabel = selectedCycles.length === 0 ? 'All Cycles' : 
@@ -125,9 +214,14 @@ export default function Payroll() {
         title="Payroll Report"
         subtitle="View and manage trip payroll by billing cycle"
         actions={
-          <Button onClick={exportPDF} size="sm" variant="outline">
-            <Download className="w-4 h-4 mr-1.5" /> Export PDF
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={exportExcel} size="sm" variant="outline">
+              <Download className="w-4 h-4 mr-1.5" /> Export Excel
+            </Button>
+            <Button onClick={exportPDF} size="sm" variant="outline">
+              <FileText className="w-4 h-4 mr-1.5" /> Export PDF
+            </Button>
+          </div>
         }
       />
 
