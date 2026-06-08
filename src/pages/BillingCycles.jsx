@@ -16,6 +16,7 @@ export default function BillingCycles() {
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [form, setForm] = useState({ cycle_name: '', period_start: '', period_end: '', client_account_id: '', notes: '' });
+  const [nextSeq, setNextSeq] = useState('0001');
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -29,11 +30,34 @@ export default function BillingCycles() {
     setLoading(false);
   };
 
+  const calculateNextSequence = async (clientId) => {
+    if (!clientId) {
+      return '0001';
+    }
+    const existingCycles = await base44.entities.BillingCycle.filter({ client_account_id: clientId }, '-created_date', 100);
+    const client = clients.find(c => c.id === clientId);
+    const clientCode = client?.client_code || 'XX';
+    const yearSuffix = new Date().getFullYear().toString().slice(-2);
+    
+    // Find max sequence from existing cycles
+    let maxSeq = 0;
+    existingCycles.forEach(c => {
+      const match = c.cycle_name?.match(new RegExp(`${clientCode}${yearSuffix}-(\\d{4})`));
+      if (match) {
+        maxSeq = Math.max(maxSeq, parseInt(match[1]));
+      }
+    });
+    const nextSeq = String(maxSeq + 1).padStart(4, '0');
+    setNextSeq(nextSeq);
+    return nextSeq;
+  };
+
   useEffect(() => { load(); }, []);
 
   const openAdd = () => {
     setEditData(null);
     setForm({ cycle_name: '', period_start: '', period_end: '', client_account_id: '', notes: '' });
+    setNextSeq('0001');
     setFormOpen(true);
   };
   const openEdit = (item) => {
@@ -53,7 +77,10 @@ export default function BillingCycles() {
     if (editData) {
       await base44.entities.BillingCycle.update(editData.id, form);
     } else {
-      await base44.entities.BillingCycle.create({ ...form, status: 'Open' });
+      await base44.entities.BillingCycle.create({ 
+        ...form, 
+        status: 'Open'
+      });
     }
     setSaving(false);
     setFormOpen(false);
@@ -71,11 +98,11 @@ export default function BillingCycles() {
   return (
     <div className="p-6">
       <PageHeader
-        title="Billing Cycles"
-        subtitle="Manage billing statements and cycles"
+        title="Billing Statements"
+        subtitle="Manage billing statements per client account"
         actions={
           <Button onClick={openAdd} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" /> New Billing Cycle
+            <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
           </Button>
         }
       />
@@ -92,7 +119,7 @@ export default function BillingCycles() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                {['Cycle Name', 'Client', 'Period Start', 'Period End', 'Status', 'Notes', ''].map(h => (
+                {['Statement Name', 'Client', 'Period Start', 'Period End', 'Status', 'Notes', ''].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -130,21 +157,39 @@ export default function BillingCycles() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editData ? 'Edit Billing Cycle' : 'New Billing Cycle'}</DialogTitle>
+            <DialogTitle>{editData ? 'Edit Billing Statement' : 'New Billing Statement'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Cycle Name *</Label>
-              <Input value={form.cycle_name} onChange={e => setForm(p => ({ ...p, cycle_name: e.target.value }))} placeholder="e.g. June 2026 - Batch 1" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Client Account</Label>
-              <Select value={form.client_account_id} onValueChange={v => setForm(p => ({ ...p, client_account_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select client (optional)" /></SelectTrigger>
+              <Label>Client Account *</Label>
+              <Select 
+                value={form.client_account_id} 
+                onValueChange={async (v) => {
+                  const client = clients.find(c => c.id === v);
+                  const clientCode = client?.client_code || 'XX';
+                  const yearSuffix = new Date().getFullYear().toString().slice(-2);
+                  const seq = await calculateNextSequence(v);
+                  const generatedName = client ? `BS-${clientCode}${yearSuffix}-${seq}` : '';
+                  setForm(p => ({ 
+                    ...p, 
+                    client_account_id: v,
+                    cycle_name: generatedName
+                  }));
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
                 <SelectContent>
                   {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.client_name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cycle Name *</Label>
+              <Input 
+                value={form.cycle_name} 
+                onChange={e => setForm(p => ({ ...p, cycle_name: e.target.value }))} 
+                placeholder="e.g., BS-FL26-0001" 
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -163,7 +208,7 @@ export default function BillingCycles() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)} disabled={saving}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving || !form.cycle_name}>
+            <Button onClick={handleSave} disabled={saving || !form.cycle_name || !form.client_account_id}>
               {saving ? 'Saving...' : editData ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>

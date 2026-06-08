@@ -4,7 +4,7 @@
   "properties": {
     "cycle_name": {
       "type": "string",
-      "description": "Name/label for this billing cycle"
+      "description": "Billing statement name (e.g., BS-FL26-0001)"
     },
     "period_start": {
       "type": "string",
@@ -30,6 +30,7 @@
     }
   },
   "required": [
-    "cycle_name"
+    "cycle_name",
+    "client_account_id"
   ]
 }

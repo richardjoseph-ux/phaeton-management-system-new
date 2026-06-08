@@ -481,7 +481,7 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
               <div className="space-y-1.5">
                 <Label>Billing Statement</Label>
                 <Select value={form.billing_cycle_id} onValueChange={handleBillingCycleChange}>
-                  <SelectTrigger><SelectValue placeholder="Select billing cycle" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select billing statement" /></SelectTrigger>
                   <SelectContent>
                     {billingCycles.map(bc => (
                       <SelectItem key={bc.id} value={bc.id}>{bc.cycle_name}</SelectItem>

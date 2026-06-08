@@ -83,7 +83,7 @@ export default function TripEncoding() {
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Delivery Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">DR #</th>
                 <th className="text-right px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Net Payroll</th>
-                <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Billing</th>
+                <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Billing Statement</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
