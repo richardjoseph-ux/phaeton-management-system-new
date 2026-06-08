@@ -42,6 +42,13 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
 
   // Get unique plate numbers (some plates may have multiple truck types)
   const uniquePlates = [...new Set(subcontractors.map(s => s.plate_number))];
+  // Get truck types available for the selected plate
+  const availableTruckTypes = [...new Set(
+    subcontractors
+      .filter(s => s.plate_number?.toUpperCase() === form.plate_number.toUpperCase())
+      .map(s => s.truck_type)
+      .filter(Boolean)
+  )];
 
   useEffect(() => {
     if (editData) {
@@ -239,14 +246,13 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
                 <Input value={form.owner_name} readOnly className="bg-muted" placeholder="Auto-filled" />
               </div>
               <div className="space-y-1.5">
-                <Label>Truck Type</Label>
-                <Select value={form.truck_type} onValueChange={v => set('truck_type', v)} disabled={!form.plate_number}>
+                <Label>Truck Type *</Label>
+                <Select value={form.truck_type} onValueChange={v => set('truck_type', v)} disabled={!form.plate_number || availableTruckTypes.length === 0}>
                   <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="AUV">AUV</SelectItem>
-                    <SelectItem value="Sub-4W">Sub-4W</SelectItem>
-                    <SelectItem value="6-Wheel">6-Wheel</SelectItem>
-                    <SelectItem value="10-Wheel">10-Wheel</SelectItem>
+                    {availableTruckTypes.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
