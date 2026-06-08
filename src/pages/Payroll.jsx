@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, Download, Pencil } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { jsPDF } from 'jspdf';
@@ -11,7 +11,7 @@ export default function Payroll() {
   const [trips, setTrips] = useState([]);
   const [billingCycles, setBillingCycles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCycle, setSelectedCycle] = useState('all');
+  const [selectedCycles, setSelectedCycles] = useState([]);
   const [editTrip, setEditTrip] = useState(null);
 
   const load = async () => {
@@ -28,7 +28,8 @@ export default function Payroll() {
   useEffect(() => { load(); }, []);
 
   const filteredTrips = trips.filter(t => {
-    return selectedCycle === 'all' || t.billing_cycle_id === selectedCycle;
+    if (selectedCycles.length === 0) return true;
+    return selectedCycles.includes(t.billing_cycle_id);
   });
 
   const calculateTotals = (trip) => {
@@ -53,7 +54,9 @@ export default function Payroll() {
 
   const exportPDF = () => {
     const doc = new jsPDF();
-    const cycleLabel = selectedCycle === 'all' ? 'All Cycles' : billingCycles.find(b => b.id === selectedCycle)?.cycle_name || selectedCycle;
+    const cycleLabel = selectedCycles.length === 0 ? 'All Cycles' : 
+      selectedCycles.length === 1 ? billingCycles.find(b => b.id === selectedCycles[0])?.cycle_name :
+      `Multiple (${selectedCycles.length} cycles)`;
 
     doc.setFontSize(16);
     doc.text('PT Tracking - Payroll Report', 14, 18);
@@ -109,15 +112,32 @@ export default function Payroll() {
       />
 
       {/* Filter */}
-      <div className="flex gap-3 mb-6 flex-wrap">
-        <div className="w-80">
-          <Select value={selectedCycle} onValueChange={setSelectedCycle}>
-            <SelectTrigger><SelectValue placeholder="Select billing cycle" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Billing Cycles</SelectItem>
-              {billingCycles.filter(b => b.status === 'Open').map(b => <SelectItem key={b.id} value={b.id}>{b.cycle_name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Checkbox
+            checked={selectedCycles.length === 0}
+            onCheckedChange={(checked) => {
+              if (checked) setSelectedCycles([]);
+              else setSelectedCycles(billingCycles.filter(b => b.status === 'Open').map(b => b.id));
+            }}
+            id="all-cycles"
+          />
+          <label htmlFor="all-cycles" className="text-sm font-medium cursor-pointer">Select All Open Cycles</label>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          {billingCycles.filter(b => b.status === 'Open').map(b => (
+            <div key={b.id} className="flex items-center gap-2">
+              <Checkbox
+                checked={selectedCycles.includes(b.id)}
+                onCheckedChange={(checked) => {
+                  if (checked) setSelectedCycles([...selectedCycles, b.id]);
+                  else setSelectedCycles(selectedCycles.filter(id => id !== b.id));
+                }}
+                id={b.id}
+              />
+              <label htmlFor={b.id} className="text-sm cursor-pointer">{b.cycle_name}</label>
+            </div>
+          ))}
         </div>
       </div>
 
