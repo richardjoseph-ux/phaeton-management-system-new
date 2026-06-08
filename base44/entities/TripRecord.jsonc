@@ -82,9 +82,17 @@
       "type": "number",
       "description": "6% admin fee"
     },
+    "insurance_charge": {
+      "type": "number",
+      "description": "Insurance deduction"
+    },
+    "other_charges": {
+      "type": "number",
+      "description": "Other miscellaneous charges"
+    },
     "net_payroll": {
       "type": "number",
-      "description": "Net amount after all deductions (88% of gross)"
+      "description": "Net amount after all deductions"
     },
     "encoded_by": {
       "type": "string"
