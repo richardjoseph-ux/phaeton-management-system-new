@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Trash2, Upload, Download } from 'lucide-react';
+import { Plus, Trash2, Upload, Download, Search, X } from 'lucide-react';
 
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
@@ -46,17 +46,22 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const [saving, setSaving] = useState(false);
   const [activePickup, setActivePickup] = useState('__all__');
   const [activeTruck, setActiveTruck] = useState('__all__');
+  const [routeSearch, setRouteSearch] = useState('');
   const fileInputRef = useRef(null);
 
   // Unique pickup locations
   const pickupTabs = [...new Set(form.routes.map(r => r.pickup_location).filter(Boolean))];
 
-  // Indices visible after both filters
+  // Indices visible after all filters (pickup, truck, search)
+  const searchLower = routeSearch.trim().toLowerCase();
   const visibleIndices = form.routes.reduce((acc, r, i) => {
     const pickupMatch = activePickup === '__all__' || r.pickup_location === activePickup;
-    // truck filter: show row if that truck type has a value (or if showing all trucks)
     const truckMatch = activeTruck === '__all__' || (r.rates?.[activeTruck] !== '' && r.rates?.[activeTruck] != null);
-    if (pickupMatch && truckMatch) acc.push(i);
+    const searchMatch = !searchLower ||
+      r.delivery_location.toLowerCase().includes(searchLower) ||
+      r.delivery_code.toLowerCase().includes(searchLower) ||
+      r.trip_route_code.toLowerCase().includes(searchLower);
+    if (pickupMatch && truckMatch && searchMatch) acc.push(i);
     return acc;
   }, []);
 
@@ -93,6 +98,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     }
     setActivePickup('__all__');
     setActiveTruck('__all__');
+    setRouteSearch('');
   }, [editData, open]);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -293,11 +299,28 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             </div>
 
             {/* Level 1: Pickup Tabs */}
-            <TabBar tabs={pickupTabList} active={activePickup} onSelect={(v) => { setActivePickup(v); setActiveTruck('__all__'); }} />
+            <TabBar tabs={pickupTabList} active={activePickup} onSelect={(v) => { setActivePickup(v); setActiveTruck('__all__'); setRouteSearch(''); }} />
 
             {/* Level 2: Truck Type Sub-Tabs */}
             <div className="bg-muted/30 px-2 pt-1 pb-0 border-x border-border">
               <TabBar tabs={truckTabList} active={activeTruck} onSelect={setActiveTruck} />
+            </div>
+
+            {/* Search Bar */}
+            <div className="flex items-center gap-2 bg-muted/20 border-x border-border px-3 py-2">
+              <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <input
+                type="text"
+                value={routeSearch}
+                onChange={e => setRouteSearch(e.target.value)}
+                placeholder="Search by destination or route code..."
+                className="flex-1 text-xs bg-transparent outline-none placeholder:text-muted-foreground"
+              />
+              {routeSearch && (
+                <button type="button" onClick={() => setRouteSearch('')} className="text-muted-foreground hover:text-foreground">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {/* Table */}
