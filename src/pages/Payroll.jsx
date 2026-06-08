@@ -9,18 +9,21 @@ import TripEditDialog from '@/components/payroll/TripEditDialog';
 export default function Payroll() {
   const [trips, setTrips] = useState([]);
   const [billingCycles, setBillingCycles] = useState([]);
+  const [fuelSubsidies, setFuelSubsidies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCycles, setSelectedCycles] = useState([]);
   const [editTrip, setEditTrip] = useState(null);
 
   const load = async () => {
     setLoading(true);
-    const [t, b] = await Promise.all([
+    const [t, b, s] = await Promise.all([
       base44.entities.TripRecord.list('-delivery_date', 500),
       base44.entities.BillingCycle.list('-created_date', 100),
+      base44.entities.FuelSubsidy.list('-created_date', 100),
     ]);
     setTrips(t);
     setBillingCycles(b);
+    setFuelSubsidies(s);
     setLoading(false);
   };
 
@@ -31,6 +34,18 @@ export default function Payroll() {
     return selectedCycles.includes(t.billing_cycle_id);
   });
 
+  const getFuelSubsidy = (trip) => {
+    const tripDate = new Date(trip.delivery_date);
+    const applicableSubsidy = fuelSubsidies.find(subsidy => {
+      const startDate = new Date(subsidy.start_date);
+      const endDate = new Date(subsidy.end_date);
+      return subsidy.client_account_id === trip.client_account_id &&
+             tripDate >= startDate &&
+             tripDate <= endDate;
+    });
+    return applicableSubsidy;
+  };
+
   const calculateTotals = (trip) => {
     const gross = trip.gross_rate || 0;
     const tax = gross * 0.02;
@@ -39,8 +54,12 @@ export default function Payroll() {
     const admin = afterTax * 0.06;
     const insurance = trip.insurance_charge || 0;
     const other = trip.other_charges || 0;
-    const net = gross - tax - hidden - admin - insurance - other;
-    return { gross, tax, hidden, admin, insurance, other, net };
+    
+    const fuelSubsidy = getFuelSubsidy(trip);
+    const fuelSubsidyAmount = fuelSubsidy ? gross * (fuelSubsidy.subsidy_percentage / 100) : 0;
+    
+    const net = gross - tax - hidden - admin - insurance - other + fuelSubsidyAmount;
+    return { gross, tax, hidden, admin, insurance, other, net, fuelSubsidy: fuelSubsidyAmount, hasSubsidy: !!fuelSubsidy };
   };
 
   const grandTotal = filteredTrips.reduce((sum, trip) => {
@@ -70,8 +89,9 @@ export default function Payroll() {
     doc.text('Owner', 35, y);
     doc.text('Truck', 75, y);
     doc.text('Route', 95, y);
-    doc.text('Gross', 140, y);
-    doc.text('Net', 165, y);
+    doc.text('Gross', 130, y);
+    doc.text('Fuel Sub', 160, y);
+    doc.text('Net', 180, y);
     doc.setFont(undefined, 'normal');
     y += 2;
     doc.line(14, y, 196, y);
@@ -84,8 +104,9 @@ export default function Payroll() {
       doc.text(trip.owner_name?.substring(0, 18) || '', 35, y);
       doc.text(trip.truck_type || '', 75, y);
       doc.text(`${trip.delivery_code}`, 95, y);
-      doc.text(`₱${totals.gross.toFixed(2)}`, 140, y);
-      doc.text(`₱${totals.net.toFixed(2)}`, 165, y);
+      doc.text(`₱${totals.gross.toFixed(2)}`, 130, y);
+      doc.text(totals.hasSubsidy ? `₱${totals.fuelSubsidy.toFixed(2)}` : '-', 160, y);
+      doc.text(`₱${totals.net.toFixed(2)}`, 180, y);
       y += 6;
     });
 
@@ -147,7 +168,7 @@ export default function Payroll() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Total Trips</p>
           <p className="text-xl font-bold mt-1">{filteredTrips.length}</p>
@@ -155,6 +176,10 @@ export default function Payroll() {
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Gross Amount</p>
           <p className="text-xl font-bold mt-1 text-blue-700">₱{grandGross.toFixed(2)}</p>
+        </div>
+        <div className="bg-card border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground">Total Fuel Subsidy</p>
+          <p className="text-xl font-bold mt-1 text-green-700">₱{filteredTrips.reduce((sum, trip) => sum + calculateTotals(trip).fuelSubsidy, 0).toFixed(2)}</p>
         </div>
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Net Payroll</p>
@@ -176,7 +201,7 @@ export default function Payroll() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Delivery Code', 'Delivery Date', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Net Payroll', ''].map(h => (
+                  {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Delivery Code', 'Delivery Date', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Subsidy', 'Net Payroll', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -204,6 +229,7 @@ export default function Payroll() {
                       <td className="px-4 py-3 text-right text-amber-600">-₱{totals.admin.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-blue-600">-₱{totals.insurance.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-purple-600">-₱{totals.other.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-green-600 font-semibold">{totals.hasSubsidy ? `+₱${totals.fuelSubsidy.toFixed(2)}` : '-'}</td>
                       <td className="px-4 py-3 text-right font-bold text-emerald-700">₱{totals.net.toFixed(2)}</td>
                       <td className="px-4 py-3">
                         <button 
@@ -219,7 +245,7 @@ export default function Payroll() {
               </tbody>
               <tfoot>
                 <tr className="border-t bg-muted/50">
-                  <td colSpan={12} className="px-4 py-3 text-sm font-semibold text-right">Grand Total Net Payroll</td>
+                  <td colSpan={13} className="px-4 py-3 text-sm font-semibold text-right">Grand Total Net Payroll</td>
                   <td className="px-4 py-3 text-right font-bold text-emerald-700 text-base">₱{grandTotal.toFixed(2)}</td>
                   <td></td>
                 </tr>
