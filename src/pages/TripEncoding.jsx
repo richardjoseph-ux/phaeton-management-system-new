@@ -80,19 +80,20 @@ export default function TripEncoding() {
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Truck</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Client</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Route</th>
-                <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Delivery Date</th>
+                <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Particular</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">DR #</th>
-                <th className="text-right px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Net Payroll</th>
+                <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Waybill</th>
+                <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Trip Route</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Billing Statement</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">Loading trips...</td></tr>
+                <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">Loading trips...</td></tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-16">
+                  <td colSpan={11} className="text-center py-16">
                     <ClipboardList className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
                     <p className="text-muted-foreground text-sm">No trip records found</p>
                   </td>
@@ -108,12 +109,12 @@ export default function TripEncoding() {
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     <div>{trip.pickup_location}</div>
                     <div className="text-muted-foreground/60">→ {trip.delivery_location}</div>
+                    <div className="text-muted-foreground/60">Code: {trip.delivery_code}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm">{trip.delivery_date}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{trip.dr_number}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-emerald-700">
-                    {trip.net_payroll ? `₱${trip.net_payroll.toFixed(2)}` : '—'}
-                  </td>
+                  <td className="px-4 py-3 text-sm">{trip.particular || '—'}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{trip.dr_number || '—'}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{trip.waybill_number || '—'}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{trip.trip_route_code || '—'}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{trip.billing_cycle_name || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
