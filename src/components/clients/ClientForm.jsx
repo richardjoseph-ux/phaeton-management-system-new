@@ -117,45 +117,64 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
 
   const removeRoute = (idx) => setForm(p => ({ ...p, routes: p.routes.filter((_, i) => i !== idx) }));
 
-  // ── Excel Export ──────────────────────────────────────────────────────────
+  // ── Excel Export — one sheet per truck type ───────────────────────────────
   const handleExport = () => {
-    const rows = form.routes.map(r => ({
-      'Pickup Location': r.pickup_location,
-      'Delivery Location': r.delivery_location,
-      'Delivery Code': r.delivery_code,
-      'Trip Route Code': r.trip_route_code,
-      'AUV Rate': r.rates?.AUV ?? '',
-      'Sub-4W Rate': r.rates?.['Sub-4W'] ?? '',
-      '6-Wheel Rate': r.rates?.['6-Wheel'] ?? '',
-      '10-Wheel Rate': r.rates?.['10-Wheel'] ?? '',
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Routes');
+    TRUCK_TYPES.forEach(truckType => {
+      const rows = form.routes
+        .filter(r => r.rates?.[truckType] !== '' && r.rates?.[truckType] != null)
+        .map(r => ({
+          'Pickup Location': r.pickup_location,
+          'Delivery Location': r.delivery_location,
+          'Delivery Code': r.delivery_code,
+          'Trip Route Code': r.trip_route_code,
+          'Rate': r.rates?.[truckType] ?? '',
+        }));
+      // Always add the sheet even if empty so template is preserved
+      const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [
+        { 'Pickup Location': '', 'Delivery Location': '', 'Delivery Code': '', 'Trip Route Code': '', 'Rate': '' }
+      ]);
+      XLSX.utils.book_append_sheet(wb, ws, truckType);
+    });
     XLSX.writeFile(wb, `${form.client_name || 'client'}_routes.xlsx`);
   };
 
-  // ── Excel Import ──────────────────────────────────────────────────────────
+  // ── Excel Import — reads each truck type sheet ────────────────────────────
   const handleImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (evt) => {
       const wb = XLSX.read(evt.target.result, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws);
-      const imported = rows.map(row => ({
-        pickup_location: String(row['Pickup Location'] || '').trim(),
-        delivery_location: String(row['Delivery Location'] || '').trim(),
-        delivery_code: String(row['Delivery Code'] || '').trim(),
-        trip_route_code: String(row['Trip Route Code'] || '').trim(),
-        rates: {
-          AUV: row['AUV Rate'] ?? '',
-          'Sub-4W': row['Sub-4W Rate'] ?? '',
-          '6-Wheel': row['6-Wheel Rate'] ?? '',
-          '10-Wheel': row['10-Wheel Rate'] ?? '',
-        }
-      }));
+
+      // Build a map: "pickup+delivery+code+tripRoute" -> route object
+      const routeMap = {};
+
+      TRUCK_TYPES.forEach(truckType => {
+        const ws = wb.Sheets[truckType];
+        if (!ws) return;
+        const rows = XLSX.utils.sheet_to_json(ws);
+        rows.forEach(row => {
+          const pickup = String(row['Pickup Location'] || '').trim();
+          const delivery = String(row['Delivery Location'] || '').trim();
+          const code = String(row['Delivery Code'] || '').trim();
+          const tripRoute = String(row['Trip Route Code'] || '').trim();
+          if (!pickup && !delivery) return;
+          const key = `${pickup}||${delivery}||${code}||${tripRoute}`;
+          if (!routeMap[key]) {
+            routeMap[key] = {
+              pickup_location: pickup,
+              delivery_location: delivery,
+              delivery_code: code,
+              trip_route_code: tripRoute,
+              rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
+            };
+          }
+          routeMap[key].rates[truckType] = row['Rate'] ?? '';
+        });
+      });
+
+      const imported = Object.values(routeMap);
       setForm(p => ({ ...p, routes: imported.length ? imported : [emptyRoute()] }));
       setActivePickup('__all__');
       setActiveTruck('__all__');
