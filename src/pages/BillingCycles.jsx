@@ -120,9 +120,9 @@ export default function BillingCycles() {
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
 
   const filteredCycles = cycles.filter(cycle => {
-    if (activeTab === 'paid') return cycle.paid_status === 'Paid';
-    if (activeTab === 'unpaid') return cycle.paid_status === 'Unpaid';
     if (activeTab === 'closed') return cycle.status === 'Closed';
+    if (activeTab === 'paid') return cycle.paid_status === 'Paid' && cycle.status === 'Open';
+    if (activeTab === 'unpaid') return cycle.paid_status === 'Unpaid' && cycle.status === 'Open';
     return true;
   });
 
@@ -157,7 +157,7 @@ export default function BillingCycles() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Unpaid ({cycles.filter(c => c.paid_status === 'Unpaid').length})
+            Unpaid ({cycles.filter(c => c.paid_status === 'Unpaid' && c.status === 'Open').length})
           </button>
           <button
             onClick={() => setActiveTab('paid')}
@@ -167,7 +167,7 @@ export default function BillingCycles() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Paid ({cycles.filter(c => c.paid_status === 'Paid').length})
+            Paid ({cycles.filter(c => c.paid_status === 'Paid' && c.status === 'Open').length})
           </button>
           <button
             onClick={() => setActiveTab('closed')}
