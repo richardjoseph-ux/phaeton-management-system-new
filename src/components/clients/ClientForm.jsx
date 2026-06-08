@@ -313,7 +313,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             </div>
 
             {/* Level 1: Pickup Tabs */}
-            <TabBar tabs={pickupTabList} active={activePickup} onSelect={(v) => { setActivePickup(v); setActiveTruck('__all__'); setRouteSearch(''); }} />
+            <TabBar tabs={pickupTabList} active={activePickup} onSelect={(v) => { setActivePickup(v); setActiveTruck(editData ? TRUCK_TYPES[0] : '__all__'); setRouteSearch(''); }} />
 
             {/* Level 2: Truck Type Sub-Tabs */}
             <div className="bg-muted/30 px-2 pt-1 pb-0 border-x border-border">
