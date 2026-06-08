@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Trash2, ClipboardList } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ClipboardList, RefreshCw } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import TripForm from '@/components/trips/TripForm';
@@ -16,6 +16,7 @@ export default function TripEncoding() {
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -58,15 +59,40 @@ export default function TripEncoding() {
     load();
   };
 
+  const handleSyncBillingDates = async () => {
+    setSyncing(true);
+    try {
+      const response = await base44.functions.invoke('syncBillingDates', {});
+      if (response.data.success) {
+        alert(response.data.message);
+        await load();
+      }
+    } catch (error) {
+      alert('Error syncing billing dates: ' + error.message);
+    }
+    setSyncing(false);
+  };
+
   return (
     <div className="p-6">
       <PageHeader
         title="Trip Encoding"
         subtitle="Encode and manage trip records"
         actions={
-          <Button onClick={handleAdd} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" /> New Trip
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleSyncBillingDates} 
+              size="sm" 
+              variant="outline"
+              disabled={syncing}
+            >
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} /> 
+              Sync Billing Dates
+            </Button>
+            <Button onClick={handleAdd} size="sm">
+              <Plus className="w-4 h-4 mr-1.5" /> New Trip
+            </Button>
+          </div>
         }
       />
 
