@@ -197,8 +197,8 @@ export default function Payroll() {
         actions={
           <div className="flex gap-2">
             <Button onClick={exportToGoogleSheet} size="sm" variant="outline" disabled={exporting}>
-              <Sheet className="w-4 h-4 mr-1.5" /> {exporting ? 'Exporting...' : 'Export to Google Sheet'}
-            </Button>
+               <Sheet className="w-4 h-4 mr-1.5" /> {exporting ? 'Exporting...' : 'Export to TRIP Sheet'}
+             </Button>
             <Button onClick={exportPDF} size="sm" variant="outline">
               <FileText className="w-4 h-4 mr-1.5" /> Export PDF
             </Button>

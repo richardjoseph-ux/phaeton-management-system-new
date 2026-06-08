@@ -29,10 +29,10 @@ Deno.serve(async (req) => {
 
         const sheetId = match[1];
 
+        // Get Google Sheets access token
+        const { accessToken } = await base44.asServiceRole.connectors.getConnection("googlesheets");
+
         // Prepare data for Google Sheets API
-        // Note: This requires Google Sheets connector for full integration
-        // For now, we'll prepare the data and return it for client-side handling
-        
         const headers = [
             'Plate #', 'Owner/Driver', 'Truck Type', 'Client', 'Delivery Date', 
             'DR #', 'Pickup', 'Delivery', 'Delivery Code', 'Billing Cycle',
@@ -71,31 +71,39 @@ Deno.serve(async (req) => {
 
         const values = [headers, ...rows];
 
-        // For direct Google Sheets integration, we need the Sheets API
-        // Since we don't have the connector, we'll create an Excel file instead
-        const xlsx = await import('npm:xlsx@0.18.5');
-        
-        const wb = xlsx.utils.book_new();
-        const ws = xlsx.utils.aoa_to_sheet(values);
-        
-        // Set column widths
-        ws['!cols'] = [
-            { wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 20 }, { wch: 12 },
-            { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 },
-            { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }
-        ];
-        
-        xlsx.utils.book_append_sheet(wb, ws, 'Trip Records');
+        // Clear existing data in the sheet and append new data
+        // First, clear the sheet
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/TRIP!A1:Z1000:clear`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
 
-        // Generate Excel buffer
-        const excelBuffer = xlsx.write(wb, { type: 'array', bookType: 'xlsx' });
+        // Then append the new data
+        const appendResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/TRIP!A1:append?valueInputOption=USER_ENTERED`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                values: values
+            })
+        });
+
+        if (!appendResponse.ok) {
+            const error = await appendResponse.json();
+            throw new Error(error.error?.message || 'Failed to append data');
+        }
 
         return Response.json({ 
             success: true, 
-            message: `Prepared ${trips.length} trips for export. Download the Excel file and import to Google Sheets.`,
-            excelData: Array.from(new Uint8Array(excelBuffer)),
+            message: `Successfully exported ${trips.length} trips to Google Sheet (TRIP tab)!`,
             sheetId: sheetId
         });
+
     } catch (error) {
         return Response.json({ 
             success: false, 
