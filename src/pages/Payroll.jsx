@@ -201,7 +201,7 @@ export default function Payroll() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Delivery Code', 'Delivery Date', 'Gross Amount - 2% Tax', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Subsidy', 'Net Payroll', ''].map(h => (
+                  {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Delivery Code', 'Delivery Date', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Subsidy', 'Net Payroll', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -223,7 +223,7 @@ export default function Payroll() {
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">{trip.delivery_code}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(trip.delivery_date).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 text-right font-semibold">₱{totals.afterTax.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-semibold">₱{totals.gross.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-red-600">-₱{totals.tax.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-orange-600">-₱{totals.hidden.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-amber-600">-₱{totals.admin.toFixed(2)}</td>
