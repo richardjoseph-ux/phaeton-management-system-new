@@ -336,25 +336,27 @@ export default function BillingCycles() {
       return dateB - dateA;
     });
 
-  // Summary groups split by archived status - sorted by statement count (smallest to largest)
-  const activeSummaryGroups = billingReceivedGroups
-    .filter(g => !getSummaryRecord(g.date)?.is_archived)
-    .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
-    .sort((a, b) => a.cycles.length - b.cycles.length);
-  const archivedSummaryGroups = (() => {
-    // Also include dates that have a summary record marked archived, even if cycles are archived
-    const archivedDates = summaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
-    const groups = {};
-    cycles.filter(c => c.is_archived || archivedDates.includes(c.billing_received_date)).forEach(cycle => {
-      if (cycle.billing_received_date && archivedDates.includes(cycle.billing_received_date)) {
-        if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
-        groups[cycle.billing_received_date].push(cycle);
-      }
-    });
-    return Object.entries(groups)
-      .map(([date, items]) => ({ date, cycles: items.sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
-      .sort((a, b) => a.cycles.length - b.cycles.length);
-  })();
+  // Update these definitions in your component
+const activeSummaryGroups = billingReceivedGroups
+  .filter(g => !getSummaryRecord(g.date)?.is_archived)
+  .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
+  // Change the sort below:
+  .sort((a, b) => b.date.localeCompare(a.date)); 
+
+const archivedSummaryGroups = (() => {
+  const archivedDates = summaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
+  const groups = {};
+  cycles.filter(c => c.is_archived || archivedDates.includes(c.billing_received_date)).forEach(cycle => {
+    if (cycle.billing_received_date && archivedDates.includes(cycle.billing_received_date)) {
+      if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
+      groups[cycle.billing_received_date].push(cycle);
+    }
+  });
+  return Object.entries(groups)
+    .map(([date, items]) => ({ date, cycles: items.sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
+    // Change the sort below:
+    .sort((a, b) => b.date.localeCompare(a.date));
+})();
 
   const tabClass = (active) =>
     `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`;
