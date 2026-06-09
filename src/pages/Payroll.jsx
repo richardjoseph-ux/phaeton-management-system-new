@@ -10,6 +10,7 @@ export default function Payroll() {
   const [billingCycles, setBillingCycles] = useState([]);
   const [fuelSubsidies, setFuelSubsidies] = useState([]);
   const [billingDeductions, setBillingDeductions] = useState([]);
+  const [summaryRecords, setSummaryRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [selectedDate, setSelectedDate] = useState(null);
@@ -23,14 +24,16 @@ export default function Payroll() {
 
   const load = async () => {
     setLoading(true);
-    const [b, s, d] = await Promise.all([
+    const [b, s, d, sr] = await Promise.all([
       base44.entities.BillingCycle.list('-billing_received_date', 200),
       base44.entities.FuelSubsidy.list('-created_date', 100),
       base44.entities.BillingDeduction.list('-billing_received_date', 500),
+      base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
     ]);
     setBillingCycles(b);
     setFuelSubsidies(s);
     setBillingDeductions(d);
+    setSummaryRecords(sr);
     if (s.length > 0 && s[0].google_sheet_url) setGoogleSheetUrl(s[0].google_sheet_url);
     setLoading(false);
   };
@@ -48,7 +51,12 @@ export default function Payroll() {
     });
     return Object.entries(groups)
       .map(([date, cycles]) => ({ date, cycles }))
-      .sort((a, b) => b.date.localeCompare(a.date));
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .filter(g => {
+        const rec = summaryRecords.find(r => r.billing_received_date === g.date);
+        // Only show dates where payroll_processed is false/undefined (pending)
+        return !rec?.payroll_processed;
+      });
   })();
 
   const selectDate = async (date) => {
