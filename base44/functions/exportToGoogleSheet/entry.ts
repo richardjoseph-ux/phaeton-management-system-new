@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { sheetUrl, trips, deductions, exportType } = await req.json();
+        const { sheetUrl, trips, deductions, reimbursements, exportType } = await req.json();
         
         if (!sheetUrl) {
             return Response.json({ 
