@@ -93,12 +93,20 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
+  // Calculate grand totals from trip-based plates
   const grandTotals = plateGroups.reduce((acc, row) => {
     acc.afterTax += row.gross - row.tax;
     acc.fuelSubsidy += row.fuelSubsidy;
     acc.net += row.net;
     return acc;
   }, { afterTax: 0, fuelSubsidy: 0, net: 0 });
+
+  // Add reimbursements for plates without trips
+  const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
+  const orphanReimbursements = reimbursements
+    .filter(r => !platesWithTrips.has(r.plate_number))
+    .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
+  grandTotals.net += orphanReimbursements;
 
   const statementNames = cycles?.map(c => c.cycle_name).join(', ') || '';
   const clientNames = [...new Set(cycles?.map(c => c.client_name).filter(Boolean) || [])].join(', ');
