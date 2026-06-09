@@ -6,10 +6,13 @@ import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp, Trash2 } from 
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ClientForm from '@/components/clients/ClientForm';
+import { useAuth } from '@/lib/AuthContext';
 
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
 export default function ClientAccounts() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -47,9 +50,11 @@ export default function ClientAccounts() {
         title="Client Accounts"
         subtitle="Manage client accounts, routes, and rates"
         actions={
-          <Button onClick={handleAdd} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" /> Create Account
-          </Button>
+          isAdmin ? (
+            <Button onClick={handleAdd} size="sm">
+              <Plus className="w-4 h-4 mr-1.5" /> Create Account
+            </Button>
+          ) : null
         }
       />
 
@@ -88,16 +93,20 @@ export default function ClientAccounts() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                     <button onClick={() => handleEdit(client)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                       <Pencil className="w-4 h-4" />
-                     </button>
-                     <button onClick={() => handleDelete(client)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
-                       <Trash2 className="w-4 h-4" />
-                     </button>
-                     <button onClick={() => toggleExpand(client.id)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                       {expanded[client.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                     </button>
-                    </div>
+                  {isAdmin && (
+                    <>
+                      <button onClick={() => handleEdit(client)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(client)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                  <button onClick={() => toggleExpand(client.id)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                    {expanded[client.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
                 </div>
 
                 {expanded[client.id] && (

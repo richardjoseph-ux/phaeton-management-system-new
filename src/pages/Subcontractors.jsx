@@ -6,6 +6,7 @@ import { Plus, Search, Pencil, Truck, Trash2, Download, Upload } from 'lucide-re
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import SubcontractorForm from '@/components/subcontractors/SubcontractorForm';
+import { useAuth } from '@/lib/AuthContext';
 import * as XLSX from 'xlsx';
 
 const getInsuranceStatus = (sub) => {
@@ -17,6 +18,8 @@ const getInsuranceStatus = (sub) => {
 };
 
 export default function Subcontractors() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -118,20 +121,26 @@ export default function Subcontractors() {
               <Button onClick={handleExport} size="sm" variant="outline">
                 <Download className="w-4 h-4 mr-1.5" /> Export Excel
               </Button>
-              <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
-                <Upload className="w-4 h-4 mr-1.5" /> Import Excel
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleImport}
-                className="hidden"
-              />
+              {isAdmin && (
+                <>
+                  <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
+                    <Upload className="w-4 h-4 mr-1.5" /> Import Excel
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleImport}
+                    className="hidden"
+                  />
+                </>
+              )}
             </div>
-            <Button onClick={handleAdd} size="sm">
-              <Plus className="w-4 h-4 mr-1.5" /> Register Subcontractor
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleAdd} size="sm">
+                <Plus className="w-4 h-4 mr-1.5" /> Register Subcontractor
+              </Button>
+            )}
           </div>
         }
       />
@@ -227,14 +236,16 @@ export default function Subcontractors() {
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={sub.status} type="account" /></td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => handleEdit(sub)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => handleDelete(sub)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleEdit(sub)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDelete(sub)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

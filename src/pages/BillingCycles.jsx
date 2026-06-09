@@ -8,9 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, ListChecks, Trash2, Download, Upload } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
+import { useAuth } from '@/lib/AuthContext';
 import * as XLSX from 'xlsx';
 
 export default function BillingCycles() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
   const [cycles, setCycles] = useState([]);
   const [clients, setClients] = useState([]);
   const [summaryRecords, setSummaryRecords] = useState([]);
@@ -324,20 +327,26 @@ export default function BillingCycles() {
               <Button onClick={handleExport} size="sm" variant="outline">
                 <Download className="w-4 h-4 mr-1.5" /> Export Excel
               </Button>
-              <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
-                <Upload className="w-4 h-4 mr-1.5" /> Import Excel
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleImport}
-                className="hidden"
-              />
+              {isAdmin && (
+                <>
+                  <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
+                    <Upload className="w-4 h-4 mr-1.5" /> Import Excel
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleImport}
+                    className="hidden"
+                  />
+                </>
+              )}
             </div>
-            <Button onClick={openAdd} size="sm">
-              <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
-            </Button>
+            {isAdmin && (
+              <Button onClick={openAdd} size="sm">
+                <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -396,23 +405,25 @@ export default function BillingCycles() {
                       <td className="px-4 py-3 text-sm">{cycle.cheque_date || '—'}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          {!cycle.is_archived && (
-                            <button onClick={() => openEdit(cycle)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
-                              <Pencil className="w-3.5 h-3.5" />
+                        {isAdmin && (
+                          <div className="flex items-center gap-1">
+                            {!cycle.is_archived && (
+                              <button onClick={() => openEdit(cycle)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => toggleArchiveCycle(cycle)}
+                              className={`p-1.5 rounded transition-colors ${cycle.is_archived ? 'hover:bg-blue-50 hover:text-blue-600 text-muted-foreground' : 'hover:bg-amber-50 hover:text-amber-600 text-muted-foreground'}`}
+                              title={cycle.is_archived ? 'Unarchive' : 'Archive'}
+                            >
+                              {cycle.is_archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
                             </button>
-                          )}
-                          <button
-                            onClick={() => toggleArchiveCycle(cycle)}
-                            className={`p-1.5 rounded transition-colors ${cycle.is_archived ? 'hover:bg-blue-50 hover:text-blue-600 text-muted-foreground' : 'hover:bg-amber-50 hover:text-amber-600 text-muted-foreground'}`}
-                            title={cycle.is_archived ? 'Unarchive' : 'Archive'}
-                          >
-                            {cycle.is_archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
-                          </button>
-                          <button onClick={() => handleDeleteCycle(cycle)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition-colors" title="Delete">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                            <button onClick={() => handleDeleteCycle(cycle)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition-colors" title="Delete">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -472,26 +483,40 @@ export default function BillingCycles() {
                            <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
                            <td className="px-4 py-3 text-sm font-semibold text-amber-700">₱{getChequeAmountForDate(group.date).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                            <td className="px-4 py-3">
-                            <button
-                              onClick={() => !isArchived && toggleSummaryField(group.date, 'is_paid')}
-                              disabled={isArchived}
-                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPaid ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
-                              title={isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
-                            >
-                              {isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
-                              {isPaid ? 'Paid' : 'Unpaid'}
-                            </button>
+                            {isAdmin ? (
+                              <button
+                                onClick={() => !isArchived && toggleSummaryField(group.date, 'is_paid')}
+                                disabled={isArchived}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPaid ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
+                                title={isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                              >
+                                {isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                                {isPaid ? 'Paid' : 'Unpaid'}
+                              </button>
+                            ) : (
+                              <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                                {isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                                {isPaid ? 'Paid' : 'Unpaid'}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
-                            <button
-                              onClick={() => !isArchived && toggleSummaryField(group.date, 'payroll_processed')}
-                              disabled={isArchived}
-                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPayroll ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
-                              title={isPayroll ? 'Mark as Not Processed' : 'Mark as Processed'}
-                            >
-                              {isPayroll ? <ListChecks className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
-                              {isPayroll ? 'Processed' : 'Pending'}
-                            </button>
+                            {isAdmin ? (
+                              <button
+                                onClick={() => !isArchived && toggleSummaryField(group.date, 'payroll_processed')}
+                                disabled={isArchived}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPayroll ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
+                                title={isPayroll ? 'Mark as Not Processed' : 'Mark as Processed'}
+                              >
+                                {isPayroll ? <ListChecks className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                                {isPayroll ? 'Processed' : 'Pending'}
+                              </button>
+                            ) : (
+                              <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${isPayroll ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                                {isPayroll ? <ListChecks className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                                {isPayroll ? 'Processed' : 'Pending'}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
@@ -503,14 +528,16 @@ export default function BillingCycles() {
                                   <Eye className="w-3.5 h-3.5" /> View
                                 </button>
                               )}
-                              <button
-                                onClick={() => toggleArchiveSummary(group.date)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${isArchived ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
-                                title={isArchived ? 'Unarchive' : 'Archive'}
-                              >
-                                {isArchived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
-                                {isArchived ? 'Unarchive' : 'Archive'}
-                              </button>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => toggleArchiveSummary(group.date)}
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${isArchived ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
+                                  title={isArchived ? 'Unarchive' : 'Archive'}
+                                >
+                                  {isArchived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                                  {isArchived ? 'Unarchive' : 'Archive'}
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

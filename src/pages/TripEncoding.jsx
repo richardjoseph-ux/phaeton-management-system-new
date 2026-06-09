@@ -7,9 +7,12 @@ import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import TripForm from '@/components/trips/TripForm';
 import ExcelImportExport from '@/components/ui/ExcelImportExport';
+import { useAuth } from '@/lib/AuthContext';
 import * as XLSX from 'xlsx';
 
 export default function TripEncoding() {
+  const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'admin';
   const [trips, setTrips] = useState([]);
   const [clients, setClients] = useState([]);
   const [subcontractors, setSubcontractors] = useState([]);
@@ -233,27 +236,33 @@ export default function TripEncoding() {
                 />
               </label>
             </div>
-            <Button 
-              onClick={handleSyncTripData} 
-              size="sm" 
-              variant="outline"
-              disabled={syncingData}
-            >
-              <RefreshCcw className={`w-4 h-4 mr-1.5 ${syncingData ? 'animate-spin' : ''}`} /> 
-              Sync Trip Data
-            </Button>
-            <Button 
-              onClick={handleSyncBillingDates} 
-              size="sm" 
-              variant="outline"
-              disabled={syncing}
-            >
-              <RefreshCw className={`w-4 h-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} /> 
-              Sync Billing Dates
-            </Button>
-            <Button onClick={handleAdd} size="sm">
-              <Plus className="w-4 h-4 mr-1.5" /> New Trip
-            </Button>
+            {isAdmin && (
+              <>
+                <Button 
+                  onClick={handleSyncTripData} 
+                  size="sm" 
+                  variant="outline"
+                  disabled={syncingData}
+                >
+                  <RefreshCcw className={`w-4 h-4 mr-1.5 ${syncingData ? 'animate-spin' : ''}`} /> 
+                  Sync Trip Data
+                </Button>
+                <Button 
+                  onClick={handleSyncBillingDates} 
+                  size="sm" 
+                  variant="outline"
+                  disabled={syncing}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} /> 
+                  Sync Billing Dates
+                </Button>
+              </>
+            )}
+            {isAdmin && (
+              <Button onClick={handleAdd} size="sm">
+                <Plus className="w-4 h-4 mr-1.5" /> New Trip
+              </Button>
+            )}
           </div>
         }
       />
@@ -339,17 +348,19 @@ export default function TripEncoding() {
                   <td className="px-4 py-3 text-sm font-medium">{trip.delivery_date || '—'}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{trip.billing_cycle_name || '—'}</td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => handleDuplicate(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Duplicate">
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleEdit(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleDelete(trip.id)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600" title="Delete">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleDuplicate(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Duplicate">
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleEdit(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDelete(trip.id)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600" title="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
