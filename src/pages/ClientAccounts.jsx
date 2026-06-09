@@ -50,11 +50,11 @@ export default function ClientAccounts() {
         title="Client Accounts"
         subtitle="Manage client accounts, routes, and rates"
         actions={
-          isAdmin ? (
+          isAdmin && (
             <Button onClick={handleAdd} size="sm">
               <Plus className="w-4 h-4 mr-1.5" /> Create Account
             </Button>
-          ) : null
+          )
         }
       />
 
