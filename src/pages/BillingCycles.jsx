@@ -258,8 +258,10 @@ export default function BillingCycles() {
     return !cycle.is_archived;
   });
 
-  // Summary groups split by archived status
-  const activeSummaryGroups = billingReceivedGroups.filter(g => !getSummaryRecord(g.date)?.is_archived);
+  // Summary groups split by archived status - sorted by statement count (smallest to largest)
+  const activeSummaryGroups = billingReceivedGroups
+    .filter(g => !getSummaryRecord(g.date)?.is_archived)
+    .sort((a, b) => a.cycles.length - b.cycles.length);
   const archivedSummaryGroups = (() => {
     // Also include dates that have a summary record marked archived, even if cycles are archived
     const archivedDates = summaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
@@ -272,7 +274,7 @@ export default function BillingCycles() {
     });
     return Object.entries(groups)
       .map(([date, items]) => ({ date, cycles: items }))
-      .sort((a, b) => b.date.localeCompare(a.date));
+      .sort((a, b) => a.cycles.length - b.cycles.length);
   })();
 
   const tabClass = (active) =>
