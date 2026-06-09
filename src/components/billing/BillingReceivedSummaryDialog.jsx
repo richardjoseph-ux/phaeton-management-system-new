@@ -85,9 +85,11 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       const ded = billingDeductions.find(d => d.plate_number === row.plate_number);
       const insurance = ded?.insurance_charge || 0;
       const other = ded?.other_charges || 0;
-      const reimb = reimbursements.find(r => r.plate_number === row.plate_number);
-      const reimbursement = reimb?.reimbursement_amount || 0;
-      return { ...row, insurance, other, reimbursement, net: row.tripNet - insurance - other + reimbursement };
+      // Sum all reimbursements for this plate number
+      const totalReimbursement = reimbursements
+        .filter(r => r.plate_number === row.plate_number)
+        .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
+      return { ...row, insurance, other, reimbursement: totalReimbursement, net: row.tripNet - insurance - other + totalReimbursement };
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
