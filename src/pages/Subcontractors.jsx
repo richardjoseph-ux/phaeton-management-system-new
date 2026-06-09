@@ -90,8 +90,16 @@ export default function Subcontractors() {
         alert('Excel file is empty');
         return;
       }
-      await base44.entities.Subcontractor.bulkCreate(jsonData);
-      alert(`Successfully imported ${jsonData.length} subcontractor records`);
+      const existing = await base44.entities.Subcontractor.list();
+      const existingPlates = new Set(existing.map(s => s.plate_number?.toLowerCase()));
+      const toImport = jsonData.filter(item => !existingPlates.has(item.plate_number?.toLowerCase()));
+      const skipped = jsonData.length - toImport.length;
+      if (toImport.length === 0) {
+        alert('All records already exist (skipped ' + skipped + ' duplicates)');
+        return;
+      }
+      await base44.entities.Subcontractor.bulkCreate(toImport);
+      alert(`Successfully imported ${toImport.length} subcontractor records (${skipped} duplicates skipped)`);
       load();
     } catch (error) {
       alert('Import failed: ' + error.message);

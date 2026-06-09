@@ -124,8 +124,19 @@ export default function TripEncoding() {
         alert('Excel file is empty');
         return;
       }
-      await base44.entities.TripRecord.bulkCreate(jsonData);
-      alert(`Successfully imported ${jsonData.length} trip records`);
+      const existing = await base44.entities.TripRecord.list();
+      const existingKeys = new Set(existing.map(t => `${t.plate_number?.toLowerCase() || ''}-${t.dr_number?.toLowerCase() || ''}-${t.delivery_date || ''}`));
+      const toImport = jsonData.filter(item => {
+        const key = `${item.plate_number?.toLowerCase() || ''}-${item.dr_number?.toLowerCase() || ''}-${item.delivery_date || ''}`;
+        return !existingKeys.has(key);
+      });
+      const skipped = jsonData.length - toImport.length;
+      if (toImport.length === 0) {
+        alert('All records already exist (skipped ' + skipped + ' duplicates)');
+        return;
+      }
+      await base44.entities.TripRecord.bulkCreate(toImport);
+      alert(`Successfully imported ${toImport.length} trip records (${skipped} duplicates skipped)`);
       load();
     } catch (error) {
       alert('Import failed: ' + error.message);

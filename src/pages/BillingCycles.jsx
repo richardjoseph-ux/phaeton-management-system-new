@@ -226,8 +226,16 @@ export default function BillingCycles() {
         alert('Excel file is empty');
         return;
       }
-      await base44.entities.BillingCycle.bulkCreate(jsonData);
-      alert(`Successfully imported ${jsonData.length} billing cycle records`);
+      const existing = await base44.entities.BillingCycle.list();
+      const existingNames = new Set(existing.map(c => c.cycle_name?.toLowerCase()));
+      const toImport = jsonData.filter(item => !existingNames.has(item.cycle_name?.toLowerCase()));
+      const skipped = jsonData.length - toImport.length;
+      if (toImport.length === 0) {
+        alert('All records already exist (skipped ' + skipped + ' duplicates)');
+        return;
+      }
+      await base44.entities.BillingCycle.bulkCreate(toImport);
+      alert(`Successfully imported ${toImport.length} billing cycle records (${skipped} duplicates skipped)`);
       load();
     } catch (error) {
       alert('Import failed: ' + error.message);
