@@ -6,22 +6,25 @@ import { ClipboardList } from 'lucide-react';
 
 export default function BillingReceivedSummaryDialog({ open, onClose, billingDate, cycles, fuelSubsidies }) {
   const [trips, setTrips] = useState([]);
+  const [billingDeductions, setBillingDeductions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const cycleIds = cycles?.map(c => c.id) || [];
 
   useEffect(() => {
     if (open && cycleIds.length > 0) {
-      loadTrips();
+      loadData();
     }
   }, [open, cycleIds.join(',')]);
 
-  const loadTrips = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const allTrips = await Promise.all(
-      cycleIds.map(id => base44.entities.TripRecord.filter({ billing_cycle_id: id }, '-delivery_date', 500))
-    );
-    setTrips(allTrips.flat());
+    const [allTrips, deductions] = await Promise.all([
+      Promise.all(cycleIds.map(id => base44.entities.TripRecord.filter({ billing_cycle_id: id }, '-delivery_date', 500))).then(r => r.flat()),
+      base44.entities.BillingDeduction.filter({ billing_received_date: billingDate }, 'plate_number', 200),
+    ]);
+    setTrips(allTrips);
+    setBillingDeductions(deductions);
     setLoading(false);
   };
 
@@ -42,14 +45,13 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     const afterTax = gross - tax;
     const hidden = afterTax * 0.04;
     const admin = afterTax * 0.06;
-    const insurance = trip.insurance_charge || 0;
-    const other = trip.other_charges || 0;
     const fuelSubsidyAmount = (() => {
       const s = getFuelSubsidy(trip);
       return s ? gross * (s.subsidy_percentage / 100) : 0;
     })();
-    const net = gross - tax - hidden - admin - insurance - other + fuelSubsidyAmount;
-    return { gross, tax, afterTax, hidden, admin, insurance, other, fuelSubsidy: fuelSubsidyAmount, net };
+    // Net per trip excludes insurance/other (those are flat per billing date, applied at plate level)
+    const net = gross - tax - hidden - admin + fuelSubsidyAmount;
+    return { gross, tax, afterTax, hidden, admin, fuelSubsidy: fuelSubsidyAmount, net };
   };
 
   // Group trips by plate_number and aggregate totals
@@ -63,7 +65,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
           owner_name: trip.owner_name,
           truck_type: trip.truck_type,
           client_name: trip.client_name,
-          gross: 0, tax: 0, hidden: 0, admin: 0, insurance: 0, other: 0, fuelSubsidy: 0, net: 0,
+          gross: 0, tax: 0, hidden: 0, admin: 0, fuelSubsidy: 0, tripNet: 0,
           tripCount: 0,
         };
       }
@@ -72,20 +74,23 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       groups[key].tax += t.tax;
       groups[key].hidden += t.hidden;
       groups[key].admin += t.admin;
-      groups[key].insurance += t.insurance;
-      groups[key].other += t.other;
       groups[key].fuelSubsidy += t.fuelSubsidy;
-      groups[key].net += t.net;
+      groups[key].tripNet += t.net;
       groups[key].tripCount += 1;
     });
-    return Object.values(groups).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
+    // Apply flat deductions per plate
+    return Object.values(groups).map(row => {
+      const ded = billingDeductions.find(d => d.plate_number === row.plate_number);
+      const insurance = ded?.insurance_charge || 0;
+      const other = ded?.other_charges || 0;
+      return { ...row, insurance, other, net: row.tripNet - insurance - other };
+    }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
-  const grandTotals = trips.reduce((acc, trip) => {
-    const t = calculateTotals(trip);
-    acc.afterTax += t.afterTax;
-    acc.fuelSubsidy += t.fuelSubsidy;
-    acc.net += t.net;
+  const grandTotals = plateGroups.reduce((acc, row) => {
+    acc.afterTax += row.gross - row.tax;
+    acc.fuelSubsidy += row.fuelSubsidy;
+    acc.net += row.net;
     return acc;
   }, { afterTax: 0, fuelSubsidy: 0, net: 0 });
 
