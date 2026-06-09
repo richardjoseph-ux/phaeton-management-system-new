@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
         const headers = [
             'Plate #', 'Owner/Driver', 'Truck Type', 'Client', 'Sub-Account', 'Delivery Date', 
             'DR #', 'Pickup', 'Delivery', 'Delivery Code', 'Trip Route Code', 'Billing Cycle',
-            'Gross Rate', 'Tax (2%)', 'Hidden Fee (4%)', 'Admin Fee (6%)', 
+            'Billing Received Date', 'Gross Rate', 'Tax (2%)', 'Hidden Fee (4%)', 'Admin Fee (6%)', 
             'Fuel Subsidy', 'Net Payroll'
         ];
 
@@ -114,6 +114,7 @@ Deno.serve(async (req) => {
                 trip.delivery_code,
                 trip.trip_route_code || '',
                 trip.billing_cycle_name,
+                trip.billing_received_date || '',
                 gross.toFixed(2),
                 tax.toFixed(2),
                 hidden.toFixed(2),
