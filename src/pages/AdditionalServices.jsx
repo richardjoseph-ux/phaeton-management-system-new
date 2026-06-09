@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Fuel, Sheet } from 'lucide-react';
+import { Plus, Fuel, Sheet, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { format } from 'date-fns';
 
@@ -54,6 +54,11 @@ export default function AdditionalServices() {
     queryKey: ['clients'],
     queryFn: () => base44.entities.ClientAccount.list(),
     initialData: [],
+  });
+
+  const deleteSubsidyMutation = useMutation({
+    mutationFn: (id) => base44.entities.FuelSubsidy.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fuelSubsidies'] }),
   });
 
   const createSubsidyMutation = useMutation({
@@ -352,10 +357,11 @@ export default function AdditionalServices() {
                       <th className="px-4 py-3 text-left text-sm font-medium">Subsidy Amount</th>
                       <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                       <th className="px-4 py-3 text-left text-sm font-medium">Created</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subsidies.map((subsidy) => (
+                      <th className="px-4 py-3 text-left text-sm font-medium"></th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      {subsidies.map((subsidy) => (
                       <tr key={subsidy.id} className="border-b hover:bg-muted/30">
                         <td className="px-4 py-3 text-sm">{subsidy.client_name}</td>
                         <td className="px-4 py-3 text-sm">
@@ -376,11 +382,25 @@ export default function AdditionalServices() {
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {format(new Date(subsidy.created_date), 'MMM d, yyyy')}
                         </td>
-                      </tr>
-                    ))}
+                        <td className="px-4 py-3">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              if (confirm('Delete this fuel subsidy entry?')) {
+                                deleteSubsidyMutation.mutate(subsidy.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                        </tr>
+                        ))}
                     {subsidies.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                        <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                           No fuel subsidies yet. Click "Add Fuel Subsidy" to create one.
                         </td>
                       </tr>
