@@ -171,7 +171,14 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
                 </tbody>
                 <tfoot>
                   <tr className="border-t bg-muted/50">
-                    <td colSpan={12} className="px-3 py-3 text-sm font-semibold text-right">Grand Total Net Payroll</td>
+                    <td colSpan={5} className="px-3 py-3"></td>
+                    <td className="px-3 py-3 text-right text-sm font-semibold">Grand Total</td>
+                    <td className="px-3 py-3 text-right font-bold whitespace-nowrap">₱{plateGroups.reduce((sum, r) => sum + r.gross, 0).toFixed(2)}</td>
+                    <td className="px-3 py-3"></td>
+                    <td className="px-3 py-3"></td>
+                    <td className="px-3 py-3"></td>
+                    <td className="px-3 py-3"></td>
+                    <td className="px-3 py-3"></td>
                     <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{grandTotals.net.toFixed(2)}</td>
                   </tr>
                 </tfoot>
