@@ -32,17 +32,21 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
   // Derived options
   const selectedClient = clients.find(c => c.id === form.client_account_id);
   const pickupOptions = [...new Set((selectedClient?.routes || []).map(r => r.pickup_location).filter(Boolean))];
+  
   // Filter routes by client and pickup location
   const routesForPickup = (selectedClient?.routes || []).filter(r => r.pickup_location === form.pickup_location);
+  
   // Get unique delivery locations for current client + pickup
   const deliveryLocations = [...new Set(routesForPickup.map(r => r.delivery_location).filter(Boolean))];
+  
   // Get delivery codes for selected delivery location
   const codesForDelivery = routesForPickup
     .filter(r => r.delivery_location === form.delivery_location)
     .map(r => ({ code: r.delivery_code, trip_route_code: r.trip_route_code || '' }));
 
-  // Get unique plate numbers (some plates may have multiple truck types)
+  // Get unique plate numbers
   const uniquePlates = [...new Set(subcontractors.map(s => s.plate_number))];
+  
   // Get truck types available for the selected plate
   const availableTruckTypes = [...new Set(
     subcontractors
@@ -51,30 +55,25 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       .filter(Boolean)
   )];
 
-  // Helper function to safely read rates supporting strings with hyphens/spaces across variations
-  const getSafeRate = (sourceObj, typeKey) => {
-    if (!sourceObj || !typeKey) return 0;
+  // Helper targeting your schema layout explicitly: matchedRoute -> rates -> [truck_type]
+  const getDirectRouteRate = (matchedRoute, truckType) => {
+    if (!matchedRoute || !matchedRoute.rates || !truckType) return 0;
     
-    const cleanKey = typeKey.replace(/[^a-zA-Z0-9]/g, ''); // "Sub4W"
-    const underscoreKey = typeKey.replace('-', '_');      // "Sub_4W"
+    const targetRates = matchedRoute.rates;
     
-    const lookups = [
-      typeKey,
-      typeKey.toUpperCase(),
-      typeKey.toLowerCase(),
-      cleanKey,
-      cleanKey.toUpperCase(),
-      cleanKey.toLowerCase(),
-      underscoreKey,
-      underscoreKey.toUpperCase(),
-      underscoreKey.toLowerCase()
-    ];
+    // Direct lookup matching exact key string variations (e.g., 'Sub-4W')
+    if (targetRates[truckType] !== undefined && targetRates[truckType] !== null) {
+      return Number(targetRates[truckType]);
+    }
 
-    for (const key of lookups) {
-      if (sourceObj[key] !== undefined && sourceObj[key] !== null && sourceObj[key] !== '') {
-        return Number(sourceObj[key]);
+    // Secondary deep string cleaning sweep to clear hyphen/case mismatches 
+    const cleanedType = truckType.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    for (const key of Object.keys(targetRates)) {
+      if (key.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanedType) {
+        return Number(targetRates[key]);
       }
     }
+
     return 0;
   };
 
@@ -118,11 +117,9 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handlePlateChange = (value) => {
-    // Find all subcontractors with this plate number
     const matchingSubs = subcontractors.filter(s => s.plate_number?.toUpperCase() === value.toUpperCase());
     
     if (matchingSubs.length === 0) {
-      // No match - clear fields
       setForm(p => ({
         ...p,
         plate_number: value.toUpperCase(),
@@ -131,7 +128,6 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
         truck_type: '',
       }));
     } else if (matchingSubs.length === 1) {
-      // Single match - auto-populate
       const sub = matchingSubs[0];
       setForm(p => ({
         ...p,
@@ -141,14 +137,12 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
         truck_type: sub?.truck_type || '',
       }));
     } else {
-      // Multiple truck types for same plate - don't auto-populate truck type
-      // User will need to select manually (we'll show a dropdown)
       setForm(p => ({
         ...p,
         plate_number: value.toUpperCase(),
         subcontractor_id: matchingSubs[0]?.id || '',
         owner_name: matchingSubs[0]?.owner_name || '',
-        truck_type: '', // Leave empty for user to select
+        truck_type: '', 
       }));
     }
   };
@@ -239,14 +233,23 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       r.delivery_code === form.delivery_code
     );
     
-    // Utilize normalized fallback scanning engine for truck type rates
-    const grossRate = getSafeRate(matchedRoute?.rates, form.truck_type) || getSafeRate(client?.rates, form.truck_type) || 0;
+    // Resolve matching rate using route sub-schema
+    const grossRate = getDirectRouteRate(matchedRoute, form.truck_type);
     
     const taxDeduction = grossRate * 0.02;
     const hiddenFee = grossRate * 0.04;
     const adminFee = grossRate * 0.06;
     const netPayroll = grossRate * 0.88;
-    const data = { ...form, gross_rate: grossRate, tax_deduction: taxDeduction, hidden_fee: hiddenFee, admin_fee: adminFee, net_payroll: netPayroll };
+
+    const data = { 
+      ...form, 
+      gross_rate: grossRate, 
+      tax_deduction: taxDeduction, 
+      hidden_fee: hiddenFee, 
+      admin_fee: adminFee, 
+      net_payroll: netPayroll 
+    };
+
     if (editData && !isDuplicate) {
       await base44.entities.TripRecord.update(editData.id, data);
     } else {
@@ -257,7 +260,6 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
     onClose();
   };
 
-  // Filter options based on search
   const filteredClients = clients.filter(c => 
     c.status === 'Active' && 
     c.client_name.toLowerCase().includes(clientSearch.toLowerCase())
@@ -275,7 +277,6 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
     obj.code.toLowerCase().includes(codeSearch.toLowerCase())
   );
 
-  // Filter billing cycles to only show non-archived
   const activeBillingCycles = billingCycles.filter(bc => !bc.is_archived);
 
   return (
@@ -328,7 +329,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                 <Label>Client Account *</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" aria-expanded={pickupOpen} className="w-full justify-between h-9">
+                    <Button variant="outline" role="combobox" className="w-full justify-between h-9">
                       {form.client_account_id ? clients.find(c => c.id === form.client_account_id)?.client_name : 'Select client...'}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -351,12 +352,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                               onSelect={() => handleClientChange(c.id)}
                             >
                               {c.client_name}
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4",
-                                  form.client_account_id === c.id ? "opacity-100" : "opacity-0"
-                                )}
-                              />
+                              <Check className={cn("ml-auto h-4 w-4", form.client_account_id === c.id ? "opacity-100" : "opacity-0")} />
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -365,6 +361,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                   </PopoverContent>
                 </Popover>
               </div>
+              
               <div className="space-y-1.5">
                 <Label>Pickup Location *</Label>
                 <Popover open={pickupOpen} onOpenChange={setPickupOpen}>
@@ -376,12 +373,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0" align="start">
                     <Command>
-                      <CommandInput 
-                        placeholder="Search pickup..." 
-                        value={pickupSearch}
-                        onValueChange={setPickupSearch}
-                        className="h-9"
-                      />
+                      <CommandInput placeholder="Search pickup..." value={pickupSearch} onValueChange={setPickupSearch} className="h-9" />
                       <CommandList>
                         <CommandEmpty>No pickup found.</CommandEmpty>
                         <CommandGroup>
@@ -395,12 +387,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                               }}
                             >
                               {p}
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4",
-                                  form.pickup_location === p ? "opacity-100" : "opacity-0"
-                                )}
-                              />
+                              <Check className={cn("ml-auto h-4 w-4", form.pickup_location === p ? "opacity-100" : "opacity-0")} />
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -409,6 +396,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                   </PopoverContent>
                 </Popover>
               </div>
+
               <div className="space-y-1.5">
                 <Label>Delivery Location *</Label>
                 <Popover open={deliveryOpen} onOpenChange={setDeliveryOpen}>
@@ -420,12 +408,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0" align="start">
                     <Command>
-                      <CommandInput 
-                        placeholder="Search delivery location..." 
-                        value={deliverySearch}
-                        onValueChange={setDeliverySearch}
-                        className="h-9"
-                      />
+                      <CommandInput placeholder="Search delivery location..." value={deliverySearch} onValueChange={setDeliverySearch} className="h-9" />
                       <CommandList>
                         <CommandEmpty>No delivery location found.</CommandEmpty>
                         <CommandGroup>
@@ -439,12 +422,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                               }}
                             >
                               {loc}
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4",
-                                  form.delivery_location === loc ? "opacity-100" : "opacity-0"
-                                )}
-                              />
+                              <Check className={cn("ml-auto h-4 w-4", form.delivery_location === loc ? "opacity-100" : "opacity-0")} />
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -453,6 +431,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                   </PopoverContent>
                 </Popover>
               </div>
+
               <div className="space-y-1.5">
                 <Label>Delivery Code *</Label>
                 <Popover open={codeOpen} onOpenChange={setCodeOpen}>
@@ -464,12 +443,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0" align="start">
                     <Command>
-                      <CommandInput 
-                        placeholder="Search delivery code..." 
-                        value={codeSearch}
-                        onValueChange={setCodeSearch}
-                        className="h-9"
-                      />
+                      <CommandInput placeholder="Search delivery code..." value={codeSearch} onValueChange={setCodeSearch} className="h-9" />
                       <CommandList>
                         <CommandEmpty>No code found.</CommandEmpty>
                         <CommandGroup>
@@ -483,12 +457,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                               }}
                             >
                               {obj.code}
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4",
-                                  form.delivery_code === obj.code ? "opacity-100" : "opacity-0"
-                                )}
-                              />
+                              <Check className={cn("ml-auto h-4 w-4", form.delivery_code === obj.code ? "opacity-100" : "opacity-0")} />
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -574,8 +543,8 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
             </div>
           </div>
 
-          {/* Rate Preview */}
-          {form.truck_type && form.client_account_id && (() => {
+          {/* Rate Preview UI Panel */}
+          {form.truck_type && form.client_account_id && form.pickup_location && form.delivery_location && form.delivery_code && (() => {
             const client = clients.find(c => c.id === form.client_account_id);
             const matchedRoute = (client?.routes || []).find(r =>
               r.pickup_location === form.pickup_location &&
@@ -583,10 +552,9 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
               r.delivery_code === form.delivery_code
             );
             
-            // Re-apply normalization check inside preview container
-            const gross = getSafeRate(matchedRoute?.rates, form.truck_type) || getSafeRate(client?.rates, form.truck_type) || 0;
-            
+            const gross = getDirectRouteRate(matchedRoute, form.truck_type);
             if (!gross) return null;
+            
             return (
               <div className="col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs font-semibold text-blue-800 mb-2">Rate Breakdown</p>
