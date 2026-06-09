@@ -172,8 +172,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     reader.onload = (evt) => {
       const wb = XLSX.read(evt.target.result, { type: 'array' });
 
-      // Build a map: "pickup+delivery+code+tripRoute" -> route object
-      const routeMap = {};
+      // Build a map from Excel: "pickup+delivery+code+tripRoute" -> route object
+      const excelRouteMap = {};
 
       TRUCK_TYPES.forEach(truckType => {
         const ws = wb.Sheets[truckType];
@@ -186,8 +186,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
           const tripRoute = String(row['Trip Route Code'] || '').trim();
           if (!pickup && !delivery) return;
           const key = `${pickup}||${delivery}||${code}||${tripRoute}`;
-          if (!routeMap[key]) {
-            routeMap[key] = {
+          if (!excelRouteMap[key]) {
+            excelRouteMap[key] = {
               pickup_location: pickup,
               delivery_location: delivery,
               delivery_code: code,
@@ -195,12 +195,43 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
               rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
             };
           }
-          routeMap[key].rates[truckType] = row['Rate'] ?? '';
+          excelRouteMap[key].rates[truckType] = row['Rate'] ?? '';
         });
       });
 
-      const imported = Object.values(routeMap);
-      setForm(p => ({ ...p, routes: imported.length ? imported : [emptyRoute()] }));
+      const importedRoutes = Object.values(excelRouteMap);
+      
+      // If editing existing client, sync imported routes with current form routes
+      if (editData && form.routes.length > 0) {
+        // Build a map of current routes
+        const currentRouteMap = {};
+        form.routes.forEach((r, idx) => {
+          const key = `${r.pickup_location}||${r.delivery_location}||${r.delivery_code}||${r.trip_route_code}`;
+          currentRouteMap[key] = { ...r, originalIndex: idx };
+        });
+
+        // Determine which routes to keep (exist in Excel) and which to remove (don't exist in Excel)
+        const routesToKeep = [];
+        const excelKeys = new Set(Object.keys(excelRouteMap));
+
+        // Add routes from Excel (update existing or add new)
+        Object.values(excelRouteMap).forEach(excelRoute => {
+          const key = `${excelRoute.pickup_location}||${excelRoute.delivery_location}||${excelRoute.delivery_code}||${excelRoute.trip_route_code}`;
+          if (currentRouteMap[key]) {
+            // Update existing route with Excel data
+            routesToKeep.push(excelRoute);
+          } else {
+            // Add new route from Excel
+            routesToKeep.push(excelRoute);
+          }
+        });
+
+        setForm(p => ({ ...p, routes: routesToKeep.length ? routesToKeep : [emptyRoute()] }));
+      } else {
+        // For new clients or empty routes, just use imported data
+        setForm(p => ({ ...p, routes: importedRoutes.length ? importedRoutes : [emptyRoute()] }));
+      }
+      
       setActivePickup('__all__');
       setActiveTruck('__all__');
     };
