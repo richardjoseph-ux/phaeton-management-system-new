@@ -23,16 +23,43 @@ export default function BillingCycles() {
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
   const [activeTab, setActiveTab] = useState('unpaid'); // 'paid', 'unpaid', 'closed'
+  const [fuelSubsidies, setFuelSubsidies] = useState([]);
 
   const load = async () => {
     setLoading(true);
-    const [c, cl] = await Promise.all([
+    const [c, cl, s] = await Promise.all([
       base44.entities.BillingCycle.list('-created_date', 100),
       base44.entities.ClientAccount.list('client_name', 100),
+      base44.entities.FuelSubsidy.list('-created_date', 100),
     ]);
     setCycles(c);
     setClients(cl);
+    setFuelSubsidies(s);
     setLoading(false);
+  };
+
+  const getFuelSubsidy = (trip) => {
+    const tripDate = new Date(trip.delivery_date);
+    return fuelSubsidies.find(subsidy => {
+      const startDate = new Date(subsidy.start_date);
+      const endDate = new Date(subsidy.end_date);
+      return subsidy.client_account_id === trip.client_account_id &&
+             tripDate >= startDate && tripDate <= endDate;
+    });
+  };
+
+  const calculateTotals = (trip) => {
+    const gross = trip.gross_rate || 0;
+    const tax = gross * 0.02;
+    const afterTax = gross - tax;
+    const hidden = afterTax * 0.04;
+    const admin = afterTax * 0.06;
+    const insurance = trip.insurance_charge || 0;
+    const other = trip.other_charges || 0;
+    const fuelSubsidy = getFuelSubsidy(trip);
+    const fuelSubsidyAmount = fuelSubsidy ? gross * (fuelSubsidy.subsidy_percentage / 100) : 0;
+    const net = gross - tax - hidden - admin - insurance - other + fuelSubsidyAmount;
+    return { gross, tax, hidden, admin, insurance, other, fuelSubsidy: fuelSubsidyAmount, net };
   };
 
   const calculateNextSequence = async (clientId) => {
@@ -315,7 +342,7 @@ export default function BillingCycles() {
       </Dialog>
 
       <Dialog open={tripsOpen} onOpenChange={setTripsOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Trips for {selectedCycle?.cycle_name} - {getClientName(selectedCycle?.client_account_id)}
@@ -330,39 +357,51 @@ export default function BillingCycles() {
               <p className="text-muted-foreground text-sm">No trips assigned to this billing statement</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr className="border-b">
-                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Plate #</th>
-                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Owner / Driver</th>
-                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Truck</th>
-                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Route</th>
-                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Delivery Date</th>
-                    <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">DR #</th>
-                    <th className="text-right px-4 py-3 font-semibold text-xs text-muted-foreground uppercase">Net Payroll</th>
+                    {['Plate #', 'Owner / Driver', 'Truck', 'Route', 'Delivery Date', 'DR #', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Subsidy', 'Net Payroll'].map(h => (
+                      <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {trips.map(trip => (
-                    <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="px-4 py-3 font-mono font-semibold text-primary">{trip.plate_number}</td>
-                      <td className="px-4 py-3">{trip.owner_name}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{trip.truck_type}</span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        <div>{trip.pickup_location}</div>
-                        <div className="text-muted-foreground/60">→ {trip.delivery_location}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">{trip.delivery_date}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{trip.dr_number || '—'}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-emerald-700">
-                        ₱{trip.net_payroll?.toFixed(2) || '0.00'}
-                      </td>
-                    </tr>
-                  ))}
+                  {trips.map(trip => {
+                    const totals = calculateTotals(trip);
+                    return (
+                      <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30">
+                        <td className="px-3 py-3 font-mono font-semibold text-primary whitespace-nowrap">{trip.plate_number}</td>
+                        <td className="px-3 py-3 whitespace-nowrap">{trip.owner_name}</td>
+                        <td className="px-3 py-3">
+                          <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{trip.truck_type}</span>
+                        </td>
+                        <td className="px-3 py-3 text-xs text-muted-foreground">
+                          <div>{trip.pickup_location}</div>
+                          <div className="text-muted-foreground/60">→ {trip.delivery_location}</div>
+                        </td>
+                        <td className="px-3 py-3 text-sm whitespace-nowrap">{trip.delivery_date}</td>
+                        <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{trip.dr_number || '—'}</td>
+                        <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{totals.gross.toFixed(2)}</td>
+                        <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{totals.tax.toFixed(2)}</td>
+                        <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{totals.hidden.toFixed(2)}</td>
+                        <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{totals.admin.toFixed(2)}</td>
+                        <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap">-₱{totals.insurance.toFixed(2)}</td>
+                        <td className="px-3 py-3 text-right whitespace-nowrap">-₱{totals.other.toFixed(2)}</td>
+                        <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">+₱{totals.fuelSubsidy.toFixed(2)}</td>
+                        <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{totals.net.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t bg-muted/50">
+                    <td colSpan={13} className="px-3 py-3 text-sm font-semibold text-right">Grand Total Net Payroll</td>
+                    <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">
+                      ₱{trips.reduce((sum, trip) => sum + calculateTotals(trip).net, 0).toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
