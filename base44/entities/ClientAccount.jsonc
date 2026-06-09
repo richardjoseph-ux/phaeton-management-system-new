@@ -63,6 +63,27 @@
           }
         }
       }
+    },
+    "sub_accounts": {
+      "type": "array",
+      "description": "Sub-accounts under this client",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sub_account_name": {
+            "type": "string"
+          },
+          "sub_account_code": {
+            "type": "string"
+          },
+          "contact_person": {
+            "type": "string"
+          },
+          "contact_number": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [

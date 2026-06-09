@@ -41,7 +41,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const [form, setForm] = useState({
     client_name: '', client_code: '', address: '', contact_person: '',
     contact_number: '', status: 'Active',
-    routes: [emptyRoute()]
+    routes: [emptyRoute()],
+    sub_accounts: []
   });
   const [saving, setSaving] = useState(false);
   const [activePickup, setActivePickup] = useState('__all__');
@@ -87,7 +88,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                 '10-Wheel': r.rates?.['10-Wheel'] ?? '',
               }
             }))
-          : [emptyRoute()]
+          : [emptyRoute()],
+        sub_accounts: editData.sub_accounts || []
       });
       // Set first pickup and first truck type as active when editing
       const pickups = [...new Set(editData.routes?.map(r => r.pickup_location).filter(Boolean) || [])];
@@ -97,7 +99,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
       setForm({
         client_name: '', client_code: '', address: '', contact_person: '',
         contact_number: '', status: 'Active',
-        routes: [emptyRoute()]
+        routes: [emptyRoute()],
+        sub_accounts: []
       });
       setActivePickup('__all__');
       setActiveTruck('__all__');
@@ -106,6 +109,18 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   }, [editData, open]);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const addSubAccount = () => {
+    setForm(p => ({ ...p, sub_accounts: [...p.sub_accounts, { sub_account_name: '', sub_account_code: '', contact_person: '', contact_number: '' }] }));
+  };
+
+  const removeSubAccount = (idx) => setForm(p => ({ ...p, sub_accounts: p.sub_accounts.filter((_, i) => i !== idx) }));
+
+  const setSubAccount = (idx, k, v) => setForm(p => {
+    const sub_accounts = [...p.sub_accounts];
+    sub_accounts[idx] = { ...sub_accounts[idx], [k]: v };
+    return { ...p, sub_accounts };
+  });
 
   const setRoute = (idx, k, v) => setForm(p => {
     const routes = [...p.routes];
@@ -429,6 +444,50 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                 ? `Showing only routes with a rate for ${activeTruck}. Switch to "All Trucks" to see and edit all routes.`
                 : 'Rates in ₱. Leave blank if a truck type does not serve a route.'}
             </p>
+          </div>
+
+          {/* Sub-Accounts */}
+          <div>
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sub-Accounts</p>
+              <Button type="button" variant="outline" size="sm" onClick={addSubAccount}>
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Sub-Account
+              </Button>
+            </div>
+            {form.sub_accounts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No sub-accounts added</p>
+            ) : (
+              <div className="space-y-2">
+                {form.sub_accounts.map((sub, idx) => (
+                  <div key={idx} className="border rounded-lg p-3 bg-muted/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold">Sub-Account {idx + 1}</h4>
+                      <button onClick={() => removeSubAccount(idx)} className="text-red-400 hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Sub-Account Name</Label>
+                        <Input value={sub.sub_account_name} onChange={e => setSubAccount(idx, 'sub_account_name', e.target.value)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Sub-Account Code</Label>
+                        <Input value={sub.sub_account_code} onChange={e => setSubAccount(idx, 'sub_account_code', e.target.value.toUpperCase())} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Contact Person</Label>
+                        <Input value={sub.contact_person} onChange={e => setSubAccount(idx, 'contact_person', e.target.value)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Contact Number</Label>
+                        <Input value={sub.contact_number} onChange={e => setSubAccount(idx, 'contact_number', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>

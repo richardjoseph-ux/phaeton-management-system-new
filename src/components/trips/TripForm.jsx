@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils';
 export default function TripForm({ open, onClose, onSaved, editData, isDuplicate = false, clients, subcontractors, billingCycles }) {
   const [form, setForm] = useState({
     plate_number: '', subcontractor_id: '', owner_name: '', truck_type: '',
-    client_account_id: '', client_name: '', pickup_location: '',
+    client_account_id: '', client_name: '', sub_account_id: '', sub_account_name: '',
+    pickup_location: '',
     delivery_location: '', delivery_code: '', trip_route_code: '',
     first_cheque_date: '', delivery_date: '', billing_date: '',
     particular: '', dr_number: '', waybill_number: '',
@@ -59,6 +60,8 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
         truck_type: editData.truck_type || '',
         client_account_id: editData.client_account_id || '',
         client_name: editData.client_name || '',
+        sub_account_id: editData.sub_account_id || '',
+        sub_account_name: editData.sub_account_name || '',
         pickup_location: editData.pickup_location || '',
         delivery_location: editData.delivery_location || '',
         delivery_code: editData.delivery_code || '',
@@ -75,7 +78,8 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
     } else {
       setForm({
         plate_number: '', subcontractor_id: '', owner_name: '', truck_type: '',
-        client_account_id: '', client_name: '', pickup_location: '',
+        client_account_id: '', client_name: '', sub_account_id: '', sub_account_name: '',
+        pickup_location: '',
         delivery_location: '', delivery_code: '', trip_route_code: '',
         first_cheque_date: '', delivery_date: '', billing_date: '',
         particular: '', dr_number: '', waybill_number: '',
@@ -128,6 +132,8 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       ...p,
       client_account_id: clientId,
       client_name: client?.client_name || '',
+      sub_account_id: '',
+      sub_account_name: '',
       pickup_location: '',
       delivery_location: '',
       delivery_code: '',
@@ -172,6 +178,15 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       ...p,
       billing_cycle_id: cycleId,
       billing_cycle_name: cycle?.cycle_name || '',
+    }));
+  };
+
+  const handleSubAccountChange = (subAccountId, client) => {
+    const subAccount = client.sub_accounts?.find(s => s.sub_account_id === subAccountId || s.sub_account_name === subAccountId);
+    setForm(p => ({
+      ...p,
+      sub_account_id: subAccount?.sub_account_id || subAccountId,
+      sub_account_name: subAccount?.sub_account_name || subAccountId,
     }));
   };
 
@@ -493,6 +508,27 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
               <div className="space-y-1.5">
                 <Label>Waybill Number</Label>
                 <Input value={form.waybill_number} onChange={e => set('waybill_number', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sub-Account (Optional)</Label>
+                <Select 
+                  value={form.sub_account_id} 
+                  onValueChange={(val) => {
+                    const client = clients.find(c => c.id === form.client_account_id);
+                    handleSubAccountChange(val, client);
+                  }}
+                  disabled={!form.client_account_id}
+                >
+                  <SelectTrigger><SelectValue placeholder="Select sub-account" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>No sub-account</SelectItem>
+                    {(clients.find(c => c.id === form.client_account_id)?.sub_accounts || []).map(sub => (
+                      <SelectItem key={sub.sub_account_name} value={sub.sub_account_name}>
+                        {sub.sub_account_name} {sub.sub_account_code && `(${sub.sub_account_code})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Billing Statement</Label>

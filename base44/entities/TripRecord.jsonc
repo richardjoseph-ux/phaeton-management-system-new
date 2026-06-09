@@ -26,6 +26,12 @@
     "client_name": {
       "type": "string"
     },
+    "sub_account_id": {
+      "type": "string"
+    },
+    "sub_account_name": {
+      "type": "string"
+    },
     "pickup_location": {
       "type": "string"
     },
