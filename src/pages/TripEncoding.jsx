@@ -38,7 +38,7 @@ export default function TripEncoding() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = trips.filter(t =>
+  const filtered = [...trips].filter(t =>
     !search ||
     t.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
     t.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -52,7 +52,7 @@ export default function TripEncoding() {
     t.waybill_number?.toLowerCase().includes(search.toLowerCase()) ||
     t.trip_route_code?.toLowerCase().includes(search.toLowerCase()) ||
     t.billing_cycle_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  ).sort((a, b) => (b.delivery_date || '').localeCompare(a.delivery_date || ''));
 
   const handleEdit = (trip) => { setEditData(trip); setFormOpen(true); };
   const handleDuplicate = (trip) => { 
@@ -257,6 +257,7 @@ export default function TripEncoding() {
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">DR #</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Waybill</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Trip Route</th>
+                <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Delivery Date</th>
                 <th className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">Billing Statement</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -288,6 +289,7 @@ export default function TripEncoding() {
                   <td className="px-4 py-3 font-mono text-xs">{trip.dr_number || '—'}</td>
                   <td className="px-4 py-3 font-mono text-xs">{trip.waybill_number || '—'}</td>
                   <td className="px-4 py-3 font-mono text-xs">{trip.trip_route_code || '—'}</td>
+                  <td className="px-4 py-3 text-sm font-medium">{trip.delivery_date || '—'}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{trip.billing_cycle_name || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
