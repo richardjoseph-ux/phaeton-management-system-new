@@ -238,11 +238,15 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
 
     const client = clients.find(c => c.id === currentClientId);
     
-    // Enhanced clean validation lookup block to capture tricky records
+    // Alphanumeric deep matching validation sweep used on save
+    const cleanSaveCode = currentCode?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const cleanSavePickup = currentPickup?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const cleanSaveDelivery = currentDelivery?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
     const matchedRoute = (client?.routes || []).find(r =>
-      r.pickup_location?.trim().toUpperCase() === currentPickup?.trim().toUpperCase() &&
-      r.delivery_location?.trim().toUpperCase() === currentDelivery?.trim().toUpperCase() &&
-      r.delivery_code?.trim().toUpperCase() === currentCode?.trim().toUpperCase()
+      r.pickup_location?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanSavePickup &&
+      r.delivery_location?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanSaveDelivery &&
+      r.delivery_code?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanSaveCode
     );
     
     const grossRate = getDirectRouteRate(matchedRoute, currentTruckType);
@@ -443,6 +447,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                 </Popover>
               </div>
 
+              {/* FIX 1: Delivery Code Dropdown Tracking Update */}
               <div className="space-y-1.5">
                 <Label>Delivery Code *</Label>
                 <Popover open={codeOpen} onOpenChange={setCodeOpen}>
@@ -458,19 +463,22 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                       <CommandList>
                         <CommandEmpty>No code found.</CommandEmpty>
                         <CommandGroup>
-                          {filteredCodes.map((obj, idx) => (
-                            <CommandItem
-                              key={idx}
-                              value={obj.code}
-                              onSelect={() => {
-                                handleCodeChange(obj);
-                                setCodeOpen(false);
-                              }}
-                            >
-                              {obj.code}
-                              <Check className={cn("ml-auto h-4 w-4", form.delivery_code === obj.code ? "opacity-100" : "opacity-0")} />
-                            </CommandItem>
-                          ))}
+                          {filteredCodes.map((obj, idx) => {
+                            const searchToken = `${obj.code}-${idx}`;
+                            return (
+                              <CommandItem
+                                key={idx}
+                                value={searchToken}
+                                onSelect={() => {
+                                  handleCodeChange(obj);
+                                  setCodeOpen(false);
+                                }}
+                              >
+                                {obj.code}
+                                <Check className={cn("ml-auto h-4 w-4", form.delivery_code === obj.code ? "opacity-100" : "opacity-0")} />
+                              </CommandItem>
+                            );
+                          })}
                         </CommandGroup>
                       </CommandList>
                     </Command>
@@ -554,13 +562,18 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
             </div>
           </div>
 
-          {/* Rate Preview UI Panel */}
+          {/* FIX 2: Rate Preview UI Panel String-Cleaning Match Implementation */}
           {form.truck_type && form.client_account_id && form.pickup_location && form.delivery_location && form.delivery_code && (() => {
             const client = clients.find(c => c.id === form.client_account_id);
+            
+            const cleanFormCode = form.delivery_code.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            const cleanFormPickup = form.pickup_location.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            const cleanFormDelivery = form.delivery_location.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
             const matchedRoute = (client?.routes || []).find(r =>
-              r.pickup_location?.trim().toUpperCase() === form.pickup_location?.trim().toUpperCase() &&
-              r.delivery_location?.trim().toUpperCase() === form.delivery_location?.trim().toUpperCase() &&
-              r.delivery_code?.trim().toUpperCase() === form.delivery_code?.trim().toUpperCase()
+              r.pickup_location?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanFormPickup &&
+              r.delivery_location?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanFormDelivery &&
+              r.delivery_code?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanFormCode
             );
             
             const gross = getDirectRouteRate(matchedRoute, form.truck_type);
