@@ -247,14 +247,18 @@ export default function AdditionalServices() {
 
     setExportingDeductions(true);
     try {
-      const allDeductions = await base44.entities.BillingDeduction.list('-billing_received_date', 2000);
+      const [allDeductions, allReimbursements] = await Promise.all([
+        base44.entities.BillingDeduction.list('-billing_received_date', 2000),
+        base44.entities.Reimbursement.list('-billing_received_date', 2000),
+      ]);
       const response = await base44.functions.invoke('exportToGoogleSheet', {
         sheetUrl: urlToUse,
         deductions: allDeductions,
+        reimbursements: allReimbursements,
         exportType: 'deductions'
       });
       if (response.data.success) {
-        alert(`Successfully exported ${allDeductions.length} deductions to the DEDUCTION tab!`);
+        alert(`Successfully exported ${allDeductions.length} deductions and ${allReimbursements.length} reimbursements to the DEDUCTION tab!`);
       } else {
         alert('Export failed: ' + response.data.message);
       }
@@ -485,7 +489,7 @@ export default function AdditionalServices() {
                     className="gap-2 w-full"
                   >
                     <Sheet className="w-4 h-4" />
-                    {exportingDeductions ? 'Exporting...' : 'Export All Deductions to Google Sheet (DEDUCTION tab)'}
+                    {exportingDeductions ? 'Exporting...' : 'Export Deductions & Reimbursements to Google Sheet (DEDUCTION tab)'}
                   </Button>
                 </div>
               </div>
@@ -493,7 +497,7 @@ export default function AdditionalServices() {
               <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm font-medium mb-2">Note:</p>
                 <p className="text-sm text-muted-foreground">
-                  Make sure your Google Sheet has tabs named exactly <strong>TRIP</strong> and <strong>DEDUCTION</strong> and the connected Google account has edit access.
+                  Make sure your Google Sheet has tabs named exactly <strong>TRIP</strong> and <strong>DEDUCTION</strong>. The DEDUCTION tab will include both deductions (negative amounts) and reimbursements (positive amounts).
                 </p>
               </div>
             </div>
