@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { FileText, ChevronRight, Users, Calendar, Sheet } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FileText, Sheet } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { jsPDF } from 'jspdf';
 import TripEditDialog from '@/components/payroll/TripEditDialog';
@@ -232,102 +233,62 @@ export default function Payroll() {
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
       ) : (
-        <div className="flex gap-6">
-
-          {/* Step 1 — Billing Received Date */}
-          <div className="w-64 shrink-0">
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm font-semibold text-foreground">Billing Received Date</p>
+        <div>
+          {/* Dropdowns row */}
+          <div className="flex items-end gap-4 mb-5">
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Received Date</p>
+              <Select value={selectedDate || ''} onValueChange={v => selectDate(v)}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Select date..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {dateGroups.map(g => (
+                    <SelectItem key={g.date} value={g.date}>
+                      {g.date} ({g.cycles.length} stmt{g.cycles.length > 1 ? 's' : ''})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            {dateGroups.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No billing received dates recorded.</p>
-            ) : (
+
+            {selectedDate && (
               <div className="space-y-1">
-                {dateGroups.map(g => (
-                  <button
-                    key={g.date}
-                    onClick={() => selectDate(g.date)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between group ${
-                      selectedDate === g.date
-                        ? 'bg-primary text-primary-foreground font-semibold'
-                        : 'hover:bg-muted text-foreground'
-                    }`}
-                  >
-                    <span>{g.date}</span>
-                    <span className={`text-xs ${selectedDate === g.date ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                      {g.cycles.length} stmt{g.cycles.length > 1 ? 's' : ''}
-                    </span>
-                  </button>
-                ))}
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Owner / Driver</p>
+                <Select
+                  value={selectedOwner || '__all__'}
+                  onValueChange={v => setSelectedOwner(v === '__all__' ? null : v)}
+                  disabled={loadingTrips}
+                >
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="All Owners" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All Owners ({dateTrips.length})</SelectItem>
+                    {ownerList.map(o => {
+                      const count = dateTrips.filter(t => t.plate_number === o.plate_number).length;
+                      return (
+                        <SelectItem key={o.plate_number} value={o.plate_number}>
+                          {o.plate_number} — {o.owner_name} ({count})
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>
 
-          {/* Step 2 — Owner / Driver (shown once date is selected) */}
-          {selectedDate && (
-            <div className="w-56 shrink-0">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <p className="text-sm font-semibold text-foreground">Owner / Driver</p>
-              </div>
-              {loadingTrips ? (
-                <p className="text-xs text-muted-foreground px-1">Loading...</p>
-              ) : ownerList.length === 0 ? (
-                <p className="text-xs text-muted-foreground px-1">No trips for this date.</p>
-              ) : (
-                <div className="space-y-1">
-                  <button
-                    onClick={() => setSelectedOwner(null)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between ${
-                      selectedOwner === null
-                        ? 'bg-primary text-primary-foreground font-semibold'
-                        : 'hover:bg-muted text-foreground'
-                    }`}
-                  >
-                    <span>All Owners</span>
-                    <span className={`text-xs ${selectedOwner === null ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                      {dateTrips.length}
-                    </span>
-                  </button>
-                  {ownerList.map(o => {
-                    const count = dateTrips.filter(t => t.plate_number === o.plate_number).length;
-                    return (
-                      <button
-                        key={o.plate_number}
-                        onClick={() => setSelectedOwner(o.plate_number)}
-                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                          selectedOwner === o.plate_number
-                            ? 'bg-primary text-primary-foreground font-semibold'
-                            : 'hover:bg-muted text-foreground'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-xs font-bold">{o.plate_number}</span>
-                          <span className={`text-xs ${selectedOwner === o.plate_number ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{count}</span>
-                        </div>
-                        <div className={`text-xs mt-0.5 truncate ${selectedOwner === o.plate_number ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                          {o.owner_name}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Main content area */}
-          <div className="flex-1 min-w-0">
+          <div>
             {!selectedDate ? (
               <div className="text-center py-24 text-muted-foreground">
-                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-20" />
                 <p className="text-sm">Select a billing received date to view payroll</p>
               </div>
             ) : loadingTrips ? (
               <div className="text-center py-24 text-muted-foreground">Loading trips...</div>
             ) : displayedTrips.length === 0 ? (
-              <div className="text-center py-24 text-muted-foreground">
+              <div className="text-center py-16 text-muted-foreground">
                 <FileText className="w-10 h-10 mx-auto mb-2 opacity-20" />
                 <p className="text-sm">No trips found</p>
               </div>
