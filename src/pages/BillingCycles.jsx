@@ -36,20 +36,23 @@ export default function BillingCycles() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryDate, setSummaryDate] = useState('');
   const [summaryCycles, setSummaryCycles] = useState([]);
+  const [allTrips, setAllTrips] = useState([]);
   const fileInputRef = useRef(null);
 
   const load = async () => {
     setLoading(true);
-    const [c, cl, s, sr] = await Promise.all([
+    const [c, cl, s, sr, t] = await Promise.all([
       base44.entities.BillingCycle.list('-created_date', 200),
       base44.entities.ClientAccount.list('client_name', 100),
       base44.entities.FuelSubsidy.list('-created_date', 100),
       base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
+      base44.entities.TripRecord.list('-created_date', 500),
     ]);
     setCycles(c);
     setClients(cl);
     setFuelSubsidies(s);
     setSummaryRecords(sr);
+    setAllTrips(t);
     setLoading(false);
   };
 
@@ -254,12 +257,16 @@ export default function BillingCycles() {
 
   const getChequeAmountForDate = (date) => {
     const cyclesForDate = cycles.filter(c => c.billing_received_date === date && !c.is_archived);
+    const cycleIds = cyclesForDate.map(c => c.id);
+    
     let totalGross = 0;
-    cyclesForDate.forEach(cycle => {
-      trips.filter(t => t.billing_cycle_id === cycle.id).forEach(trip => {
+    cycleIds.forEach(cycleId => {
+      const cycleTrips = allTrips.filter(t => t.billing_cycle_id === cycleId);
+      cycleTrips.forEach(trip => {
         totalGross += trip.gross_rate || 0;
       });
     });
+    
     const tax = totalGross * 0.02;
     return totalGross - tax;
   };
