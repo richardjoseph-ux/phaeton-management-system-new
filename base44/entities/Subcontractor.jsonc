@@ -30,6 +30,11 @@
     "garage_location": {
       "type": "string"
     },
+    "join_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when subcontractor joined"
+    },
     "status": {
       "type": "string",
       "enum": [

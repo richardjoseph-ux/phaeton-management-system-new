@@ -180,7 +180,7 @@ export default function Subcontractors() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                {['ID', 'Plate #', 'Owner / Driver', 'Truck Type', 'Contact', 'Garage', 'Insurance', 'Status', ''].map(h => (
+                {['ID', 'Plate #', 'Owner / Driver', 'Truck Type', 'Contact', 'Join Date', 'Garage', 'Insurance', 'Status', ''].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -206,6 +206,7 @@ export default function Subcontractors() {
                       <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{sub.truck_type}</span>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.contact_number || '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{sub.join_date || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.garage_location || '—'}</td>
                     <td className="px-4 py-3">
                       <div>

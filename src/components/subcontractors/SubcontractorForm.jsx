@@ -24,7 +24,7 @@ const generateSubId = async () => {
 export default function SubcontractorForm({ open, onClose, onSaved, editData }) {
   const [form, setForm] = useState({
     plate_number: '', truck_type: '', owner_name: '', contact_number: '',
-    garage_location: '', status: 'Active', is_insured: false,
+    garage_location: '', join_date: '', status: 'Active', is_insured: false,
     insurance_start_date: '', insurance_end_date: ''
   });
   const [saving, setSaving] = useState(false);
@@ -37,6 +37,7 @@ export default function SubcontractorForm({ open, onClose, onSaved, editData }) 
         owner_name: editData.owner_name || '',
         contact_number: editData.contact_number || '',
         garage_location: editData.garage_location || '',
+        join_date: editData.join_date || '',
         status: editData.status || 'Active',
         is_insured: editData.is_insured || false,
         insurance_start_date: editData.insurance_start_date || '',
@@ -45,7 +46,7 @@ export default function SubcontractorForm({ open, onClose, onSaved, editData }) 
     } else {
       setForm({
         plate_number: '', truck_type: '', owner_name: '', contact_number: '',
-        garage_location: '', status: 'Active', is_insured: false,
+        garage_location: '', join_date: '', status: 'Active', is_insured: false,
         insurance_start_date: '', insurance_end_date: ''
       });
     }
@@ -112,7 +113,12 @@ export default function SubcontractorForm({ open, onClose, onSaved, editData }) 
             </Select>
           </div>
 
-          <div className="col-span-2 space-y-1.5">
+          <div className="space-y-1.5">
+            <Label>Join Date</Label>
+            <Input type="date" value={form.join_date} onChange={e => set('join_date', e.target.value)} />
+          </div>
+
+          <div className="space-y-1.5">
             <Label>Garage Location</Label>
             <Input value={form.garage_location} onChange={e => set('garage_location', e.target.value)} placeholder="Address / area" />
           </div>
