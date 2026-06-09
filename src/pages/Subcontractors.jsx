@@ -20,6 +20,7 @@ export default function Subcontractors() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [statusTab, setStatusTab] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const fileInputRef = useRef(null);
@@ -33,12 +34,17 @@ export default function Subcontractors() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = list.filter(s =>
-    !search ||
-    s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
-    s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.sub_id?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = list.filter(s => {
+    const matchesSearch = !search ||
+      s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
+      s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.sub_id?.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusTab === 'all' || s.status?.toLowerCase() === statusTab;
+    return matchesSearch && matchesStatus;
+  });
+
+  const activeCount = list.filter(s => s.status === 'Active').length;
+  const inactiveCount = list.filter(s => s.status === 'Inactive').length;
 
   const handleEdit = (item) => { setEditData(item); setFormOpen(true); };
   const handleAdd = () => { setEditData(null); setFormOpen(true); };
@@ -134,6 +140,34 @@ export default function Subcontractors() {
             <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Status tabs */}
+      <div className="flex items-center gap-2 mb-4 border-b">
+        <button
+          onClick={() => setStatusTab('all')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            statusTab === 'all' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          All ({list.length})
+        </button>
+        <button
+          onClick={() => setStatusTab('active')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            statusTab === 'active' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Active ({activeCount})
+        </button>
+        <button
+          onClick={() => setStatusTab('inactive')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            statusTab === 'inactive' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Inactive ({inactiveCount})
+        </button>
       </div>
 
       <div className="relative mb-4 max-w-sm">
