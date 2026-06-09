@@ -17,6 +17,7 @@ import Payroll from '@/pages/Payroll';
 import Reports from '@/pages/Reports';
 import UserManagement from '@/pages/UserManagement';
 import AdditionalServices from '@/pages/AdditionalServices';
+import Deductions from '@/pages/Deductions';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,6 +49,7 @@ const AuthenticatedApp = () => {
         <Route path="/billing" element={<BillingCycles />} />
         <Route path="/payroll" element={<Payroll />} />
         <Route path="/additional-services" element={<AdditionalServices />} />
+        <Route path="/deductions" element={<Deductions />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/users" element={<UserManagement />} />
       </Route>

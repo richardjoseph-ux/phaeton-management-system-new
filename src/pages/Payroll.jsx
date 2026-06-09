@@ -2,40 +2,36 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Sheet } from 'lucide-react';
+import { FileText, Sheet, ShieldCheck, PackageMinus } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { jsPDF } from 'jspdf';
-import TripEditDialog from '@/components/payroll/TripEditDialog';
 
 export default function Payroll() {
   const [billingCycles, setBillingCycles] = useState([]);
   const [fuelSubsidies, setFuelSubsidies] = useState([]);
+  const [billingDeductions, setBillingDeductions] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Step 1: selected billing received date
   const [selectedDate, setSelectedDate] = useState(null);
-  // Step 2: selected owner/driver (plate_number key)
   const [selectedOwner, setSelectedOwner] = useState(null);
 
-  // Trips loaded for the selected date's cycles
   const [dateTrips, setDateTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
 
-  const [editTrip, setEditTrip] = useState(null);
   const [googleSheetUrl, setGoogleSheetUrl] = useState('');
   const [exporting, setExporting] = useState(false);
 
   const load = async () => {
     setLoading(true);
-    const [b, s] = await Promise.all([
+    const [b, s, d] = await Promise.all([
       base44.entities.BillingCycle.list('-billing_received_date', 200),
       base44.entities.FuelSubsidy.list('-created_date', 100),
+      base44.entities.BillingDeduction.list('-billing_received_date', 500),
     ]);
     setBillingCycles(b);
     setFuelSubsidies(s);
-    if (s.length > 0 && s[0].google_sheet_url) {
-      setGoogleSheetUrl(s[0].google_sheet_url);
-    }
+    setBillingDeductions(d);
+    if (s.length > 0 && s[0].google_sheet_url) setGoogleSheetUrl(s[0].google_sheet_url);
     setLoading(false);
   };
 
@@ -55,7 +51,6 @@ export default function Payroll() {
       .sort((a, b) => b.date.localeCompare(a.date));
   })();
 
-  // Load trips when date is selected
   const selectDate = async (date) => {
     setSelectedDate(date);
     setSelectedOwner(null);
@@ -70,12 +65,11 @@ export default function Payroll() {
     setLoadingTrips(false);
   };
 
-  // Unique owners for the selected date's trips
   const ownerList = (() => {
     const seen = {};
     dateTrips.forEach(t => {
       if (!seen[t.plate_number]) {
-        seen[t.plate_number] = { plate_number: t.plate_number, owner_name: t.owner_name, truck_type: t.truck_type };
+        seen[t.plate_number] = { plate_number: t.plate_number, owner_name: t.owner_name };
       }
     });
     return Object.values(seen).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
@@ -90,38 +84,46 @@ export default function Payroll() {
     );
   };
 
-  const calculateTotals = (trip) => {
+  // Per-trip net: NO insurance or other charges here
+  const calculateTripNet = (trip) => {
     const gross = trip.gross_rate || 0;
     const tax = gross * 0.02;
     const afterTax = gross - tax;
     const hidden = afterTax * 0.04;
     const admin = afterTax * 0.06;
-    const insurance = trip.insurance_charge || 0;
-    const other = trip.other_charges || 0;
     const fs = getFuelSubsidy(trip);
     const fuelSubsidy = fs ? gross * (fs.subsidy_percentage / 100) : 0;
-    const net = gross - tax - hidden - admin - insurance - other + fuelSubsidy;
-    return { gross, tax, afterTax, hidden, admin, insurance, other, fuelSubsidy, net };
+    const net = gross - tax - hidden - admin + fuelSubsidy;
+    return { gross, tax, afterTax, hidden, admin, fuelSubsidy, net };
   };
 
-  // Trips to display in the table (filtered by owner if selected)
   const displayedTrips = selectedOwner
     ? dateTrips.filter(t => t.plate_number === selectedOwner)
     : dateTrips;
 
-  const totals = displayedTrips.reduce((acc, trip) => {
-    const t = calculateTotals(trip);
+  const tripTotals = displayedTrips.reduce((acc, trip) => {
+    const t = calculateTripNet(trip);
     acc.gross += t.gross;
     acc.tax += t.tax;
     acc.afterTax += t.afterTax;
     acc.hidden += t.hidden;
     acc.admin += t.admin;
-    acc.insurance += t.insurance;
-    acc.other += t.other;
     acc.fuelSubsidy += t.fuelSubsidy;
     acc.net += t.net;
     return acc;
-  }, { gross: 0, tax: 0, afterTax: 0, hidden: 0, admin: 0, insurance: 0, other: 0, fuelSubsidy: 0, net: 0 });
+  }, { gross: 0, tax: 0, afterTax: 0, hidden: 0, admin: 0, fuelSubsidy: 0, net: 0 });
+
+  // Flat deductions for the selected date + owner filter
+  const applicableDeductions = (() => {
+    if (!selectedDate) return [];
+    const forDate = billingDeductions.filter(d => d.billing_received_date === selectedDate);
+    if (selectedOwner) return forDate.filter(d => d.plate_number === selectedOwner);
+    return forDate;
+  })();
+
+  const flatInsurance = applicableDeductions.reduce((s, d) => s + (d.insurance_charge || 0), 0);
+  const flatOther = applicableDeductions.reduce((s, d) => s + (d.other_charges || 0), 0);
+  const grandNetPayroll = tripTotals.net - flatInsurance - flatOther;
 
   const exportPDF = () => {
     if (!selectedDate) return;
@@ -140,36 +142,30 @@ export default function Payroll() {
     doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
     let y = 48;
-    doc.text('Plate #', 14, y);
-    doc.text('Owner', 35, y);
-    doc.text('Truck', 75, y);
-    doc.text('Route', 95, y);
-    doc.text('Gross', 130, y);
-    doc.text('Fuel Sub', 158, y);
-    doc.text('Net', 180, y);
+    doc.text('Plate #', 14, y); doc.text('Owner', 35, y); doc.text('Route', 75, y);
+    doc.text('Gross', 120, y); doc.text('Fuel Sub', 148, y); doc.text('Net', 176, y);
     doc.setFont(undefined, 'normal');
-    y += 2;
-    doc.line(14, y, 196, y);
-    y += 5;
+    y += 2; doc.line(14, y, 196, y); y += 5;
 
     displayedTrips.forEach(trip => {
       if (y > 270) { doc.addPage(); y = 20; }
-      const t = calculateTotals(trip);
+      const t = calculateTripNet(trip);
       doc.text(trip.plate_number, 14, y);
       doc.text((trip.owner_name || '').substring(0, 18), 35, y);
-      doc.text(trip.truck_type || '', 75, y);
-      doc.text(`${trip.delivery_code || ''}`, 95, y);
-      doc.text(`₱${t.gross.toFixed(2)}`, 130, y);
-      doc.text(t.fuelSubsidy > 0 ? `₱${t.fuelSubsidy.toFixed(2)}` : '-', 158, y);
-      doc.text(`₱${t.net.toFixed(2)}`, 180, y);
+      doc.text(`${trip.delivery_code || ''}`, 75, y);
+      doc.text(`₱${t.gross.toFixed(2)}`, 120, y);
+      doc.text(t.fuelSubsidy > 0 ? `₱${t.fuelSubsidy.toFixed(2)}` : '-', 148, y);
+      doc.text(`₱${t.net.toFixed(2)}`, 176, y);
       y += 6;
     });
 
-    y += 3;
-    doc.line(14, y, 196, y);
-    y += 5;
+    y += 3; doc.line(14, y, 196, y); y += 5;
     doc.setFont(undefined, 'bold');
-    doc.text(`TOTAL NET PAYROLL: ₱${totals.net.toFixed(2)}`, 14, y);
+    doc.text(`Subtotal Net (Trips): ₱${tripTotals.net.toFixed(2)}`, 14, y); y += 6;
+    if (flatInsurance > 0) { doc.setFont(undefined, 'normal'); doc.text(`Insurance Deduction: -₱${flatInsurance.toFixed(2)}`, 14, y); y += 6; }
+    if (flatOther > 0) { doc.setFont(undefined, 'normal'); doc.text(`Other Charges Deduction: -₱${flatOther.toFixed(2)}`, 14, y); y += 6; }
+    doc.setFont(undefined, 'bold');
+    doc.text(`GRAND TOTAL NET PAYROLL: ₱${grandNetPayroll.toFixed(2)}`, 14, y);
     doc.save(`Payroll_${selectedDate}_${ownerLabel.replace(/\s/g, '_')}.pdf`);
   };
 
@@ -180,7 +176,7 @@ export default function Payroll() {
     }
     setExporting(true);
     const tripData = displayedTrips.map(trip => {
-      const t = calculateTotals(trip);
+      const t = calculateTripNet(trip);
       return {
         plate_number: trip.plate_number,
         owner_name: trip.owner_name,
@@ -196,8 +192,6 @@ export default function Payroll() {
         tax_2_percent: t.tax,
         hidden_fee_4_percent: t.hidden,
         admin_fee_6_percent: t.admin,
-        insurance_charge: trip.insurance_charge,
-        other_charges: trip.other_charges,
         fuel_subsidy: t.fuelSubsidy,
         net_payroll: t.net,
       };
@@ -279,7 +273,7 @@ export default function Payroll() {
             )}
           </div>
 
-          {/* Main content area */}
+          {/* Main content */}
           <div>
             {!selectedDate ? (
               <div className="text-center py-24 text-muted-foreground">
@@ -302,32 +296,32 @@ export default function Payroll() {
                   </div>
                   <div className="bg-card border rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Gross - 2% Tax</p>
-                    <p className="text-xl font-bold mt-1 text-blue-700">₱{totals.afterTax.toFixed(2)}</p>
+                    <p className="text-xl font-bold mt-1 text-blue-700">₱{tripTotals.afterTax.toFixed(2)}</p>
                   </div>
                   <div className="bg-card border rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Fuel Subsidy</p>
-                    <p className="text-xl font-bold mt-1 text-green-700">₱{totals.fuelSubsidy.toFixed(2)}</p>
+                    <p className="text-xl font-bold mt-1 text-green-700">₱{tripTotals.fuelSubsidy.toFixed(2)}</p>
                   </div>
                   <div className="bg-card border rounded-lg p-3">
-                    <p className="text-xs text-muted-foreground">Net Payroll</p>
-                    <p className="text-xl font-bold mt-1 text-emerald-700">₱{totals.net.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Trip Subtotal Net</p>
+                    <p className="text-xl font-bold mt-1 text-slate-700">₱{tripTotals.net.toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Trips Table */}
-                <div className="bg-card border rounded-lg overflow-hidden">
+                <div className="bg-card border rounded-lg overflow-hidden mb-4">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-muted/50">
-                          {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Del. Code', 'Del. Date', 'Gross', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Sub', 'Net Payroll', ''].map(h => (
+                          {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Del. Code', 'Del. Date', 'Gross', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Fuel Sub', 'Net Payroll'].map(h => (
                             <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {displayedTrips.map(trip => {
-                          const t = calculateTotals(trip);
+                          const t = calculateTripNet(trip);
                           return (
                             <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                               <td className="px-3 py-3 font-mono font-semibold text-primary whitespace-nowrap">{trip.plate_number}</td>
@@ -346,27 +340,79 @@ export default function Payroll() {
                               <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{t.tax.toFixed(2)}</td>
                               <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{t.hidden.toFixed(2)}</td>
                               <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{t.admin.toFixed(2)}</td>
-                              <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap">-₱{t.insurance.toFixed(2)}</td>
-                              <td className="px-3 py-3 text-right whitespace-nowrap">-₱{t.other.toFixed(2)}</td>
-                              <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">+₱{t.fuelSubsidy.toFixed(2)}</td>
-                              <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{t.net.toFixed(2)}</td>
-                              <td className="px-3 py-3">
-                                <button onClick={() => setEditTrip(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                                  <FileText className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
+                              <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">{t.fuelSubsidy > 0 ? `+₱${t.fuelSubsidy.toFixed(2)}` : '—'}</td>
+                              <td className="px-3 py-3 text-right font-bold text-slate-700 whitespace-nowrap">₱{t.net.toFixed(2)}</td>
                             </tr>
                           );
                         })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t bg-muted/50">
-                          <td colSpan={14} className="px-3 py-3 text-sm font-semibold text-right">Grand Total Net Payroll</td>
-                          <td className="px-3 py-3 text-right font-bold text-emerald-700 text-base whitespace-nowrap">₱{totals.net.toFixed(2)}</td>
+                          <td colSpan={12} className="px-3 py-3 text-sm font-semibold text-right">Trip Subtotal Net</td>
+                          <td className="px-3 py-3 text-right font-bold text-slate-700 whitespace-nowrap">₱{tripTotals.net.toFixed(2)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Flat Deductions Section */}
+                <div className="bg-card border rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 bg-muted/40 border-b flex items-center gap-2">
+                    <PackageMinus className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Billing Deductions (Insurance &amp; Other Charges)</span>
+                    {applicableDeductions.length === 0 && (
+                      <span className="ml-2 text-xs text-muted-foreground">— None declared for this selection. Add them in the <strong>Deductions</strong> page.</span>
+                    )}
+                  </div>
+
+                  {applicableDeductions.length > 0 && (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          {['Plate #', 'Owner / Driver', 'Insurance (₱)', 'Other Charges (₱)', 'Notes'].map(h => (
+                            <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {applicableDeductions.map(d => (
+                          <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20">
+                            <td className="px-4 py-2.5 font-mono font-semibold text-primary">{d.plate_number}</td>
+                            <td className="px-4 py-2.5">{d.owner_name}</td>
+                            <td className="px-4 py-2.5 text-right text-blue-700 font-semibold">
+                              {(d.insurance_charge || 0) > 0 ? `-₱${(d.insurance_charge).toFixed(2)}` : '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-right text-orange-700 font-semibold">
+                              {(d.other_charges || 0) > 0 ? `-₱${(d.other_charges).toFixed(2)}` : '—'}
+                            </td>
+                            <td className="px-4 py-2.5 text-muted-foreground text-xs">{d.notes || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t bg-muted/40">
+                          <td colSpan={2} className="px-4 py-2.5 text-sm font-semibold text-right">Total Deductions</td>
+                          <td className="px-4 py-2.5 text-right font-bold text-blue-700">-₱{flatInsurance.toFixed(2)}</td>
+                          <td className="px-4 py-2.5 text-right font-bold text-orange-700">-₱{flatOther.toFixed(2)}</td>
                           <td></td>
                         </tr>
                       </tfoot>
                     </table>
+                  )}
+
+                  {/* Grand Total */}
+                  <div className="flex items-center justify-between px-4 py-4 bg-emerald-50 border-t">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                      <span className="font-bold text-emerald-800">Grand Total Net Payroll</span>
+                      <span className="text-xs text-emerald-600">
+                        (Trip Net ₱{tripTotals.net.toFixed(2)}
+                        {flatInsurance > 0 ? ` − Insurance ₱${flatInsurance.toFixed(2)}` : ''}
+                        {flatOther > 0 ? ` − Other ₱${flatOther.toFixed(2)}` : ''})
+                      </span>
+                    </div>
+                    <span className="text-2xl font-bold text-emerald-700">₱{grandNetPayroll.toFixed(2)}</span>
                   </div>
                 </div>
               </>
@@ -374,18 +420,6 @@ export default function Payroll() {
           </div>
         </div>
       )}
-
-      <TripEditDialog
-        open={!!editTrip}
-        onClose={() => setEditTrip(null)}
-        onSaved={async () => {
-          setEditTrip(null);
-          // Reload trips for the current date
-          if (selectedDate) await selectDate(selectedDate);
-        }}
-        trip={editTrip}
-        fuelSubsidies={fuelSubsidies}
-      />
     </div>
   );
 }
