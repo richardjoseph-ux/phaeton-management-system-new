@@ -308,6 +308,50 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             </div>
           </div>
 
+          {/* Sub-Accounts */}
+          <div>
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sub-Accounts</p>
+              <Button type="button" variant="outline" size="sm" onClick={addSubAccount}>
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Sub-Account
+              </Button>
+            </div>
+            {form.sub_accounts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No sub-accounts added</p>
+            ) : (
+              <div className="space-y-2">
+                {form.sub_accounts.map((sub, idx) => (
+                  <div key={idx} className="border rounded-lg p-3 bg-muted/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold">Sub-Account {idx + 1}</h4>
+                      <button onClick={() => removeSubAccount(idx)} className="text-red-400 hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Sub-Account Name</Label>
+                        <Input value={sub.sub_account_name} onChange={e => setSubAccount(idx, 'sub_account_name', e.target.value)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Sub-Account Code</Label>
+                        <Input value={sub.sub_account_code} onChange={e => setSubAccount(idx, 'sub_account_code', e.target.value.toUpperCase())} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Contact Person</Label>
+                        <Input value={sub.contact_person} onChange={e => setSubAccount(idx, 'contact_person', e.target.value)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Contact Number</Label>
+                        <Input value={sub.contact_number} onChange={e => setSubAccount(idx, 'contact_number', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Routes + Rates */}
           <div>
             {/* Toolbar */}
@@ -444,50 +488,6 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                 ? `Showing only routes with a rate for ${activeTruck}. Switch to "All Trucks" to see and edit all routes.`
                 : 'Rates in ₱. Leave blank if a truck type does not serve a route.'}
             </p>
-          </div>
-
-          {/* Sub-Accounts */}
-          <div>
-            <div className="flex items-center justify-between mb-3 gap-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sub-Accounts</p>
-              <Button type="button" variant="outline" size="sm" onClick={addSubAccount}>
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add Sub-Account
-              </Button>
-            </div>
-            {form.sub_accounts.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No sub-accounts added</p>
-            ) : (
-              <div className="space-y-2">
-                {form.sub_accounts.map((sub, idx) => (
-                  <div key={idx} className="border rounded-lg p-3 bg-muted/20">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-semibold">Sub-Account {idx + 1}</h4>
-                      <button onClick={() => removeSubAccount(idx)} className="text-red-400 hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label>Sub-Account Name</Label>
-                        <Input value={sub.sub_account_name} onChange={e => setSubAccount(idx, 'sub_account_name', e.target.value)} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Sub-Account Code</Label>
-                        <Input value={sub.sub_account_code} onChange={e => setSubAccount(idx, 'sub_account_code', e.target.value.toUpperCase())} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Contact Person</Label>
-                        <Input value={sub.contact_person} onChange={e => setSubAccount(idx, 'contact_person', e.target.value)} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Contact Number</Label>
-                        <Input value={sub.contact_number} onChange={e => setSubAccount(idx, 'contact_number', e.target.value)} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
         </div>
