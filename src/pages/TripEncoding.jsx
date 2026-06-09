@@ -16,7 +16,7 @@ export default function TripEncoding() {
   const [billingCycles, setBillingCycles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterDate, setFilterDate] = useState('');
+  const [sortOrder, setSortOrder] = useState('latest');
   const [filterBilling, setFilterBilling] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
@@ -54,10 +54,15 @@ export default function TripEncoding() {
       t.waybill_number?.toLowerCase().includes(search.toLowerCase()) ||
       t.trip_route_code?.toLowerCase().includes(search.toLowerCase()) ||
       t.billing_cycle_name?.toLowerCase().includes(search.toLowerCase());
-    const matchDate = !filterDate || t.delivery_date === filterDate;
     const matchBilling = !filterBilling || t.billing_cycle_name?.toLowerCase() === filterBilling.toLowerCase();
-    return matchSearch && matchDate && matchBilling;
-  }).sort((a, b) => (b.delivery_date || '').localeCompare(a.delivery_date || ''));
+    return matchSearch && matchBilling;
+  }).sort((a, b) => {
+    if (sortOrder === 'latest') {
+      return (b.delivery_date || '').localeCompare(a.delivery_date || '');
+    } else {
+      return (a.delivery_date || '').localeCompare(b.delivery_date || '');
+    }
+  });
 
   const handleEdit = (trip) => { setEditData(trip); setFormOpen(true); };
   const handleDuplicate = (trip) => { 
@@ -247,24 +252,26 @@ export default function TripEncoding() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input className="pl-9 w-64" placeholder="Search by plate, name, DR#..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <Input 
-          type="date" 
-          className="w-48" 
-          value={filterDate} 
-          onChange={e => setFilterDate(e.target.value)} 
-        />
+        <select 
+          className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          value={sortOrder}
+          onChange={e => setSortOrder(e.target.value)}
+        >
+          <option value="latest">Latest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
         <select 
           className="flex h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
           value={filterBilling}
           onChange={e => setFilterBilling(e.target.value)}
         >
           <option value="">All Billing Statements</option>
-          {billingCycles.map(bc => (
+          {billingCycles.filter(bc => !bc.is_archived).map(bc => (
             <option key={bc.id} value={bc.cycle_name}>{bc.cycle_name}</option>
           ))}
         </select>
-        {(filterDate || filterBilling) && (
-          <Button variant="outline" size="sm" onClick={() => { setFilterDate(''); setFilterBilling(''); }}>
+        {filterBilling && (
+          <Button variant="outline" size="sm" onClick={() => setFilterBilling('')}>
             Clear Filters
           </Button>
         )}
