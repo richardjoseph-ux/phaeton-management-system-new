@@ -16,6 +16,8 @@ export default function TripEncoding() {
   const [billingCycles, setBillingCycles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterDate, setFilterDate] = useState('');
+  const [filterBilling, setFilterBilling] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [syncing, setSyncing] = useState(false);
@@ -38,21 +40,24 @@ export default function TripEncoding() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = [...trips].filter(t =>
-    !search ||
-    t.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
-    t.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
-    t.truck_type?.toLowerCase().includes(search.toLowerCase()) ||
-    t.client_name?.toLowerCase().includes(search.toLowerCase()) ||
-    t.pickup_location?.toLowerCase().includes(search.toLowerCase()) ||
-    t.delivery_location?.toLowerCase().includes(search.toLowerCase()) ||
-    t.delivery_code?.toLowerCase().includes(search.toLowerCase()) ||
-    t.particular?.toLowerCase().includes(search.toLowerCase()) ||
-    t.dr_number?.toLowerCase().includes(search.toLowerCase()) ||
-    t.waybill_number?.toLowerCase().includes(search.toLowerCase()) ||
-    t.trip_route_code?.toLowerCase().includes(search.toLowerCase()) ||
-    t.billing_cycle_name?.toLowerCase().includes(search.toLowerCase())
-  ).sort((a, b) => (b.delivery_date || '').localeCompare(a.delivery_date || ''));
+  const filtered = [...trips].filter(t => {
+    const matchSearch = !search ||
+      t.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
+      t.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
+      t.truck_type?.toLowerCase().includes(search.toLowerCase()) ||
+      t.client_name?.toLowerCase().includes(search.toLowerCase()) ||
+      t.pickup_location?.toLowerCase().includes(search.toLowerCase()) ||
+      t.delivery_location?.toLowerCase().includes(search.toLowerCase()) ||
+      t.delivery_code?.toLowerCase().includes(search.toLowerCase()) ||
+      t.particular?.toLowerCase().includes(search.toLowerCase()) ||
+      t.dr_number?.toLowerCase().includes(search.toLowerCase()) ||
+      t.waybill_number?.toLowerCase().includes(search.toLowerCase()) ||
+      t.trip_route_code?.toLowerCase().includes(search.toLowerCase()) ||
+      t.billing_cycle_name?.toLowerCase().includes(search.toLowerCase());
+    const matchDate = !filterDate || t.delivery_date === filterDate;
+    const matchBilling = !filterBilling || t.billing_cycle_name?.toLowerCase() === filterBilling.toLowerCase();
+    return matchSearch && matchDate && matchBilling;
+  }).sort((a, b) => (b.delivery_date || '').localeCompare(a.delivery_date || ''));
 
   const handleEdit = (trip) => { setEditData(trip); setFormOpen(true); };
   const handleDuplicate = (trip) => { 
@@ -236,10 +241,33 @@ export default function TripEncoding() {
         }
       />
 
-      {/* Search */}
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Search by plate, name, DR#..." value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Filters */}
+      <div className="flex gap-3 mb-4 flex-wrap">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input className="pl-9 w-64" placeholder="Search by plate, name, DR#..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <Input 
+          type="date" 
+          className="w-48" 
+          value={filterDate} 
+          onChange={e => setFilterDate(e.target.value)} 
+        />
+        <select 
+          className="flex h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          value={filterBilling}
+          onChange={e => setFilterBilling(e.target.value)}
+        >
+          <option value="">All Billing Statements</option>
+          {billingCycles.map(bc => (
+            <option key={bc.id} value={bc.cycle_name}>{bc.cycle_name}</option>
+          ))}
+        </select>
+        {(filterDate || filterBilling) && (
+          <Button variant="outline" size="sm" onClick={() => { setFilterDate(''); setFilterBilling(''); }}>
+            Clear Filters
+          </Button>
+        )}
       </div>
 
       {/* Table */}
