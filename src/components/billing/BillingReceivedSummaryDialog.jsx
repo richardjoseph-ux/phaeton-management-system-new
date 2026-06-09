@@ -158,6 +158,34 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
               </table>
             </div>
 
+            {/* Reimbursements Section */}
+            {reimbursements.length > 0 && (
+              <div className="border rounded-lg overflow-x-auto mb-4 bg-green-50">
+                <div className="px-4 py-3 border-b bg-green-100">
+                  <h3 className="font-semibold text-sm text-green-900">Additional Reimbursements</h3>
+                </div>
+                <table className="w-full text-sm">
+                  <thead className="bg-green-100">
+                    <tr className="border-b">
+                      {['Plate #', 'Owner / Driver', 'Type', 'Amount (₱)'].map(h => (
+                        <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-green-900 uppercase whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reimbursements.map(r => (
+                      <tr key={r.id} className="border-b last:border-0 hover:bg-green-100">
+                        <td className="px-4 py-3 font-mono font-semibold text-green-700 whitespace-nowrap">{r.plate_number}</td>
+                        <td className="px-4 py-3">{r.owner_name}</td>
+                        <td className="px-4 py-3 capitalize text-xs">{r.reimbursement_type}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-green-700 whitespace-nowrap">+₱{(r.reimbursement_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
             {/* Summary Cards */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
