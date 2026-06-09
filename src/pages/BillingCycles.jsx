@@ -27,7 +27,7 @@ export default function BillingCycles() {
   const [fuelSubsidies, setFuelSubsidies] = useState([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryDate, setSummaryDate] = useState('');
-  const [summaryCycleIds, setSummaryCycleIds] = useState([]);
+  const [summaryCycles, setSummaryCycles] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -168,7 +168,12 @@ export default function BillingCycles() {
 
   const openSummary = (group) => {
     setSummaryDate(group.date);
-    setSummaryCycleIds(group.cycles.map(c => c.id));
+    // Enrich cycles with client_name for display in dialog header
+    const enriched = group.cycles.map(c => ({
+      ...c,
+      client_name: getClientName(c.client_account_id),
+    }));
+    setSummaryCycles(enriched);
     setSummaryOpen(true);
   };
 
@@ -419,7 +424,7 @@ export default function BillingCycles() {
         open={summaryOpen}
         onClose={() => setSummaryOpen(false)}
         billingDate={summaryDate}
-        cycleIds={summaryCycleIds}
+        cycles={summaryCycles}
         fuelSubsidies={fuelSubsidies}
       />
 

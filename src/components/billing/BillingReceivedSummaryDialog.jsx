@@ -4,15 +4,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { ClipboardList } from 'lucide-react';
 
-export default function BillingReceivedSummaryDialog({ open, onClose, billingDate, cycleIds, fuelSubsidies }) {
+export default function BillingReceivedSummaryDialog({ open, onClose, billingDate, cycles, fuelSubsidies }) {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const cycleIds = cycles?.map(c => c.id) || [];
+
   useEffect(() => {
-    if (open && cycleIds?.length > 0) {
+    if (open && cycleIds.length > 0) {
       loadTrips();
     }
-  }, [open, cycleIds]);
+  }, [open, cycleIds.join(',')]);
 
   const loadTrips = async () => {
     setLoading(true);
@@ -42,11 +44,42 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     const admin = afterTax * 0.06;
     const insurance = trip.insurance_charge || 0;
     const other = trip.other_charges || 0;
-    const fuelSubsidy = getFuelSubsidy(trip);
-    const fuelSubsidyAmount = fuelSubsidy ? gross * (fuelSubsidy.subsidy_percentage / 100) : 0;
+    const fuelSubsidyAmount = (() => {
+      const s = getFuelSubsidy(trip);
+      return s ? gross * (s.subsidy_percentage / 100) : 0;
+    })();
     const net = gross - tax - hidden - admin - insurance - other + fuelSubsidyAmount;
     return { gross, tax, afterTax, hidden, admin, insurance, other, fuelSubsidy: fuelSubsidyAmount, net };
   };
+
+  // Group trips by plate_number and aggregate totals
+  const plateGroups = (() => {
+    const groups = {};
+    trips.forEach(trip => {
+      const key = trip.plate_number;
+      if (!groups[key]) {
+        groups[key] = {
+          plate_number: trip.plate_number,
+          owner_name: trip.owner_name,
+          truck_type: trip.truck_type,
+          client_name: trip.client_name,
+          gross: 0, tax: 0, hidden: 0, admin: 0, insurance: 0, other: 0, fuelSubsidy: 0, net: 0,
+          tripCount: 0,
+        };
+      }
+      const t = calculateTotals(trip);
+      groups[key].gross += t.gross;
+      groups[key].tax += t.tax;
+      groups[key].hidden += t.hidden;
+      groups[key].admin += t.admin;
+      groups[key].insurance += t.insurance;
+      groups[key].other += t.other;
+      groups[key].fuelSubsidy += t.fuelSubsidy;
+      groups[key].net += t.net;
+      groups[key].tripCount += 1;
+    });
+    return Object.values(groups).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
+  })();
 
   const grandTotals = trips.reduce((acc, trip) => {
     const t = calculateTotals(trip);
@@ -56,13 +89,21 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     return acc;
   }, { afterTax: 0, fuelSubsidy: 0, net: 0 });
 
+  // Build header subtitle: statement names + unique client names
+  const statementNames = cycles?.map(c => c.cycle_name).join(', ') || '';
+  const clientNames = [...new Set(cycles?.map(c => c.client_name).filter(Boolean) || [])].join(', ');
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[98vw] max-h-[95vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            Billing Received Summary — {billingDate}
-          </DialogTitle>
+          <DialogTitle>Billing Received Summary — {billingDate}</DialogTitle>
+          {(statementNames || clientNames) && (
+            <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
+              {statementNames && <div><span className="font-medium">Statements:</span> {statementNames}</div>}
+              {clientNames && <div><span className="font-medium">Client:</span> {clientNames}</div>}
+            </div>
+          )}
         </DialogHeader>
 
         {loading ? (
@@ -94,48 +135,40 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
               </div>
             </div>
 
-            {/* Detailed Table */}
+            {/* Grouped by Plate # Table */}
             <div className="border rounded-lg overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr className="border-b">
-                    {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Delivery Code', 'Delivery Date', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Subsidy', 'Net Payroll'].map(h => (
+                    {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Trips', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Subsidy', 'Net Payroll'].map(h => (
                       <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {trips.map(trip => {
-                    const t = calculateTotals(trip);
-                    return (
-                      <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-3 py-3 font-mono font-semibold text-primary whitespace-nowrap">{trip.plate_number}</td>
-                        <td className="px-3 py-3 whitespace-nowrap">{trip.owner_name}</td>
-                        <td className="px-3 py-3">
-                          <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{trip.truck_type}</span>
-                        </td>
-                        <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">{trip.client_name}</td>
-                        <td className="px-3 py-3 text-xs text-muted-foreground">
-                          <div>{trip.pickup_location}</div>
-                          <div className="text-muted-foreground/60">→ {trip.delivery_location}</div>
-                        </td>
-                        <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{trip.delivery_code || '—'}</td>
-                        <td className="px-3 py-3 text-sm whitespace-nowrap">{trip.delivery_date}</td>
-                        <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{t.gross.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{t.tax.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{t.hidden.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{t.admin.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap">-₱{t.insurance.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right whitespace-nowrap">-₱{t.other.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">+₱{t.fuelSubsidy.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{t.net.toFixed(2)}</td>
-                      </tr>
-                    );
-                  })}
+                  {plateGroups.map(row => (
+                    <tr key={row.plate_number} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="px-3 py-3 font-mono font-semibold text-primary whitespace-nowrap">{row.plate_number}</td>
+                      <td className="px-3 py-3 whitespace-nowrap">{row.owner_name}</td>
+                      <td className="px-3 py-3">
+                        <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{row.truck_type}</span>
+                      </td>
+                      <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">{row.client_name}</td>
+                      <td className="px-3 py-3 text-center text-xs text-muted-foreground">{row.tripCount}</td>
+                      <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{row.gross.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{row.tax.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{row.hidden.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{row.admin.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap">-₱{row.insurance.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right whitespace-nowrap">-₱{row.other.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">+₱{row.fuelSubsidy.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{row.net.toFixed(2)}</td>
+                    </tr>
+                  ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t bg-muted/50">
-                    <td colSpan={14} className="px-3 py-3 text-sm font-semibold text-right">Grand Total Net Payroll</td>
+                    <td colSpan={12} className="px-3 py-3 text-sm font-semibold text-right">Grand Total Net Payroll</td>
                     <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{grandTotals.net.toFixed(2)}</td>
                   </tr>
                 </tfoot>
