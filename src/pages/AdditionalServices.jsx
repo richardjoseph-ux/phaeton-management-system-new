@@ -227,105 +227,6 @@ export default function AdditionalServices() {
         <PageHeader
           title="Additional Services"
           subtitle="Manage fuel subsidies and other additional services"
-          actions={
-            <Dialog open={showForm} onOpenChange={setShowForm}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Add Fuel Subsidy
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Fuel className="w-5 h-5" />
-                    Add Fuel Subsidy
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="client">Client Account</Label>
-                    <Select value={formData.client_account_id} onValueChange={handleClientChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map(client => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.client_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="start_date">Start Date</Label>
-                    <Input
-                      id="start_date"
-                      type="date"
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="end_date">End Date</Label>
-                    <Input
-                      id="end_date"
-                      type="date"
-                      value={formData.end_date}
-                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="subsidy_percentage">Fuel Subsidy Percentage (%)</Label>
-                    <Input
-                      id="subsidy_percentage"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      placeholder="e.g., 5"
-                      value={formData.subsidy_percentage}
-                      onChange={(e) => setFormData({ ...formData, subsidy_percentage: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="notes">Notes (Optional)</Label>
-                    <Input
-                      id="notes"
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      placeholder="Additional notes"
-                    />
-                  </div>
-
-                  {formData.subsidy_percentage && formData.client_account_id && (
-                    <div className="bg-muted p-3 rounded-lg">
-                      <p className="text-sm text-muted-foreground">
-                        This will calculate {formData.subsidy_percentage}% of the total gross rate for all trips in the selected period.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={createSubsidyMutation.isPending}>
-                      {createSubsidyMutation.isPending ? 'Calculating...' : 'Create Subsidy'}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          }
         />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
@@ -341,6 +242,68 @@ export default function AdditionalServices() {
           </TabsList>
 
           <TabsContent value="fuel-subsidies" className="mt-4">
+            <div className="flex justify-end mb-3">
+              <Dialog open={showForm} onOpenChange={setShowForm}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Fuel Subsidy
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Fuel className="w-5 h-5" />
+                      Add Fuel Subsidy
+                    </DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <Label htmlFor="client">Client Account</Label>
+                      <Select value={formData.client_account_id} onValueChange={handleClientChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.map(client => (
+                            <SelectItem key={client.id} value={client.id}>
+                              {client.client_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="start_date">Start Date</Label>
+                      <Input id="start_date" type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="end_date">End Date</Label>
+                      <Input id="end_date" type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="subsidy_percentage">Fuel Subsidy Percentage (%)</Label>
+                      <Input id="subsidy_percentage" type="number" step="0.01" min="0" max="100" placeholder="e.g., 5" value={formData.subsidy_percentage} onChange={(e) => setFormData({ ...formData, subsidy_percentage: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="notes">Notes (Optional)</Label>
+                      <Input id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Additional notes" />
+                    </div>
+                    {formData.subsidy_percentage && formData.client_account_id && (
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="text-sm text-muted-foreground">This will calculate {formData.subsidy_percentage}% of the total gross rate for all trips in the selected period.</p>
+                      </div>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+                      <Button type="submit" disabled={createSubsidyMutation.isPending}>
+                        {createSubsidyMutation.isPending ? 'Calculating...' : 'Create Subsidy'}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="bg-card rounded-lg shadow-sm border">
               <div className="overflow-x-auto">
                 <table className="w-full">
