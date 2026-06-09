@@ -226,15 +226,23 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
         return;
       }
     }
-    const client = clients.find(c => c.id === form.client_account_id);
+
+    // Explicit fallback context maps form primitives to prevent 0 on asynchronous batch updates
+    const currentClientId = form.client_account_id || editData?.client_account_id;
+    const currentPickup = form.pickup_location || editData?.pickup_location;
+    const currentDelivery = form.delivery_location || editData?.delivery_location;
+    const currentCode = form.delivery_code || editData?.delivery_code;
+    const currentTruckType = form.truck_type || editData?.truck_type;
+
+    const client = clients.find(c => c.id === currentClientId);
     const matchedRoute = (client?.routes || []).find(r =>
-      r.pickup_location === form.pickup_location &&
-      r.delivery_location === form.delivery_location &&
-      r.delivery_code === form.delivery_code
+      r.pickup_location === currentPickup &&
+      r.delivery_location === currentDelivery &&
+      r.delivery_code === currentCode
     );
     
-    // Resolve matching rate using route sub-schema
-    const grossRate = getDirectRouteRate(matchedRoute, form.truck_type);
+    // Resolve matching rate using route sub-schema strings safely
+    const grossRate = getDirectRouteRate(matchedRoute, currentTruckType);
     
     const taxDeduction = grossRate * 0.02;
     const hiddenFee = grossRate * 0.04;
