@@ -9,8 +9,9 @@ import PageHeader from '@/components/ui/PageHeader';
 
 export default function Deductions() {
   const [billingCycles, setBillingCycles] = useState([]);
-  const [subcontractors, setSubcontractors] = useState([]);
   const [deductions, setDeductions] = useState([]);
+  const [dateOwners, setDateOwners] = useState([]); // owners with trips for selected date
+  const [loadingOwners, setLoadingOwners] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [selectedDate, setSelectedDate] = useState('');
@@ -26,15 +27,34 @@ export default function Deductions() {
 
   const load = async () => {
     setLoading(true);
-    const [b, s, d] = await Promise.all([
+    const [b, d] = await Promise.all([
       base44.entities.BillingCycle.list('-billing_received_date', 200),
-      base44.entities.Subcontractor.filter({ status: 'Active' }, 'plate_number', 500),
       base44.entities.BillingDeduction.list('-billing_received_date', 500),
     ]);
     setBillingCycles(b);
-    setSubcontractors(s);
     setDeductions(d);
     setLoading(false);
+  };
+
+  const loadOwnersForDate = async (date) => {
+    setLoadingOwners(true);
+    setDateOwners([]);
+    // Find billing cycles for this date
+    const cycles = billingCycles.filter(c => c.billing_received_date === date);
+    if (cycles.length === 0) { setLoadingOwners(false); return; }
+    // Fetch all trips for those cycles
+    const allTrips = await Promise.all(
+      cycles.map(c => base44.entities.TripRecord.filter({ billing_cycle_id: c.id }, 'plate_number', 500))
+    );
+    // Deduplicate owners
+    const seen = {};
+    allTrips.flat().forEach(t => {
+      if (t.plate_number && !seen[t.plate_number]) {
+        seen[t.plate_number] = { plate_number: t.plate_number, owner_name: t.owner_name };
+      }
+    });
+    setDateOwners(Object.values(seen).sort((a, b) => a.plate_number.localeCompare(b.plate_number)));
+    setLoadingOwners(false);
   };
 
   useEffect(() => { load(); }, []);
@@ -61,8 +81,8 @@ export default function Deductions() {
     .map(d => d.plate_number);
 
   const handleOwnerSelect = (plateNumber) => {
-    const sub = subcontractors.find(s => s.plate_number === plateNumber);
-    setForm(f => ({ ...f, plate_number: plateNumber, owner_name: sub?.owner_name || '' }));
+    const owner = dateOwners.find(o => o.plate_number === plateNumber);
+    setForm(f => ({ ...f, plate_number: plateNumber, owner_name: owner?.owner_name || '' }));
   };
 
   const handleEdit = (deduction) => {
@@ -125,7 +145,7 @@ export default function Deductions() {
           {/* Date Selector */}
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Received Date</p>
-            <Select value={selectedDate} onValueChange={v => { setSelectedDate(v); handleCancel(); }}>
+            <Select value={selectedDate} onValueChange={v => { setSelectedDate(v); handleCancel(); loadOwnersForDate(v); }}>
               <SelectTrigger className="w-56">
                 <SelectValue placeholder="Select date..." />
               </SelectTrigger>
@@ -151,17 +171,17 @@ export default function Deductions() {
                     <Select
                       value={form.plate_number}
                       onValueChange={handleOwnerSelect}
-                      disabled={!!editingId}
+                      disabled={!!editingId || loadingOwners}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select owner..." />
+                        <SelectValue placeholder={loadingOwners ? 'Loading...' : 'Select owner...'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {subcontractors
-                          .filter(s => editingId || !assignedPlates.includes(s.plate_number))
-                          .map(s => (
-                            <SelectItem key={s.plate_number} value={s.plate_number}>
-                              {s.plate_number} — {s.owner_name}
+                        {dateOwners
+                          .filter(o => editingId || !assignedPlates.includes(o.plate_number))
+                          .map(o => (
+                            <SelectItem key={o.plate_number} value={o.plate_number}>
+                              {o.plate_number} — {o.owner_name}
                             </SelectItem>
                           ))}
                       </SelectContent>
