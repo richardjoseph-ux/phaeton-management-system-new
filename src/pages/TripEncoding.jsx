@@ -95,35 +95,47 @@ export default function TripEncoding() {
     setSyncingData(true);
     try {
       const tripsToUpdate = await base44.entities.TripRecord.list();
+      const allClients = await base44.entities.ClientAccount.list('client_name', 100);
       let updated = 0;
       for (const trip of tripsToUpdate) {
-        if (!trip.client_account_id || !trip.gross_rate) {
-          const client = clients.find(c => c.client_name === trip.client_name);
-          if (client) {
-            const route = client.routes?.find(r => 
-              r.pickup_location === trip.pickup_location && 
-              r.delivery_location === trip.delivery_location
-            );
-            const rate = route?.rates?.[trip.truck_type] || 0;
-            const gross = rate || trip.gross_rate || 0;
-            const tax = gross * 0.02;
-            const afterTax = gross - tax;
-            const hidden = afterTax * 0.04;
-            const admin = afterTax * 0.06;
+        const client = allClients.find(c => c.id === trip.client_account_id || c.client_name === trip.client_name);
+        if (client) {
+          const route = client.routes?.find(r => 
+            r.pickup_location === trip.pickup_location && 
+            r.delivery_location === trip.delivery_location
+          );
+          const newRate = route?.rates?.[trip.truck_type] || 0;
+          const newGross = newRate || trip.gross_rate || 0;
+          const tax = newGross * 0.02;
+          const afterTax = newGross - tax;
+          const hidden = afterTax * 0.04;
+          const admin = afterTax * 0.06;
+          const newNet = newGross - tax - hidden - admin - (trip.insurance_charge || 0) - (trip.other_charges || 0);
+          const hasChanges = 
+            trip.gross_rate !== newGross ||
+            trip.tax_deduction !== tax ||
+            trip.hidden_fee !== hidden ||
+            trip.admin_fee !== admin ||
+            trip.net_payroll !== newNet ||
+            trip.trip_route_code !== route?.trip_route_code ||
+            trip.delivery_code !== route?.delivery_code;
+          if (hasChanges) {
             await base44.entities.TripRecord.update(trip.id, {
               client_account_id: client.id,
               client_name: client.client_name,
-              gross_rate: gross,
+              gross_rate: newGross,
               tax_deduction: tax,
               hidden_fee: hidden,
               admin_fee: admin,
-              net_payroll: gross - tax - hidden - admin - (trip.insurance_charge || 0) - (trip.other_charges || 0)
+              net_payroll: newNet,
+              trip_route_code: route?.trip_route_code || trip.trip_route_code,
+              delivery_code: route?.delivery_code || trip.delivery_code
             });
             updated++;
           }
         }
       }
-      alert(`Synced ${updated} trip records with client and rate data`);
+      alert(`Synced ${updated} trip records with updated route and rate data`);
       await load();
     } catch (error) {
       alert('Error syncing trip data: ' + error.message);
