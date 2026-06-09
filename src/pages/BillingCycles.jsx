@@ -285,11 +285,13 @@ export default function BillingCycles() {
     return totalGross - tax - totalOtherCharges;
   };
 
-  // Filtered cycles for statements tabs
-  const filteredCycles = cycles.filter(cycle => {
-    if (stmtTab === 'archived') return !!cycle.is_archived;
-    return !cycle.is_archived;
-  });
+  // Filtered cycles for statements tabs - sorted latest to oldest
+  const filteredCycles = cycles
+    .filter(cycle => {
+      if (stmtTab === 'archived') return !!cycle.is_archived;
+      return !cycle.is_archived;
+    })
+    .sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
   // Summary groups split by archived status - sorted by statement count (smallest to largest)
   const activeSummaryGroups = billingReceivedGroups
