@@ -138,14 +138,14 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
                       </td>
                       <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">{row.client_name}</td>
                       <td className="px-3 py-3 text-center text-xs text-muted-foreground">{row.tripCount}</td>
-                      <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{row.gross.toFixed(2)}</td>
-                      <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{row.tax.toFixed(2)}</td>
-                      <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{row.hidden.toFixed(2)}</td>
-                      <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{row.admin.toFixed(2)}</td>
-                      <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap">-₱{row.insurance.toFixed(2)}</td>
-                      <td className="px-3 py-3 text-right whitespace-nowrap">-₱{row.other.toFixed(2)}</td>
-                      <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">+₱{row.fuelSubsidy.toFixed(2)}</td>
-                      <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{row.net.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{row.gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{row.tax.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{row.hidden.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{row.admin.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap">-₱{row.insurance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-3 py-3 text-right whitespace-nowrap">-₱{row.other.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">+₱{row.fuelSubsidy.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{row.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -156,15 +156,15 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
                 <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Grand Total</p>
-                <p className="text-2xl font-bold mt-2 text-blue-700">₱{plateGroups.reduce((sum, r) => sum + r.gross, 0).toFixed(2)}</p>
+                <p className="text-2xl font-bold mt-2 text-blue-700">₱{plateGroups.reduce((sum, r) => sum + r.gross, 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
                 <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Cheque Amount</p>
-                <p className="text-2xl font-bold mt-2 text-amber-700">₱{grandTotals.afterTax.toFixed(2)}</p>
+                <p className="text-2xl font-bold mt-2 text-amber-700">₱{grandTotals.afterTax.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5">
                 <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Subcon Payout</p>
-                <p className="text-2xl font-bold mt-2 text-emerald-700">₱{grandTotals.net.toFixed(2)}</p>
+                <p className="text-2xl font-bold mt-2 text-emerald-700">₱{grandTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
           </>
