@@ -261,6 +261,7 @@ export default function BillingCycles() {
   // Summary groups split by archived status - sorted by statement count (smallest to largest)
   const activeSummaryGroups = billingReceivedGroups
     .filter(g => !getSummaryRecord(g.date)?.is_archived)
+    .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
     .sort((a, b) => a.cycles.length - b.cycles.length);
   const archivedSummaryGroups = (() => {
     // Also include dates that have a summary record marked archived, even if cycles are archived
@@ -273,7 +274,7 @@ export default function BillingCycles() {
       }
     });
     return Object.entries(groups)
-      .map(([date, items]) => ({ date, cycles: items }))
+      .map(([date, items]) => ({ date, cycles: items.sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
       .sort((a, b) => a.cycles.length - b.cycles.length);
   })();
 
