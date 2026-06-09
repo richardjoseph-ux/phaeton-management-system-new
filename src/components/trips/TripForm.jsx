@@ -33,15 +33,17 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
   const selectedClient = clients.find(c => c.id === form.client_account_id);
   const pickupOptions = [...new Set((selectedClient?.routes || []).map(r => r.pickup_location).filter(Boolean))];
   
-  // Filter routes by client and pickup location
-  const routesForPickup = (selectedClient?.routes || []).filter(r => r.pickup_location === form.pickup_location);
+  // Filter routes by client and pickup location safely matching space/casing anomalies
+  const routesForPickup = (selectedClient?.routes || []).filter(r => 
+    r.pickup_location?.trim().toUpperCase() === form.pickup_location?.trim().toUpperCase()
+  );
   
   // Get unique delivery locations for current client + pickup
   const deliveryLocations = [...new Set(routesForPickup.map(r => r.delivery_location).filter(Boolean))];
   
-  // Get delivery codes for selected delivery location
+  // Get delivery codes for selected delivery location safely
   const codesForDelivery = routesForPickup
-    .filter(r => r.delivery_location === form.delivery_location)
+    .filter(r => r.delivery_location?.trim().toUpperCase() === form.delivery_location?.trim().toUpperCase())
     .map(r => ({ code: r.delivery_code, trip_route_code: r.trip_route_code || '' }));
 
   // Get unique plate numbers
@@ -227,7 +229,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       }
     }
 
-    // Explicit fallback context maps form primitives to prevent 0 on asynchronous batch updates
+    // Context map to handle state asynchronous primitives
     const currentClientId = form.client_account_id || editData?.client_account_id;
     const currentPickup = form.pickup_location || editData?.pickup_location;
     const currentDelivery = form.delivery_location || editData?.delivery_location;
@@ -235,13 +237,14 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
     const currentTruckType = form.truck_type || editData?.truck_type;
 
     const client = clients.find(c => c.id === currentClientId);
+    
+    // Enhanced clean validation lookup block to capture tricky records
     const matchedRoute = (client?.routes || []).find(r =>
-      r.pickup_location === currentPickup &&
-      r.delivery_location === currentDelivery &&
-      r.delivery_code === currentCode
+      r.pickup_location?.trim().toUpperCase() === currentPickup?.trim().toUpperCase() &&
+      r.delivery_location?.trim().toUpperCase() === currentDelivery?.trim().toUpperCase() &&
+      r.delivery_code?.trim().toUpperCase() === currentCode?.trim().toUpperCase()
     );
     
-    // Resolve matching rate using route sub-schema strings safely
     const grossRate = getDirectRouteRate(matchedRoute, currentTruckType);
     
     const taxDeduction = grossRate * 0.02;
@@ -555,9 +558,9 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
           {form.truck_type && form.client_account_id && form.pickup_location && form.delivery_location && form.delivery_code && (() => {
             const client = clients.find(c => c.id === form.client_account_id);
             const matchedRoute = (client?.routes || []).find(r =>
-              r.pickup_location === form.pickup_location &&
-              r.delivery_location === form.delivery_location &&
-              r.delivery_code === form.delivery_code
+              r.pickup_location?.trim().toUpperCase() === form.pickup_location?.trim().toUpperCase() &&
+              r.delivery_location?.trim().toUpperCase() === form.delivery_location?.trim().toUpperCase() &&
+              r.delivery_code?.trim().toUpperCase() === form.delivery_code?.trim().toUpperCase()
             );
             
             const gross = getDirectRouteRate(matchedRoute, form.truck_type);
