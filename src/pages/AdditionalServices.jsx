@@ -172,49 +172,58 @@ export default function AdditionalServices() {
       alert('Please enter and save a Google Sheet URL');
       return;
     }
-    
+
     setExporting(true);
     try {
-      // Extract sheet ID from URL
-      const match = urlToUse.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-      if (!match) {
-        alert('Invalid Google Sheet URL');
-        setExporting(false);
-        return;
+      const [allTrips, allSubsidies] = await Promise.all([
+        base44.entities.TripRecord.list('-delivery_date', 2000),
+        base44.entities.FuelSubsidy.list(),
+      ]);
+
+      const getFuelSubsidy = (trip) => {
+        const tripDate = new Date(trip.delivery_date);
+        return allSubsidies.find(s =>
+          s.client_account_id === trip.client_account_id &&
+          tripDate >= new Date(s.start_date) &&
+          tripDate <= new Date(s.end_date)
+        );
+      };
+
+      const tripData = allTrips.map(trip => {
+        const gross = trip.gross_rate || 0;
+        const tax = gross * 0.02;
+        const afterTax = gross - tax;
+        const hidden = afterTax * 0.04;
+        const admin = afterTax * 0.06;
+        const fs = getFuelSubsidy(trip);
+        const fuelSubsidy = fs ? gross * (fs.subsidy_percentage / 100) : 0;
+        const net = gross - tax - hidden - admin + fuelSubsidy;
+        return {
+          plate_number: trip.plate_number,
+          owner_name: trip.owner_name,
+          truck_type: trip.truck_type,
+          client_name: trip.client_name,
+          delivery_date: trip.delivery_date,
+          dr_number: trip.dr_number,
+          pickup_location: trip.pickup_location,
+          delivery_location: trip.delivery_location,
+          delivery_code: trip.delivery_code,
+          billing_cycle_name: trip.billing_cycle_name,
+          gross_rate: gross,
+          tax_2_percent: tax,
+          hidden_fee_4_percent: hidden,
+          admin_fee_6_percent: admin,
+          fuel_subsidy: fuelSubsidy,
+          net_payroll: net,
+        };
+      });
+
+      const response = await base44.functions.invoke('exportToGoogleSheet', { sheetUrl: urlToUse, trips: tripData });
+      if (response.data.success) {
+        alert(`Successfully exported ${tripData.length} trips to the TRIP tab!`);
+      } else {
+        alert('Export failed: ' + response.data.message);
       }
-      
-      const sheetId = match[1];
-      
-      // Fetch all fuel subsidies
-      const allSubsidies = await base44.entities.FuelSubsidy.list();
-      
-      // Prepare data for Google Sheets
-      const values = [
-        ['Client Name', 'Start Date', 'End Date', 'Subsidy %', 'Total Gross Rate', 'Subsidy Amount', 'Status', 'Notes'],
-        ...allSubsidies.map(s => [
-          s.client_name,
-          s.start_date,
-          s.end_date,
-          s.subsidy_percentage,
-          s.total_gross_rate,
-          s.subsidy_amount,
-          s.status,
-          s.notes || ''
-        ])
-      ];
-      
-      // Note: This requires Google Sheets API integration
-      // For now, we'll create a CSV download as fallback
-      const csvContent = values.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Fuel_Subsidies_${new Date().toISOString().split('T')[0]}.csv`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      
-      alert('Data exported as CSV. For direct Google Sheets integration, please connect Google Sheets connector.');
     } catch (error) {
       alert('Error exporting: ' + error.message);
     }
@@ -418,7 +427,7 @@ export default function AdditionalServices() {
                     className="gap-2 w-full"
                   >
                     <Sheet className="w-4 h-4" />
-                    {exporting ? 'Exporting...' : 'Export Data to CSV'}
+                    {exporting ? 'Exporting...' : 'Export All Trips to Google Sheet (TRIP tab)'}
                   </Button>
                 </div>
               </div>
@@ -426,8 +435,7 @@ export default function AdditionalServices() {
               <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm font-medium mb-2">Note:</p>
                 <p className="text-sm text-muted-foreground">
-                  For direct Google Sheets integration (automatic sync), please connect the Google Sheets connector in your account settings. 
-                  Currently, this exports data as a CSV file that you can manually import into your Google Sheet.
+                  This will export all trip records directly to the <strong>TRIP</strong> tab in your registered Google Sheet. Make sure the sheet has a tab named exactly <strong>TRIP</strong> and the connected Google account has edit access.
                 </p>
               </div>
             </div>
