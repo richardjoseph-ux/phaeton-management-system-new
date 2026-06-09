@@ -161,19 +161,19 @@ export default function Payroll() {
       doc.text(trip.plate_number, 14, y);
       doc.text((trip.owner_name || '').substring(0, 18), 35, y);
       doc.text(`${trip.delivery_code || ''}`, 75, y);
-      doc.text(`₱${t.gross.toFixed(2)}`, 120, y);
-      doc.text(t.fuelSubsidy > 0 ? `₱${t.fuelSubsidy.toFixed(2)}` : '-', 148, y);
-      doc.text(`₱${t.net.toFixed(2)}`, 176, y);
+      doc.text(`₱${t.gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 120, y);
+      doc.text(t.fuelSubsidy > 0 ? `₱${t.fuelSubsidy.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-', 148, y);
+      doc.text(`₱${t.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 176, y);
       y += 6;
     });
 
     y += 3; doc.line(14, y, 196, y); y += 5;
     doc.setFont(undefined, 'bold');
-    doc.text(`Subtotal Net (Trips): ₱${tripTotals.net.toFixed(2)}`, 14, y); y += 6;
-    if (flatInsurance > 0) { doc.setFont(undefined, 'normal'); doc.text(`Insurance Deduction: -₱${flatInsurance.toFixed(2)}`, 14, y); y += 6; }
-    if (flatOther > 0) { doc.setFont(undefined, 'normal'); doc.text(`Other Charges Deduction: -₱${flatOther.toFixed(2)}`, 14, y); y += 6; }
+    doc.text(`Subtotal Net (Trips): ₱${tripTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6;
+    if (flatInsurance > 0) { doc.setFont(undefined, 'normal'); doc.text(`Insurance Deduction: -₱${flatInsurance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6; }
+    if (flatOther > 0) { doc.setFont(undefined, 'normal'); doc.text(`Other Charges Deduction: -₱${flatOther.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6; }
     doc.setFont(undefined, 'bold');
-    doc.text(`GRAND TOTAL NET PAYROLL: ₱${grandNetPayroll.toFixed(2)}`, 14, y);
+    doc.text(`GRAND TOTAL NET PAYROLL: ₱${grandNetPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y);
     doc.save(`Payroll_${selectedDate}_${ownerLabel.replace(/\s/g, '_')}.pdf`);
   };
 
@@ -304,15 +304,15 @@ export default function Payroll() {
                   </div>
                   <div className="bg-card border rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Gross - 2% Tax</p>
-                    <p className="text-xl font-bold mt-1 text-blue-700">₱{tripTotals.afterTax.toFixed(2)}</p>
+                    <p className="text-xl font-bold mt-1 text-blue-700">₱{tripTotals.afterTax.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="bg-card border rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Fuel Subsidy</p>
-                    <p className="text-xl font-bold mt-1 text-green-700">₱{tripTotals.fuelSubsidy.toFixed(2)}</p>
+                    <p className="text-xl font-bold mt-1 text-green-700">₱{tripTotals.fuelSubsidy.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="bg-card border rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Trip Subtotal Net</p>
-                    <p className="text-xl font-bold mt-1 text-slate-700">₱{tripTotals.net.toFixed(2)}</p>
+                    <p className="text-xl font-bold mt-1 text-slate-700">₱{tripTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                 </div>
 
@@ -344,12 +344,12 @@ export default function Payroll() {
                               </td>
                               <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{trip.delivery_code}</td>
                               <td className="px-3 py-3 text-sm whitespace-nowrap">{trip.delivery_date}</td>
-                              <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{t.gross.toFixed(2)}</td>
-                              <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{t.tax.toFixed(2)}</td>
-                              <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{t.hidden.toFixed(2)}</td>
-                              <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{t.admin.toFixed(2)}</td>
-                              <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">{t.fuelSubsidy > 0 ? `+₱${t.fuelSubsidy.toFixed(2)}` : '—'}</td>
-                              <td className="px-3 py-3 text-right font-bold text-slate-700 whitespace-nowrap">₱{t.net.toFixed(2)}</td>
+                              <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{t.gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{t.tax.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{t.hidden.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{t.admin.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">{t.fuelSubsidy > 0 ? `+₱${t.fuelSubsidy.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
+                              <td className="px-3 py-3 text-right font-bold text-slate-700 whitespace-nowrap">₱{t.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                           );
                         })}
@@ -357,7 +357,7 @@ export default function Payroll() {
                       <tfoot>
                         <tr className="border-t bg-muted/50">
                           <td colSpan={12} className="px-3 py-3 text-sm font-semibold text-right">Trip Subtotal Net</td>
-                          <td className="px-3 py-3 text-right font-bold text-slate-700 whitespace-nowrap">₱{tripTotals.net.toFixed(2)}</td>
+                          <td className="px-3 py-3 text-right font-bold text-slate-700 whitespace-nowrap">₱{tripTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -389,10 +389,10 @@ export default function Payroll() {
                             <td className="px-4 py-2.5 font-mono font-semibold text-primary">{d.plate_number}</td>
                             <td className="px-4 py-2.5">{d.owner_name}</td>
                             <td className="px-4 py-2.5 text-right text-blue-700 font-semibold">
-                              {(d.insurance_charge || 0) > 0 ? `-₱${(d.insurance_charge).toFixed(2)}` : '—'}
+                              {(d.insurance_charge || 0) > 0 ? `-₱${(d.insurance_charge).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                             </td>
                             <td className="px-4 py-2.5 text-right text-orange-700 font-semibold">
-                              {(d.other_charges || 0) > 0 ? `-₱${(d.other_charges).toFixed(2)}` : '—'}
+                              {(d.other_charges || 0) > 0 ? `-₱${(d.other_charges).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                             </td>
                             <td className="px-4 py-2.5 text-muted-foreground text-xs">{d.notes || '—'}</td>
                           </tr>
@@ -401,8 +401,8 @@ export default function Payroll() {
                       <tfoot>
                         <tr className="border-t bg-muted/40">
                           <td colSpan={2} className="px-4 py-2.5 text-sm font-semibold text-right">Total Deductions</td>
-                          <td className="px-4 py-2.5 text-right font-bold text-blue-700">-₱{flatInsurance.toFixed(2)}</td>
-                          <td className="px-4 py-2.5 text-right font-bold text-orange-700">-₱{flatOther.toFixed(2)}</td>
+                          <td className="px-4 py-2.5 text-right font-bold text-blue-700">-₱{flatInsurance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="px-4 py-2.5 text-right font-bold text-orange-700">-₱{flatOther.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                           <td></td>
                         </tr>
                       </tfoot>
@@ -420,7 +420,7 @@ export default function Payroll() {
                         {flatOther > 0 ? ` − Other ₱${flatOther.toFixed(2)}` : ''})
                       </span>
                     </div>
-                    <span className="text-2xl font-bold text-emerald-700">₱{grandNetPayroll.toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-emerald-700">₱{grandNetPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </>
