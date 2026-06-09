@@ -490,53 +490,65 @@ export default function BillingCycles() {
               <p className="text-muted-foreground text-sm">No trips assigned to this billing statement</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr className="border-b">
-                    {['Plate #', 'Owner / Driver', 'Truck', 'Route', 'Delivery Date', 'DR #', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Subsidy', 'Net Payroll'].map(h => (
-                      <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {trips.map(trip => {
-                    const totals = calculateTotals(trip);
-                    return (
-                      <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-3 py-3 font-mono font-semibold text-primary whitespace-nowrap">{trip.plate_number}</td>
-                        <td className="px-3 py-3 whitespace-nowrap">{trip.owner_name}</td>
-                        <td className="px-3 py-3">
-                          <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{trip.truck_type}</span>
-                        </td>
-                        <td className="px-3 py-3 text-xs text-muted-foreground">
-                          <div>{trip.pickup_location}</div>
-                          <div className="text-muted-foreground/60">→ {trip.delivery_location}</div>
-                        </td>
-                        <td className="px-3 py-3 text-sm whitespace-nowrap">{trip.delivery_date}</td>
-                        <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{trip.dr_number || '—'}</td>
-                        <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{totals.gross.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{totals.tax.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{totals.hidden.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{totals.admin.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap">-₱{totals.insurance.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right whitespace-nowrap">-₱{totals.other.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">+₱{totals.fuelSubsidy.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{totals.net.toFixed(2)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t bg-muted/50">
-                    <td colSpan={13} className="px-3 py-3 text-sm font-semibold text-right">Grand Total Net Payroll</td>
-                    <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">
-                      ₱{trips.reduce((sum, trip) => sum + calculateTotals(trip).net, 0).toFixed(2)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="bg-card border rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground">Total Trips</p>
+                  <p className="text-xl font-bold mt-1">{trips.length}</p>
+                </div>
+                <div className="bg-card border rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground">Total Gross Rate</p>
+                  <p className="text-xl font-bold mt-1 text-blue-700">₱{trips.reduce((s, t) => s + (t.gross_rate || 0), 0).toFixed(2)}</p>
+                </div>
+                <div className="bg-card border rounded-lg p-4">
+                  <p className="text-xs text-muted-foreground">Total Tax (2%)</p>
+                  <p className="text-xl font-bold mt-1 text-red-600">-₱{trips.reduce((s, t) => s + (t.gross_rate || 0) * 0.02, 0).toFixed(2)}</p>
+                </div>
+              </div>
+
+              <div className="border rounded-lg overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr className="border-b">
+                      {['Plate #', 'Owner / Driver', 'Truck', 'Route', 'Delivery Date', 'DR #', 'Gross Rate', 'Tax (2%)'].map(h => (
+                        <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trips.map(trip => {
+                      const gross = trip.gross_rate || 0;
+                      const tax = gross * 0.02;
+                      return (
+                        <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-3 py-3 font-mono font-semibold text-primary whitespace-nowrap">{trip.plate_number}</td>
+                          <td className="px-3 py-3 whitespace-nowrap">{trip.owner_name}</td>
+                          <td className="px-3 py-3">
+                            <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{trip.truck_type}</span>
+                          </td>
+                          <td className="px-3 py-3 text-xs text-muted-foreground">
+                            <div>{trip.pickup_location}</div>
+                            <div className="text-muted-foreground/60">→ {trip.delivery_location}</div>
+                          </td>
+                          <td className="px-3 py-3 text-sm whitespace-nowrap">{trip.delivery_date}</td>
+                          <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{trip.dr_number || '—'}</td>
+                          <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{gross.toFixed(2)}</td>
+                          <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{tax.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t bg-muted/50">
+                      <td colSpan={6} className="px-3 py-3 text-sm font-semibold text-right">Grand Total</td>
+                      <td className="px-3 py-3 text-right font-bold whitespace-nowrap">₱{trips.reduce((s, t) => s + (t.gross_rate || 0), 0).toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right font-bold text-red-600 whitespace-nowrap">-₱{trips.reduce((s, t) => s + (t.gross_rate || 0) * 0.02, 0).toFixed(2)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </>
           )}
           <DialogFooter>
             <Button onClick={() => setTripsOpen(false)}>Close</Button>

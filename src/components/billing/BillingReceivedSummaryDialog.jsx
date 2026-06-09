@@ -49,7 +49,6 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       const s = getFuelSubsidy(trip);
       return s ? gross * (s.subsidy_percentage / 100) : 0;
     })();
-    // Net per trip excludes insurance/other (those are flat per billing date, applied at plate level)
     const net = gross - tax - hidden - admin + fuelSubsidyAmount;
     return { gross, tax, afterTax, hidden, admin, fuelSubsidy: fuelSubsidyAmount, net };
   };
@@ -88,12 +87,12 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
   })();
 
   const grandTotals = plateGroups.reduce((acc, row) => {
-    acc.gross += row.gross;
-    acc.tax += row.tax;
+    acc.afterTax += row.gross - row.tax;
+    acc.fuelSubsidy += row.fuelSubsidy;
+    acc.net += row.net;
     return acc;
-  }, { gross: 0, tax: 0 });
+  }, { afterTax: 0, fuelSubsidy: 0, net: 0 });
 
-  // Build header subtitle: statement names + unique client names
   const statementNames = cycles?.map(c => c.cycle_name).join(', ') || '';
   const clientNames = [...new Set(cycles?.map(c => c.client_name).filter(Boolean) || [])].join(', ');
 
@@ -120,18 +119,22 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
         ) : (
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <div className="bg-card border rounded-lg p-4">
                 <p className="text-xs text-muted-foreground">Total Trips</p>
                 <p className="text-xl font-bold mt-1">{trips.length}</p>
               </div>
               <div className="bg-card border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Total Gross Rate</p>
-                <p className="text-xl font-bold mt-1 text-blue-700">₱{grandTotals.gross.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">Gross Amount - 2% Tax</p>
+                <p className="text-xl font-bold mt-1 text-blue-700">₱{grandTotals.afterTax.toFixed(2)}</p>
               </div>
               <div className="bg-card border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Total Tax (2%)</p>
-                <p className="text-xl font-bold mt-1 text-red-600">-₱{grandTotals.tax.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">Total Fuel Subsidy</p>
+                <p className="text-xl font-bold mt-1 text-green-700">₱{grandTotals.fuelSubsidy.toFixed(2)}</p>
+              </div>
+              <div className="bg-card border rounded-lg p-4">
+                <p className="text-xs text-muted-foreground">Net Payroll</p>
+                <p className="text-xl font-bold mt-1 text-emerald-700">₱{grandTotals.net.toFixed(2)}</p>
               </div>
             </div>
 
@@ -140,7 +143,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr className="border-b">
-                    {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Trips', 'Gross Rate', 'Tax (2%)'].map(h => (
+                    {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Trips', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Subsidy', 'Net Payroll'].map(h => (
                       <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -157,14 +160,19 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
                       <td className="px-3 py-3 text-center text-xs text-muted-foreground">{row.tripCount}</td>
                       <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{row.gross.toFixed(2)}</td>
                       <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{row.tax.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{row.hidden.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{row.admin.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap">-₱{row.insurance.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right whitespace-nowrap">-₱{row.other.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">+₱{row.fuelSubsidy.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{row.net.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t bg-muted/50">
-                    <td colSpan={5} className="px-3 py-3 text-sm font-semibold text-right">Grand Total</td>
-                    <td className="px-3 py-3 text-right font-bold whitespace-nowrap">₱{grandTotals.gross.toFixed(2)}</td>
-                    <td className="px-3 py-3 text-right font-bold text-red-600 whitespace-nowrap">-₱{grandTotals.tax.toFixed(2)}</td>
+                    <td colSpan={12} className="px-3 py-3 text-sm font-semibold text-right">Grand Total Net Payroll</td>
+                    <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{grandTotals.net.toFixed(2)}</td>
                   </tr>
                 </tfoot>
               </table>
