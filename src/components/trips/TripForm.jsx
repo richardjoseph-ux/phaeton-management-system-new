@@ -177,6 +177,19 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
 
   const handleSave = async () => {
     setSaving(true);
+    if (!editData) {
+      const existingTrips = await base44.entities.TripRecord.list();
+      const duplicate = existingTrips.find(t => 
+        t.plate_number?.toUpperCase() === form.plate_number?.toUpperCase() &&
+        t.dr_number === form.dr_number &&
+        t.delivery_date === form.delivery_date
+      );
+      if (duplicate) {
+        alert('A trip with the same Plate Number, DR Number, and Delivery Date already exists. Please check your entry.');
+        setSaving(false);
+        return;
+      }
+    }
     const client = clients.find(c => c.id === form.client_account_id);
     const matchedRoute = (client?.routes || []).find(r =>
       r.pickup_location === form.pickup_location &&
