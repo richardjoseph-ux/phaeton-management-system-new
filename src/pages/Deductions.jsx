@@ -170,6 +170,7 @@ export default function Deductions() {
             <TabsList>
               <TabsTrigger value="deductions">Deductions</TabsTrigger>
               <TabsTrigger value="reimbursements">Reimbursements</TabsTrigger>
+              <TabsTrigger value="all">All Records</TabsTrigger>
             </TabsList>
 
             {/* Deductions Tab */}
@@ -580,6 +581,100 @@ export default function Deductions() {
                       );
                     })()}
                   </div>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* All Records Tab */}
+            <TabsContent value="all" className="space-y-6">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Received Date</p>
+                <Select value={selectedDate} onValueChange={v => { setSelectedDate(v); handleCancel(); loadOwnersForDate(v); }}>
+                  <SelectTrigger className="w-56">
+                    <SelectValue placeholder="Select date..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dateOptions.map(d => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedDate && (
+                <div className="bg-card border rounded-lg overflow-hidden">
+                  {/* Combined Summary */}
+                  <div className="grid grid-cols-4 divide-x border-b">
+                    <div className="p-4">
+                      <p className="text-xs text-muted-foreground">Deductions</p>
+                      <p className="text-xl font-bold mt-1">{filteredDeductions.length}</p>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-xs text-muted-foreground">Total Deductions</p>
+                      <p className="text-xl font-bold mt-1 text-red-700">₱{(totalInsurance + totalOther).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-xs text-muted-foreground">Reimbursements</p>
+                      <p className="text-xl font-bold mt-1">{reimbursements.filter(r => r.billing_received_date === selectedDate).length}</p>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-xs text-muted-foreground">Total Reimbursements</p>
+                      <p className="text-xl font-bold mt-1 text-green-700">₱{reimbursements.filter(r => r.billing_received_date === selectedDate).reduce((s, r) => s + (r.reimbursement_amount || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                  </div>
+
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Type</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Plate #</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Owner / Driver</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Details</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Amount (₱)</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Deductions */}
+                      {filteredDeductions.map(d => (
+                        <tr key={d.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-medium">Deduction</span>
+                          </td>
+                          <td className="px-4 py-3 font-mono font-semibold text-primary">{d.plate_number}</td>
+                          <td className="px-4 py-3">{d.owner_name}</td>
+                          <td className="px-4 py-3 text-xs">
+                            <div className="text-blue-700">Insurance: ₱{(d.insurance_charge || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div className="text-orange-700">Other: ₱{(d.other_charges || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-red-700">-₱{((d.insurance_charge || 0) + (d.other_charges || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs">{d.notes || '—'}</td>
+                        </tr>
+                      ))}
+                      {/* Reimbursements */}
+                      {reimbursements.filter(r => r.billing_received_date === selectedDate).map(r => (
+                        <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">Reimbursement</span>
+                          </td>
+                          <td className="px-4 py-3 font-mono font-semibold text-primary">{r.plate_number}</td>
+                          <td className="px-4 py-3">{r.owner_name}</td>
+                          <td className="px-4 py-3 text-xs">
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium capitalize">{r.reimbursement_type}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-green-700">+₱{(r.reimbursement_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs">{r.notes || '—'}</td>
+                        </tr>
+                      ))}
+                      {filteredDeductions.length === 0 && reimbursements.filter(r => r.billing_received_date === selectedDate).length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-16 text-center text-muted-foreground text-sm">
+                            No records found for {selectedDate}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </TabsContent>
