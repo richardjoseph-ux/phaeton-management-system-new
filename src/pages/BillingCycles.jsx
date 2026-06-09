@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, ListChecks } from 'lucide-react';
+import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, ListChecks, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
 
@@ -134,6 +134,12 @@ export default function BillingCycles() {
 
   const toggleArchiveCycle = async (cycle) => {
     await base44.entities.BillingCycle.update(cycle.id, { is_archived: !cycle.is_archived });
+    load();
+  };
+
+  const handleDeleteCycle = async (cycle) => {
+    if (!confirm(`Delete billing statement "${cycle.cycle_name}"? This cannot be undone.`)) return;
+    await base44.entities.BillingCycle.delete(cycle.id);
     load();
   };
 
@@ -299,6 +305,9 @@ export default function BillingCycles() {
                             title={cycle.is_archived ? 'Unarchive' : 'Archive'}
                           >
                             {cycle.is_archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                          </button>
+                          <button onClick={() => handleDeleteCycle(cycle)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition-colors" title="Delete">
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
