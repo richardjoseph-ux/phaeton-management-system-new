@@ -13,7 +13,7 @@ const navItems = [
   { path: '/clients', label: 'Client Accounts', icon: Building2, roles: ['admin', 'user'] },
   { path: '/billing', label: 'Billing Cycles', icon: CreditCard, roles: ['admin', 'user'] },
   { path: '/payroll', label: 'Payroll', icon: FileText, roles: ['admin', 'user'] },
-  { path: '/deductions', label: 'Deductions', icon: MinusCircle, roles: ['admin', 'user'] },
+  { path: '/deductions', label: 'Deductions & Reimbursements', icon: MinusCircle, roles: ['admin', 'user'] },
   { path: '/additional-services', label: 'Additional Services', icon: Fuel, roles: ['admin'] },
   { path: '/reports', label: 'Reports', icon: BarChart3, roles: ['admin', 'user'] },
   { path: '/users', label: 'User Management', icon: Users, roles: ['admin'] },
