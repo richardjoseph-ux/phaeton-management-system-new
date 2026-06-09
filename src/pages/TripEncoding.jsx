@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Trash2, ClipboardList, RefreshCw, Download, Upload } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ClipboardList, RefreshCw, Download, Upload, RefreshCcw } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import TripForm from '@/components/trips/TripForm';
@@ -19,6 +19,7 @@ export default function TripEncoding() {
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  const [syncingData, setSyncingData] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -75,33 +76,61 @@ export default function TripEncoding() {
     setSyncing(false);
   };
 
+  const handleSyncTripData = async () => {
+    setSyncingData(true);
+    try {
+      const tripsToUpdate = await base44.entities.TripRecord.list();
+      let updated = 0;
+      for (const trip of tripsToUpdate) {
+        if (!trip.client_account_id || !trip.gross_rate) {
+          const client = clients.find(c => c.client_name === trip.client_name);
+          if (client) {
+            const route = client.routes?.find(r => 
+              r.pickup_location === trip.pickup_location && 
+              r.delivery_location === trip.delivery_location
+            );
+            const rate = route?.rates?.[trip.truck_type] || 0;
+            const gross = rate || trip.gross_rate || 0;
+            const tax = gross * 0.02;
+            const afterTax = gross - tax;
+            const hidden = afterTax * 0.04;
+            const admin = afterTax * 0.06;
+            await base44.entities.TripRecord.update(trip.id, {
+              client_account_id: client.id,
+              client_name: client.client_name,
+              gross_rate: gross,
+              tax_deduction: tax,
+              hidden_fee: hidden,
+              admin_fee: admin,
+              net_payroll: gross - tax - hidden - admin - (trip.insurance_charge || 0) - (trip.other_charges || 0)
+            });
+            updated++;
+          }
+        }
+      }
+      alert(`Synced ${updated} trip records with client and rate data`);
+      await load();
+    } catch (error) {
+      alert('Error syncing trip data: ' + error.message);
+    }
+    setSyncingData(false);
+  };
+
   const handleExportTrips = async () => {
     try {
       const data = trips.map(t => ({
         plate_number: t.plate_number,
         owner_name: t.owner_name,
-        truck_type: t.truck_type,
-        client_account_id: t.client_account_id,
         client_name: t.client_name,
         pickup_location: t.pickup_location,
         delivery_location: t.delivery_location,
         delivery_code: t.delivery_code,
-        trip_route_code: t.trip_route_code,
         particular: t.particular,
         dr_number: t.dr_number,
         waybill_number: t.waybill_number,
         delivery_date: t.delivery_date,
         billing_date: t.billing_date,
-        first_cheque_date: t.first_cheque_date,
-        billing_cycle_name: t.billing_cycle_name,
-        gross_rate: t.gross_rate,
-        tax_deduction: t.tax_deduction,
-        hidden_fee: t.hidden_fee,
-        admin_fee: t.admin_fee,
-        insurance_charge: t.insurance_charge,
-        other_charges: t.other_charges,
-        net_payroll: t.net_payroll,
-        encoded_by: t.encoded_by
+        billing_cycle_name: t.billing_cycle_name
       }));
       const worksheet = XLSX.utils.json_to_sheet(data);
       const workbook = XLSX.utils.book_new();
@@ -136,7 +165,7 @@ export default function TripEncoding() {
         return;
       }
       await base44.entities.TripRecord.bulkCreate(toImport);
-      alert(`Successfully imported ${toImport.length} trip records (${skipped} duplicates skipped)`);
+      alert(`Successfully imported ${toImport.length} trip records (${skipped} duplicates skipped). Click "Sync Trip Data" to populate client, rates, and fees.`);
       load();
     } catch (error) {
       alert('Import failed: ' + error.message);
@@ -177,6 +206,15 @@ export default function TripEncoding() {
                 />
               </label>
             </div>
+            <Button 
+              onClick={handleSyncTripData} 
+              size="sm" 
+              variant="outline"
+              disabled={syncingData}
+            >
+              <RefreshCcw className={`w-4 h-4 mr-1.5 ${syncingData ? 'animate-spin' : ''}`} /> 
+              Sync Trip Data
+            </Button>
             <Button 
               onClick={handleSyncBillingDates} 
               size="sm" 
