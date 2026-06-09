@@ -63,21 +63,18 @@ export default function Deductions() {
 
   useEffect(() => { load(); }, []);
 
-  // Only show dates where payroll_processed is false/pending in BillingReceivedSummary
-  const unpaidSummaryDates = new Set(
-    billingReceivedSummaries
-      .filter(s => !s.payroll_processed)
-      .map(s => s.billing_received_date)
-  );
-
-  // Unique billing received dates from billing cycles — only unprocessed ones
+  // Unique billing received dates — show if no summary record exists OR payroll_processed is false
   const dateOptions = (() => {
     const seen = new Set();
     const result = [];
     billingCycles.forEach(c => {
-      if (c.billing_received_date && !seen.has(c.billing_received_date) && unpaidSummaryDates.has(c.billing_received_date)) {
-        seen.add(c.billing_received_date);
-        result.push(c.billing_received_date);
+      if (c.billing_received_date && !seen.has(c.billing_received_date)) {
+        const rec = billingReceivedSummaries.find(s => s.billing_received_date === c.billing_received_date);
+        // Show if no summary yet (pending by default) OR explicitly not processed
+        if (!rec || !rec.payroll_processed) {
+          seen.add(c.billing_received_date);
+          result.push(c.billing_received_date);
+        }
       }
     });
     return result.sort((a, b) => b.localeCompare(a));
