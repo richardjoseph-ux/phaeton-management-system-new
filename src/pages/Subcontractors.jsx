@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Truck, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Truck, Trash2, Download, Upload } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import SubcontractorForm from '@/components/subcontractors/SubcontractorForm';
+import * as XLSX from 'xlsx';
 
 const getInsuranceStatus = (sub) => {
   if (!sub.is_insured) return 'Uninsured';
@@ -21,6 +22,7 @@ export default function Subcontractors() {
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
+  const fileInputRef = useRef(null);
 
   const load = async () => {
     setLoading(true);
@@ -46,15 +48,76 @@ export default function Subcontractors() {
     load();
   };
 
+  const handleExport = async () => {
+    try {
+      const data = list.map(s => ({
+        sub_id: s.sub_id,
+        plate_number: s.plate_number,
+        owner_name: s.owner_name,
+        truck_type: s.truck_type,
+        contact_number: s.contact_number,
+        garage_location: s.garage_location,
+        status: s.status,
+        is_insured: s.is_insured,
+        insurance_start_date: s.insurance_start_date,
+        insurance_end_date: s.insurance_end_date
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Subcontractors');
+      XLSX.writeFile(workbook, `Subcontractors_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (error) {
+      alert('Export failed: ' + error.message);
+    }
+  };
+
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const bytes = await file.arrayBuffer();
+      const workbook = XLSX.read(bytes, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      if (jsonData.length === 0) {
+        alert('Excel file is empty');
+        return;
+      }
+      await base44.entities.Subcontractor.bulkCreate(jsonData);
+      alert(`Successfully imported ${jsonData.length} subcontractor records`);
+      load();
+    } catch (error) {
+      alert('Import failed: ' + error.message);
+    }
+    event.target.value = '';
+  };
+
   return (
     <div className="p-6">
       <PageHeader
         title="Subcontractors"
         subtitle="Manage registered vehicles and subcontractors"
         actions={
-          <Button onClick={handleAdd} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" /> Register Subcontractor
-          </Button>
+          <div className="flex gap-2 items-center">
+            <div className="flex gap-2 mr-4">
+              <Button onClick={handleExport} size="sm" variant="outline">
+                <Download className="w-4 h-4 mr-1.5" /> Export Excel
+              </Button>
+              <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
+                <Upload className="w-4 h-4 mr-1.5" /> Import Excel
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleImport}
+                className="hidden"
+              />
+            </div>
+            <Button onClick={handleAdd} size="sm">
+              <Plus className="w-4 h-4 mr-1.5" /> Register Subcontractor
+            </Button>
+          </div>
         }
       />
 

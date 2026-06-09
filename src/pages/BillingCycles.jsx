@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, ListChecks, Trash2 } from 'lucide-react';
+import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, ListChecks, Trash2, Download, Upload } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
+import * as XLSX from 'xlsx';
 
 export default function BillingCycles() {
   const [cycles, setCycles] = useState([]);
@@ -35,6 +36,7 @@ export default function BillingCycles() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryDate, setSummaryDate] = useState('');
   const [summaryCycles, setSummaryCycles] = useState([]);
+  const fileInputRef = useRef(null);
 
   const load = async () => {
     setLoading(true);
@@ -190,6 +192,49 @@ export default function BillingCycles() {
     setSummaryOpen(true);
   };
 
+  const handleExport = async () => {
+    try {
+      const data = cycles.map(c => ({
+        cycle_name: c.cycle_name,
+        client_account_id: c.client_account_id,
+        client_name: getClientName(c.client_account_id),
+        status: c.status,
+        billing_received_date: c.billing_received_date,
+        cheque_date: c.cheque_date,
+        paid_status: c.paid_status,
+        is_archived: c.is_archived,
+        notes: c.notes
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'BillingCycles');
+      XLSX.writeFile(workbook, `BillingCycles_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (error) {
+      alert('Export failed: ' + error.message);
+    }
+  };
+
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const bytes = await file.arrayBuffer();
+      const workbook = XLSX.read(bytes, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      if (jsonData.length === 0) {
+        alert('Excel file is empty');
+        return;
+      }
+      await base44.entities.BillingCycle.bulkCreate(jsonData);
+      alert(`Successfully imported ${jsonData.length} billing cycle records`);
+      load();
+    } catch (error) {
+      alert('Import failed: ' + error.message);
+    }
+    event.target.value = '';
+  };
+
   const openTripsView = async (cycle) => {
     setSelectedCycle(cycle);
     setLoadingTrips(true);
@@ -233,9 +278,26 @@ export default function BillingCycles() {
           <p className="text-sm text-muted-foreground">Manage billing statements and received summaries</p>
         </div>
         {mainTab === 'statements' && (
-          <Button onClick={openAdd} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
-          </Button>
+          <div className="flex gap-2 items-center">
+            <div className="flex gap-2 mr-4">
+              <Button onClick={handleExport} size="sm" variant="outline">
+                <Download className="w-4 h-4 mr-1.5" /> Export Excel
+              </Button>
+              <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
+                <Upload className="w-4 h-4 mr-1.5" /> Import Excel
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleImport}
+                className="hidden"
+              />
+            </div>
+            <Button onClick={openAdd} size="sm">
+              <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
+            </Button>
+          </div>
         )}
       </div>
 

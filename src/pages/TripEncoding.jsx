@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Trash2, ClipboardList, RefreshCw } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ClipboardList, RefreshCw, Download, Upload } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import TripForm from '@/components/trips/TripForm';
+import ExcelImportExport from '@/components/ui/ExcelImportExport';
+import * as XLSX from 'xlsx';
 
 export default function TripEncoding() {
   const [trips, setTrips] = useState([]);
@@ -73,6 +75,64 @@ export default function TripEncoding() {
     setSyncing(false);
   };
 
+  const handleExportTrips = async () => {
+    try {
+      const data = trips.map(t => ({
+        plate_number: t.plate_number,
+        owner_name: t.owner_name,
+        truck_type: t.truck_type,
+        client_account_id: t.client_account_id,
+        client_name: t.client_name,
+        pickup_location: t.pickup_location,
+        delivery_location: t.delivery_location,
+        delivery_code: t.delivery_code,
+        trip_route_code: t.trip_route_code,
+        particular: t.particular,
+        dr_number: t.dr_number,
+        waybill_number: t.waybill_number,
+        delivery_date: t.delivery_date,
+        billing_date: t.billing_date,
+        first_cheque_date: t.first_cheque_date,
+        billing_cycle_name: t.billing_cycle_name,
+        gross_rate: t.gross_rate,
+        tax_deduction: t.tax_deduction,
+        hidden_fee: t.hidden_fee,
+        admin_fee: t.admin_fee,
+        insurance_charge: t.insurance_charge,
+        other_charges: t.other_charges,
+        net_payroll: t.net_payroll,
+        encoded_by: t.encoded_by
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Trips');
+      XLSX.writeFile(workbook, `TripEncoding_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (error) {
+      alert('Export failed: ' + error.message);
+    }
+  };
+
+  const handleImportTrips = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const bytes = await file.arrayBuffer();
+      const workbook = XLSX.read(bytes, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      if (jsonData.length === 0) {
+        alert('Excel file is empty');
+        return;
+      }
+      await base44.entities.TripRecord.bulkCreate(jsonData);
+      alert(`Successfully imported ${jsonData.length} trip records`);
+      load();
+    } catch (error) {
+      alert('Import failed: ' + error.message);
+    }
+    event.target.value = '';
+  };
+
   return (
     <div className="p-6">
       <PageHeader
@@ -80,6 +140,32 @@ export default function TripEncoding() {
         subtitle="Encode and manage trip records"
         actions={
           <div className="flex gap-2">
+            <div className="flex gap-2 mr-4">
+              <Button 
+                onClick={handleExportTrips} 
+                size="sm" 
+                variant="outline"
+              >
+                <Download className="w-4 h-4 mr-1.5" /> Export Excel
+              </Button>
+              <label>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  asChild
+                >
+                  <span>
+                    <Upload className="w-4 h-4 mr-1.5" /> Import Excel
+                  </span>
+                </Button>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleImportTrips}
+                  className="hidden"
+                />
+              </label>
+            </div>
             <Button 
               onClick={handleSyncBillingDates} 
               size="sm" 
