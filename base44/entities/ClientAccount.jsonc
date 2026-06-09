@@ -75,12 +75,6 @@
           },
           "sub_account_code": {
             "type": "string"
-          },
-          "contact_person": {
-            "type": "string"
-          },
-          "contact_number": {
-            "type": "string"
           }
         }
       }

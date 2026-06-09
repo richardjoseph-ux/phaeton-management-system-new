@@ -111,7 +111,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const addSubAccount = () => {
-    setForm(p => ({ ...p, sub_accounts: [...p.sub_accounts, { sub_account_name: '', sub_account_code: '', contact_person: '', contact_number: '' }] }));
+    setForm(p => ({ ...p, sub_accounts: [...p.sub_accounts, { sub_account_name: '', sub_account_code: '' }] }));
   };
 
   const removeSubAccount = (idx) => setForm(p => ({ ...p, sub_accounts: p.sub_accounts.filter((_, i) => i !== idx) }));
@@ -336,14 +336,6 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                       <div className="space-y-1.5">
                         <Label>Sub-Account Code</Label>
                         <Input value={sub.sub_account_code} onChange={e => setSubAccount(idx, 'sub_account_code', e.target.value.toUpperCase())} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Contact Person</Label>
-                        <Input value={sub.contact_person} onChange={e => setSubAccount(idx, 'contact_person', e.target.value)} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Contact Number</Label>
-                        <Input value={sub.contact_number} onChange={e => setSubAccount(idx, 'contact_number', e.target.value)} />
                       </div>
                     </div>
                   </div>
