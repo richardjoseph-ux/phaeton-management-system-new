@@ -63,6 +63,7 @@ export default function Subcontractors() {
         truck_type: s.truck_type,
         contact_number: s.contact_number,
         garage_location: s.garage_location,
+        join_date: s.join_date,
         status: s.status,
         is_insured: s.is_insured,
         insurance_start_date: s.insurance_start_date,
