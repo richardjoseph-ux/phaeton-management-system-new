@@ -167,7 +167,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr className="border-b">
-                      {['Plate #', 'Owner / Driver', 'Type', 'Amount (₱)'].map(h => (
+                      {['Plate #', 'Owner / Driver', 'Type', 'Reason', 'Amount (₱)'].map(h => (
                         <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -178,6 +178,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
                         <td className="px-4 py-3 font-mono font-semibold text-primary whitespace-nowrap">{r.plate_number}</td>
                         <td className="px-4 py-3">{r.owner_name}</td>
                         <td className="px-4 py-3 capitalize text-xs">{r.reimbursement_type}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-xs">{r.notes || '—'}</td>
                         <td className="px-4 py-3 text-right font-semibold text-green-600 whitespace-nowrap">+₱{(r.reimbursement_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       </tr>
                     ))}
