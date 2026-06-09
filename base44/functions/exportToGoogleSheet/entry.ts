@@ -76,8 +76,8 @@ Deno.serve(async (req) => {
 
         // Prepare data for Google Sheets API
         const headers = [
-            'Plate #', 'Owner/Driver', 'Truck Type', 'Client', 'Delivery Date', 
-            'DR #', 'Pickup', 'Delivery', 'Delivery Code', 'Billing Cycle',
+            'Plate #', 'Owner/Driver', 'Truck Type', 'Client', 'Sub-Account', 'Delivery Date', 
+            'DR #', 'Pickup', 'Delivery', 'Delivery Code', 'Trip Route Code', 'Billing Cycle',
             'Gross Rate', 'Tax (2%)', 'Hidden Fee (4%)', 'Admin Fee (6%)', 
             'Fuel Subsidy', 'Net Payroll'
         ];
@@ -95,11 +95,13 @@ Deno.serve(async (req) => {
                 trip.owner_name,
                 trip.truck_type,
                 trip.client_name,
+                trip.sub_account_name || '',
                 trip.delivery_date,
                 trip.dr_number,
                 trip.pickup_location,
                 trip.delivery_location,
                 trip.delivery_code,
+                trip.trip_route_code || '',
                 trip.billing_cycle_name,
                 gross.toFixed(2),
                 tax.toFixed(2),
