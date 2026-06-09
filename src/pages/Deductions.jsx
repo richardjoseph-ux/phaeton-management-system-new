@@ -350,8 +350,8 @@ export default function Deductions() {
                             seen[t.plate_number] = { plate_number: t.plate_number, owner_name: t.owner_name };
                           }
                         });
-                        // Also get all subcontractors for cases with no trip data
-                        base44.entities.Subcontractor.list('plate_number', 500).then(subs => {
+                        // Also get all ACTIVE subcontractors for cases with no trip data
+                        base44.entities.Subcontractor.filter({ status: 'Active' }, 'plate_number', 500).then(subs => {
                           subs.forEach(s => {
                             if (!seen[s.plate_number]) {
                               seen[s.plate_number] = { plate_number: s.plate_number, owner_name: s.owner_name };
