@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Truck, Phone, MapPin } from 'lucide-react';
+import { Plus, Search, Pencil, Truck, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import SubcontractorForm from '@/components/subcontractors/SubcontractorForm';
@@ -40,6 +40,11 @@ export default function Subcontractors() {
 
   const handleEdit = (item) => { setEditData(item); setFormOpen(true); };
   const handleAdd = () => { setEditData(null); setFormOpen(true); };
+  const handleDelete = async (item) => {
+    if (!confirm(`Delete subcontractor "${item.plate_number} — ${item.owner_name}"? This cannot be undone.`)) return;
+    await base44.entities.Subcontractor.delete(item.id);
+    load();
+  };
 
   return (
     <div className="p-6">
@@ -115,9 +120,14 @@ export default function Subcontractors() {
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={sub.status} type="account" /></td>
                     <td className="px-4 py-3">
-                      <button onClick={() => handleEdit(sub)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleEdit(sub)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDelete(sub)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
