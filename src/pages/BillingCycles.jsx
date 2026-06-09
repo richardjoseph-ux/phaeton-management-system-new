@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, CreditCard, Pencil, Lock, Unlock, Eye, ClipboardList } from 'lucide-react';
+import { Plus, CreditCard, Pencil, Lock, Unlock, Eye, ClipboardList, Calendar } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
+import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
 
 export default function BillingCycles() {
   const [cycles, setCycles] = useState([]);
@@ -22,8 +23,11 @@ export default function BillingCycles() {
   const [selectedCycle, setSelectedCycle] = useState(null);
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
-  const [activeTab, setActiveTab] = useState('unpaid'); // 'paid', 'unpaid', 'closed'
+  const [activeTab, setActiveTab] = useState('unpaid'); // 'paid', 'unpaid', 'closed', 'summary'
   const [fuelSubsidies, setFuelSubsidies] = useState([]);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryDate, setSummaryDate] = useState('');
+  const [summaryCycleIds, setSummaryCycleIds] = useState([]);
 
   const load = async () => {
     setLoading(true);
@@ -146,6 +150,28 @@ export default function BillingCycles() {
 
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
 
+  // Group cycles by billing_received_date for the summary tab
+  const billingReceivedGroups = (() => {
+    const groups = {};
+    cycles.forEach(cycle => {
+      if (cycle.billing_received_date) {
+        if (!groups[cycle.billing_received_date]) {
+          groups[cycle.billing_received_date] = [];
+        }
+        groups[cycle.billing_received_date].push(cycle);
+      }
+    });
+    return Object.entries(groups)
+      .map(([date, items]) => ({ date, cycles: items }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  })();
+
+  const openSummary = (group) => {
+    setSummaryDate(group.date);
+    setSummaryCycleIds(group.cycles.map(c => c.id));
+    setSummaryOpen(true);
+  };
+
   const filteredCycles = cycles.filter(cycle => {
     if (activeTab === 'closed') return cycle.status === 'Closed';
     if (activeTab === 'paid') return cycle.paid_status === 'Paid' && cycle.status === 'Open';
@@ -206,11 +232,59 @@ export default function BillingCycles() {
           >
             Closed Cycle ({cycles.filter(c => c.status === 'Closed').length})
           </button>
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'summary' 
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Billing Received Summary ({billingReceivedGroups.length})
+          </button>
         </div>
       </div>
 
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
+      ) : activeTab === 'summary' ? (
+        billingReceivedGroups.length === 0 ? (
+          <div className="text-center py-16">
+            <Calendar className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-muted-foreground text-sm">No billing received dates recorded yet</p>
+          </div>
+        ) : (
+          <div className="bg-card border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  {['Billing Received Date', 'Billing Statements Included', '# of Statements', ''].map(h => (
+                    <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {billingReceivedGroups.map(group => (
+                  <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-semibold">{group.date}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {group.cycles.map(c => c.cycle_name).join(', ')}
+                    </td>
+                    <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => openSummary(group)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> View Summary
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
       ) : cycles.length === 0 ? (
         <div className="text-center py-16">
           <CreditCard className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
@@ -340,6 +414,14 @@ export default function BillingCycles() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BillingReceivedSummaryDialog
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        billingDate={summaryDate}
+        cycleIds={summaryCycleIds}
+        fuelSubsidies={fuelSubsidies}
+      />
 
       <Dialog open={tripsOpen} onOpenChange={setTripsOpen}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
