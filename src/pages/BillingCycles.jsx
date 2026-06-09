@@ -5,9 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, CreditCard, Pencil, Lock, Unlock, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, Banknote, ListChecks } from 'lucide-react';
+import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, ListChecks } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import StatusBadge from '@/components/ui/StatusBadge';
 import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
 
 export default function BillingCycles() {
@@ -17,7 +16,7 @@ export default function BillingCycles() {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
-  const [form, setForm] = useState({ cycle_name: '', client_account_id: '', notes: '', billing_received_date: '', cheque_date: '', paid_status: 'Unpaid' });
+  const [form, setForm] = useState({ cycle_name: '', client_account_id: '', notes: '', billing_received_date: '', cheque_date: '' });
   const [nextSeq, setNextSeq] = useState('0001');
   const [saving, setSaving] = useState(false);
   const [tripsOpen, setTripsOpen] = useState(false);
@@ -28,7 +27,7 @@ export default function BillingCycles() {
   // Tabs: statements section vs summary section
   const [mainTab, setMainTab] = useState('statements'); // 'statements' | 'summary'
   // Sub-tabs for statements
-  const [stmtTab, setStmtTab] = useState('unpaid'); // 'unpaid' | 'paid' | 'closed' | 'archived'
+  const [stmtTab, setStmtTab] = useState('active'); // 'active' | 'archived'
   // Sub-tabs for summary
   const [summaryTab, setSummaryTab] = useState('active'); // 'active' | 'archived'
 
@@ -109,7 +108,6 @@ export default function BillingCycles() {
       notes: item.notes || '',
       billing_received_date: item.billing_received_date || '',
       cheque_date: item.cheque_date || '',
-      paid_status: item.paid_status || 'Unpaid',
     });
     setFormOpen(true);
   };
@@ -131,12 +129,6 @@ export default function BillingCycles() {
     }
     setSaving(false);
     setFormOpen(false);
-    load();
-  };
-
-  const toggleStatus = async (cycle) => {
-    const newStatus = cycle.status === 'Open' ? 'Closed' : 'Open';
-    await base44.entities.BillingCycle.update(cycle.id, { status: newStatus });
     load();
   };
 
@@ -204,11 +196,7 @@ export default function BillingCycles() {
   // Filtered cycles for statements tabs
   const filteredCycles = cycles.filter(cycle => {
     if (stmtTab === 'archived') return !!cycle.is_archived;
-    if (cycle.is_archived) return false;
-    if (stmtTab === 'closed') return cycle.status === 'Closed';
-    if (stmtTab === 'paid') return cycle.paid_status === 'Paid' && cycle.status === 'Open';
-    if (stmtTab === 'unpaid') return cycle.paid_status === 'Unpaid' && cycle.status === 'Open';
-    return true;
+    return !cycle.is_archived;
   });
 
   // Summary groups split by archived status
@@ -262,9 +250,7 @@ export default function BillingCycles() {
           {/* Statement sub-tabs */}
           <div className="flex items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
             {[
-              { key: 'unpaid', label: `Unpaid (${cycles.filter(c => !c.is_archived && c.paid_status === 'Unpaid' && c.status === 'Open').length})` },
-              { key: 'paid', label: `Paid (${cycles.filter(c => !c.is_archived && c.paid_status === 'Paid' && c.status === 'Open').length})` },
-              { key: 'closed', label: `Closed (${cycles.filter(c => !c.is_archived && c.status === 'Closed').length})` },
+              { key: 'active', label: `Billing Statements (${cycles.filter(c => !c.is_archived).length})` },
               { key: 'archived', label: `Archived (${cycles.filter(c => !!c.is_archived).length})` },
             ].map(t => (
               <button key={t.key} onClick={() => setStmtTab(t.key)} className={tabClass(stmtTab === t.key)}>
@@ -283,7 +269,7 @@ export default function BillingCycles() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    {['Statement Name', 'Client', 'Billing Received', 'Cheque Date', 'Paid Status', 'Notes', ''].map(h => (
+                    {['Statement Name', 'Client', 'Billing Received', 'Cheque Date', 'Notes', ''].map(h => (
                       <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -299,25 +285,13 @@ export default function BillingCycles() {
                       <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
                       <td className="px-4 py-3 text-sm">{cycle.billing_received_date || '—'}</td>
                       <td className="px-4 py-3 text-sm">{cycle.cheque_date || '—'}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={cycle.paid_status || 'Unpaid'} type="billing" />
-                      </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           {!cycle.is_archived && (
-                            <>
-                              <button onClick={() => openEdit(cycle)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => toggleStatus(cycle)}
-                                className={`p-1.5 rounded text-muted-foreground transition-colors ${cycle.status === 'Open' ? 'hover:bg-red-50 hover:text-red-600' : 'hover:bg-emerald-50 hover:text-emerald-600'}`}
-                                title={cycle.status === 'Open' ? 'Close cycle' : 'Reopen cycle'}
-                              >
-                                {cycle.status === 'Open' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                              </button>
-                            </>
+                            <button onClick={() => openEdit(cycle)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
                           )}
                           <button
                             onClick={() => toggleArchiveCycle(cycle)}
@@ -477,16 +451,6 @@ export default function BillingCycles() {
               {form.cheque_date && !editData && (
                 <p className="text-xs text-muted-foreground">This will be applied to all trips in this billing statement</p>
               )}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Payment Status</Label>
-              <Select value={form.paid_status} onValueChange={v => setForm(p => ({ ...p, paid_status: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Unpaid">Unpaid</SelectItem>
-                  <SelectItem value="Paid">Paid</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Notes</Label>
