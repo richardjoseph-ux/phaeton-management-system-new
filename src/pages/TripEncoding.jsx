@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Trash2, ClipboardList, RefreshCw, Download, Upload, RefreshCcw } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ClipboardList, RefreshCw, Download, Upload, RefreshCcw, Copy } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import TripForm from '@/components/trips/TripForm';
@@ -55,6 +55,11 @@ export default function TripEncoding() {
   );
 
   const handleEdit = (trip) => { setEditData(trip); setFormOpen(true); };
+  const handleDuplicate = (trip) => { 
+    const { id, created_date, updated_date, created_by_id, ...rest } = trip;
+    setEditData(rest); 
+    setFormOpen(true); 
+  };
   const handleAdd = () => { setEditData(null); setFormOpen(true); };
   const handleDelete = async (id) => {
     if (!confirm('Delete this trip record?')) return;
@@ -286,10 +291,13 @@ export default function TripEncoding() {
                   <td className="px-4 py-3 text-xs text-muted-foreground">{trip.billing_cycle_name || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => handleEdit(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                      <button onClick={() => handleDuplicate(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Duplicate">
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => handleEdit(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => handleDelete(trip.id)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
+                      <button onClick={() => handleDelete(trip.id)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600" title="Delete">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
