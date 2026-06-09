@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
             'Plate #', 'Owner/Driver', 'Truck Type', 'Client', 'Delivery Date', 
             'DR #', 'Pickup', 'Delivery', 'Delivery Code', 'Billing Cycle',
             'Gross Rate', 'Tax (2%)', 'Hidden Fee (4%)', 'Admin Fee (6%)', 
-            'Insurance', 'Other Charges', 'Fuel Subsidy', 'Net Payroll'
+            'Fuel Subsidy', 'Net Payroll'
         ];
 
         const rows = trips.map(trip => {
@@ -45,10 +45,8 @@ Deno.serve(async (req) => {
             const tax = trip.tax_2_percent || (gross * 0.02);
             const hidden = trip.hidden_fee_4_percent || ((gross - tax) * 0.04);
             const admin = trip.admin_fee_6_percent || ((gross - tax) * 0.06);
-            const insurance = trip.insurance_charge || 0;
-            const other = trip.other_charges || 0;
             const fuelSubsidy = trip.fuel_subsidy || 0;
-            const net = trip.net_payroll || (gross - tax - hidden - admin - insurance - other + fuelSubsidy);
+            const net = trip.net_payroll || (gross - tax - hidden - admin + fuelSubsidy);
 
             return [
                 trip.plate_number,
@@ -65,8 +63,6 @@ Deno.serve(async (req) => {
                 tax.toFixed(2),
                 hidden.toFixed(2),
                 admin.toFixed(2),
-                insurance.toFixed(2),
-                other.toFixed(2),
                 fuelSubsidy.toFixed(2),
                 net.toFixed(2)
             ];
