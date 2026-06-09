@@ -51,6 +51,33 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       .filter(Boolean)
   )];
 
+  // Helper function to safely read rates supporting strings with hyphens/spaces across variations
+  const getSafeRate = (sourceObj, typeKey) => {
+    if (!sourceObj || !typeKey) return 0;
+    
+    const cleanKey = typeKey.replace(/[^a-zA-Z0-9]/g, ''); // "Sub4W"
+    const underscoreKey = typeKey.replace('-', '_');      // "Sub_4W"
+    
+    const lookups = [
+      typeKey,
+      typeKey.toUpperCase(),
+      typeKey.toLowerCase(),
+      cleanKey,
+      cleanKey.toUpperCase(),
+      cleanKey.toLowerCase(),
+      underscoreKey,
+      underscoreKey.toUpperCase(),
+      underscoreKey.toLowerCase()
+    ];
+
+    for (const key of lookups) {
+      if (sourceObj[key] !== undefined && sourceObj[key] !== null && sourceObj[key] !== '') {
+        return Number(sourceObj[key]);
+      }
+    }
+    return 0;
+  };
+
   useEffect(() => {
     if (editData) {
       setForm({
@@ -211,7 +238,10 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       r.delivery_location === form.delivery_location &&
       r.delivery_code === form.delivery_code
     );
-    const grossRate = matchedRoute?.rates?.[form.truck_type] || client?.rates?.[form.truck_type] || 0;
+    
+    // Utilize normalized fallback scanning engine for truck type rates
+    const grossRate = getSafeRate(matchedRoute?.rates, form.truck_type) || getSafeRate(client?.rates, form.truck_type) || 0;
+    
     const taxDeduction = grossRate * 0.02;
     const hiddenFee = grossRate * 0.04;
     const adminFee = grossRate * 0.06;
@@ -552,7 +582,10 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
               r.delivery_location === form.delivery_location &&
               r.delivery_code === form.delivery_code
             );
-            const gross = matchedRoute?.rates?.[form.truck_type] || client?.rates?.[form.truck_type] || 0;
+            
+            // Re-apply normalization check inside preview container
+            const gross = getSafeRate(matchedRoute?.rates, form.truck_type) || getSafeRate(client?.rates, form.truck_type) || 0;
+            
             if (!gross) return null;
             return (
               <div className="col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
