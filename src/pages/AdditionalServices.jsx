@@ -196,34 +196,35 @@ export default function AdditionalServices() {
       };
 
       const tripData = allTrips.map(trip => {
-        const gross = trip.gross_rate || 0;
-        const tax = gross * 0.02;
-        const afterTax = gross - tax;
-        const hidden = afterTax * 0.04;
-        const admin = afterTax * 0.06;
-        const fs = getFuelSubsidy(trip);
-        const fuelSubsidy = fs ? gross * (fs.subsidy_percentage / 100) : 0;
-        const net = gross - tax - hidden - admin + fuelSubsidy;
-        return {
-          plate_number: trip.plate_number,
-          owner_name: trip.owner_name,
-          truck_type: trip.truck_type,
-          client_name: trip.client_name,
-          sub_account_name: trip.sub_account_name || '',
-          delivery_date: trip.delivery_date,
-          dr_number: trip.dr_number,
-          pickup_location: trip.pickup_location,
-          delivery_location: trip.delivery_location,
-          delivery_code: trip.delivery_code,
-          trip_route_code: trip.trip_route_code || '',
-          billing_cycle_name: trip.billing_cycle_name,
-          gross_rate: gross,
-          tax_2_percent: tax,
-          hidden_fee_4_percent: hidden,
-          admin_fee_6_percent: admin,
-          fuel_subsidy: fuelSubsidy,
-          net_payroll: net,
-        };
+      const gross = trip.gross_rate || 0;
+      const tax = gross * 0.02;
+      const afterTax = gross - tax;
+      const hidden = afterTax * 0.04;
+      const admin = afterTax * 0.06;
+      const fs = getFuelSubsidy(trip);
+      const fuelSubsidy = fs ? gross * (fs.subsidy_percentage / 100) : 0;
+      const net = gross - tax - hidden - admin + fuelSubsidy;
+      return {
+        plate_number: trip.plate_number,
+        owner_name: trip.owner_name,
+        truck_type: trip.truck_type,
+        client_name: trip.client_name,
+        sub_account_name: trip.sub_account_name || '',
+        delivery_date: trip.delivery_date,
+        dr_number: trip.dr_number,
+        pickup_location: trip.pickup_location,
+        delivery_location: trip.delivery_location,
+        delivery_code: trip.delivery_code,
+        trip_route_code: trip.trip_route_code || '',
+        billing_cycle_name: trip.billing_cycle_name,
+        billing_received_date: trip.billing_date || '',
+        gross_rate: gross,
+        tax_2_percent: tax,
+        hidden_fee_4_percent: hidden,
+        admin_fee_6_percent: admin,
+        fuel_subsidy: fuelSubsidy,
+        net_payroll: net,
+      };
       });
 
       const response = await base44.functions.invoke('exportToGoogleSheet', { sheetUrl: urlToUse, trips: tripData });
