@@ -118,28 +118,8 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
           </div>
         ) : (
           <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              <div className="bg-card border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Total Trips</p>
-                <p className="text-xl font-bold mt-1">{trips.length}</p>
-              </div>
-              <div className="bg-card border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Gross Amount - 2% Tax</p>
-                <p className="text-xl font-bold mt-1 text-blue-700">₱{grandTotals.afterTax.toFixed(2)}</p>
-              </div>
-              <div className="bg-card border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Total Fuel Subsidy</p>
-                <p className="text-xl font-bold mt-1 text-green-700">₱{grandTotals.fuelSubsidy.toFixed(2)}</p>
-              </div>
-              <div className="bg-card border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Net Payroll</p>
-                <p className="text-xl font-bold mt-1 text-emerald-700">₱{grandTotals.net.toFixed(2)}</p>
-              </div>
-            </div>
-
             {/* Grouped by Plate # Table */}
-            <div className="border rounded-lg overflow-x-auto">
+            <div className="border rounded-lg overflow-x-auto mb-4">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr className="border-b">
@@ -169,20 +149,23 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
-                  <tr className="border-t bg-muted/50">
-                    <td colSpan={5} className="px-3 py-3"></td>
-                    <td className="px-3 py-3 text-right text-sm font-semibold">Grand Total</td>
-                    <td className="px-3 py-3 text-right font-bold whitespace-nowrap">₱{plateGroups.reduce((sum, r) => sum + r.gross, 0).toFixed(2)}</td>
-                    <td className="px-3 py-3"></td>
-                    <td className="px-3 py-3"></td>
-                    <td className="px-3 py-3"></td>
-                    <td className="px-3 py-3"></td>
-                    <td className="px-3 py-3"></td>
-                    <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{grandTotals.net.toFixed(2)}</td>
-                  </tr>
-                </tfoot>
               </table>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
+                <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Grand Total</p>
+                <p className="text-2xl font-bold mt-2 text-blue-700">₱{plateGroups.reduce((sum, r) => sum + r.gross, 0).toFixed(2)}</p>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
+                <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Cheque Amount</p>
+                <p className="text-2xl font-bold mt-2 text-amber-700">₱{grandTotals.afterTax.toFixed(2)}</p>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5">
+                <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Subcon Payout</p>
+                <p className="text-2xl font-bold mt-2 text-emerald-700">₱{grandTotals.net.toFixed(2)}</p>
+              </div>
             </div>
           </>
         )}
