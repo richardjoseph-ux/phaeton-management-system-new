@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ClientForm from '@/components/clients/ClientForm';
@@ -35,6 +35,11 @@ export default function ClientAccounts() {
   const handleEdit = (item) => { setEditData(item); setFormOpen(true); };
   const handleAdd = () => { setEditData(null); setFormOpen(true); };
   const toggleExpand = (id) => setExpanded(p => ({ ...p, [id]: !p[id] }));
+  const handleDelete = async (item) => {
+    if (!confirm(`Delete client "${item.client_name}"? This cannot be undone.`)) return;
+    await base44.entities.ClientAccount.delete(item.id);
+    load();
+  };
 
   return (
     <div className="p-6">
@@ -83,13 +88,16 @@ export default function ClientAccounts() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => handleEdit(client)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => toggleExpand(client.id)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                    {expanded[client.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                </div>
+                   <button onClick={() => handleEdit(client)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                     <Pencil className="w-4 h-4" />
+                   </button>
+                   <button onClick={() => handleDelete(client)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
+                     <Trash2 className="w-4 h-4" />
+                   </button>
+                   <button onClick={() => toggleExpand(client.id)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                     {expanded[client.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                   </button>
+                 </div>
               </div>
 
 
