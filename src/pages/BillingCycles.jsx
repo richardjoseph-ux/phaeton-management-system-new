@@ -252,6 +252,18 @@ export default function BillingCycles() {
     setTripsOpen(true);
   };
 
+  const getChequeAmountForDate = (date) => {
+    const cyclesForDate = cycles.filter(c => c.billing_received_date === date && !c.is_archived);
+    let totalGross = 0;
+    cyclesForDate.forEach(cycle => {
+      trips.filter(t => t.billing_cycle_id === cycle.id).forEach(trip => {
+        totalGross += trip.gross_rate || 0;
+      });
+    });
+    const tax = totalGross * 0.02;
+    return totalGross - tax;
+  };
+
   // Filtered cycles for statements tabs
   const filteredCycles = cycles.filter(cycle => {
     if (stmtTab === 'archived') return !!cycle.is_archived;
@@ -422,7 +434,7 @@ export default function BillingCycles() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      {['Billing Received Date', 'Statements', '# Stmts', 'Paid', 'Payroll Processed', ''].map(h => (
+                      {['Billing Received Date', 'Statements', '# Stmts', 'Cheque Amount', 'Paid', 'Payroll Processed', ''].map(h => (
                         <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
@@ -435,12 +447,13 @@ export default function BillingCycles() {
                       const isArchived = rec?.is_archived || false;
                       return (
                         <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-3 font-semibold">{group.date}</td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">
-                            {group.cycles.map(c => c.cycle_name).join(', ')}
-                          </td>
-                          <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
-                          <td className="px-4 py-3">
+                           <td className="px-4 py-3 font-semibold">{group.date}</td>
+                           <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">
+                             {group.cycles.map(c => c.cycle_name).join(', ')}
+                           </td>
+                           <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
+                           <td className="px-4 py-3 text-sm font-semibold text-amber-700">₱{getChequeAmountForDate(group.date).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                           <td className="px-4 py-3">
                             <button
                               onClick={() => !isArchived && toggleSummaryField(group.date, 'is_paid')}
                               disabled={isArchived}
