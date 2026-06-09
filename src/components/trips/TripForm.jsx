@@ -230,6 +230,9 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
     obj.code.toLowerCase().includes(codeSearch.toLowerCase())
   );
 
+  // Filter billing cycles to only show non-archived
+  const activeBillingCycles = billingCycles.filter(bc => !bc.is_archived);
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -496,7 +499,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                 <Select value={form.billing_cycle_id} onValueChange={handleBillingCycleChange}>
                   <SelectTrigger><SelectValue placeholder="Select billing statement" /></SelectTrigger>
                   <SelectContent>
-                    {billingCycles.map(bc => (
+                    {activeBillingCycles.map(bc => (
                       <SelectItem key={bc.id} value={bc.id}>{bc.cycle_name}</SelectItem>
                     ))}
                   </SelectContent>
