@@ -25,14 +25,18 @@ export default function Deductions() {
   });
   const [saving, setSaving] = useState(false);
 
+  const [billingReceivedSummaries, setBillingReceivedSummaries] = useState([]);
+
   const load = async () => {
     setLoading(true);
-    const [b, d] = await Promise.all([
+    const [b, d, summaries] = await Promise.all([
       base44.entities.BillingCycle.list('-billing_received_date', 200),
       base44.entities.BillingDeduction.list('-billing_received_date', 500),
+      base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
     ]);
     setBillingCycles(b);
     setDeductions(d);
+    setBillingReceivedSummaries(summaries);
     setLoading(false);
   };
 
@@ -59,12 +63,19 @@ export default function Deductions() {
 
   useEffect(() => { load(); }, []);
 
-  // Unique billing received dates from billing cycles
+  // Only show dates where payroll_processed is false/pending in BillingReceivedSummary
+  const unpaidSummaryDates = new Set(
+    billingReceivedSummaries
+      .filter(s => !s.payroll_processed)
+      .map(s => s.billing_received_date)
+  );
+
+  // Unique billing received dates from billing cycles — only unprocessed ones
   const dateOptions = (() => {
     const seen = new Set();
     const result = [];
     billingCycles.forEach(c => {
-      if (c.billing_received_date && !seen.has(c.billing_received_date)) {
+      if (c.billing_received_date && !seen.has(c.billing_received_date) && unpaidSummaryDates.has(c.billing_received_date)) {
         seen.add(c.billing_received_date);
         result.push(c.billing_received_date);
       }
