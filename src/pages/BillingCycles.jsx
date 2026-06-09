@@ -511,9 +511,11 @@ export default function BillingCycles() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr className="border-b">
-                      {['Plate #', 'Owner / Driver', 'Truck', 'Route', 'Delivery Date', 'DR #', 'Gross Rate', 'Tax (2%)'].map(h => (
+                      {['Plate #', 'Owner / Driver', 'Truck', 'Route', 'Delivery Date', 'DR #'].map(h => (
                         <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
                       ))}
+                      <th className="text-right px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">Gross Rate</th>
+                      <th className="text-right px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">Tax (2%)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -543,7 +545,7 @@ export default function BillingCycles() {
                     <tr className="border-t bg-muted/50">
                       <td colSpan={6} className="px-3 py-3 text-sm font-semibold text-right">Grand Total</td>
                       <td className="px-3 py-3 text-right font-bold whitespace-nowrap">₱{trips.reduce((s, t) => s + (t.gross_rate || 0), 0).toFixed(2)}</td>
-                      <td className="px-3 py-3 text-right font-bold text-red-600 whitespace-nowrap">-₱{trips.reduce((s, t) => s + (t.gross_rate || 0) * 0.02, 0).toFixed(2)}</td>
+                      <td className="px-3 py-3"></td>
                     </tr>
                   </tfoot>
                 </table>
