@@ -7,6 +7,7 @@ import { ClipboardList } from 'lucide-react';
 export default function BillingReceivedSummaryDialog({ open, onClose, billingDate, cycles, fuelSubsidies }) {
   const [trips, setTrips] = useState([]);
   const [billingDeductions, setBillingDeductions] = useState([]);
+  const [reimbursements, setReimbursements] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const cycleIds = cycles?.map(c => c.id) || [];
@@ -19,12 +20,14 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
 
   const loadData = async () => {
     setLoading(true);
-    const [allTrips, deductions] = await Promise.all([
+    const [allTrips, deductions, reimbs] = await Promise.all([
       Promise.all(cycleIds.map(id => base44.entities.TripRecord.filter({ billing_cycle_id: id }, '-delivery_date', 500))).then(r => r.flat()),
       base44.entities.BillingDeduction.filter({ billing_received_date: billingDate }, 'plate_number', 200),
+      base44.entities.Reimbursement.filter({ billing_received_date: billingDate }, 'plate_number', 200),
     ]);
     setTrips(allTrips);
     setBillingDeductions(deductions);
+    setReimbursements(reimbs);
     setLoading(false);
   };
 
@@ -77,12 +80,14 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       groups[key].tripNet += t.net;
       groups[key].tripCount += 1;
     });
-    // Apply flat deductions per plate
+    // Apply flat deductions and reimbursements per plate
     return Object.values(groups).map(row => {
       const ded = billingDeductions.find(d => d.plate_number === row.plate_number);
       const insurance = ded?.insurance_charge || 0;
       const other = ded?.other_charges || 0;
-      return { ...row, insurance, other, net: row.tripNet - insurance - other };
+      const reimb = reimbursements.find(r => r.plate_number === row.plate_number);
+      const reimbursement = reimb?.reimbursement_amount || 0;
+      return { ...row, insurance, other, reimbursement, net: row.tripNet - insurance - other + reimbursement };
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
@@ -123,7 +128,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr className="border-b">
-                    {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Trips', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Fuel Subsidy', 'Net Payroll'].map(h => (
+                    {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Trips', 'Gross Rate', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Insurance', 'Other', 'Reimbursement', 'Fuel Subsidy', 'Net Payroll'].map(h => (
                       <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -144,6 +149,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
                       <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{row.admin.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="px-3 py-3 text-right text-blue-600 whitespace-nowrap">-₱{row.insurance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="px-3 py-3 text-right whitespace-nowrap">-₱{row.other.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">{row.reimbursement > 0 ? `+₱${row.reimbursement.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
                       <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">+₱{row.fuelSubsidy.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="px-3 py-3 text-right font-bold text-emerald-700 whitespace-nowrap">₱{row.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>

@@ -1,0 +1,45 @@
+{
+  "name": "Reimbursement",
+  "type": "object",
+  "properties": {
+    "billing_received_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Billing received date this reimbursement belongs to"
+    },
+    "plate_number": {
+      "type": "string",
+      "description": "Vehicle plate number (owner/driver identifier)"
+    },
+    "owner_name": {
+      "type": "string",
+      "description": "Owner or driver name"
+    },
+    "reimbursement_type": {
+      "type": "string",
+      "enum": [
+        "fuel",
+        "maintenance",
+        "tolls",
+        "insurance",
+        "other"
+      ],
+      "description": "Type of reimbursement"
+    },
+    "reimbursement_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Reimbursement amount"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional notes about this reimbursement"
+    }
+  },
+  "required": [
+    "billing_received_date",
+    "plate_number",
+    "reimbursement_type",
+    "reimbursement_amount"
+  ]
+}
