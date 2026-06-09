@@ -1,0 +1,33 @@
+{
+  "name": "BillingReceivedSummary",
+  "type": "object",
+  "properties": {
+    "billing_received_date": {
+      "type": "string",
+      "format": "date",
+      "description": "The billing received date this summary represents"
+    },
+    "is_paid": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this billing received date has been paid"
+    },
+    "payroll_processed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether payroll has been processed for this billing received date"
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this billing received summary has been archived"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional notes"
+    }
+  },
+  "required": [
+    "billing_received_date"
+  ]
+}

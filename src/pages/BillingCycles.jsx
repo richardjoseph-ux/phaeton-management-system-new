@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, CreditCard, Pencil, Lock, Unlock, Eye, ClipboardList, Calendar } from 'lucide-react';
+import { Plus, CreditCard, Pencil, Lock, Unlock, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, Banknote, ListChecks } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
@@ -13,6 +13,7 @@ import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSu
 export default function BillingCycles() {
   const [cycles, setCycles] = useState([]);
   const [clients, setClients] = useState([]);
+  const [summaryRecords, setSummaryRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
@@ -23,7 +24,14 @@ export default function BillingCycles() {
   const [selectedCycle, setSelectedCycle] = useState(null);
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
-  const [activeTab, setActiveTab] = useState('unpaid'); // 'paid', 'unpaid', 'closed', 'summary'
+
+  // Tabs: statements section vs summary section
+  const [mainTab, setMainTab] = useState('statements'); // 'statements' | 'summary'
+  // Sub-tabs for statements
+  const [stmtTab, setStmtTab] = useState('unpaid'); // 'unpaid' | 'paid' | 'closed' | 'archived'
+  // Sub-tabs for summary
+  const [summaryTab, setSummaryTab] = useState('active'); // 'active' | 'archived'
+
   const [fuelSubsidies, setFuelSubsidies] = useState([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryDate, setSummaryDate] = useState('');
@@ -31,14 +39,16 @@ export default function BillingCycles() {
 
   const load = async () => {
     setLoading(true);
-    const [c, cl, s] = await Promise.all([
-      base44.entities.BillingCycle.list('-created_date', 100),
+    const [c, cl, s, sr] = await Promise.all([
+      base44.entities.BillingCycle.list('-created_date', 200),
       base44.entities.ClientAccount.list('client_name', 100),
       base44.entities.FuelSubsidy.list('-created_date', 100),
+      base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
     ]);
     setCycles(c);
     setClients(cl);
     setFuelSubsidies(s);
+    setSummaryRecords(sr);
     setLoading(false);
   };
 
@@ -67,25 +77,19 @@ export default function BillingCycles() {
   };
 
   const calculateNextSequence = async (clientId) => {
-    if (!clientId) {
-      return '0001';
-    }
+    if (!clientId) return '0001';
     const existingCycles = await base44.entities.BillingCycle.filter({ client_account_id: clientId }, '-created_date', 100);
     const client = clients.find(c => c.id === clientId);
     const clientCode = client?.client_code || 'XX';
     const yearSuffix = new Date().getFullYear().toString().slice(-2);
-    
-    // Find max sequence from existing cycles
     let maxSeq = 0;
     existingCycles.forEach(c => {
       const match = c.cycle_name?.match(new RegExp(`${clientCode}${yearSuffix}-(\\d{4})`));
-      if (match) {
-        maxSeq = Math.max(maxSeq, parseInt(match[1]));
-      }
+      if (match) maxSeq = Math.max(maxSeq, parseInt(match[1]));
     });
-    const nextSeq = String(maxSeq + 1).padStart(4, '0');
-    setNextSeq(nextSeq);
-    return nextSeq;
+    const seq = String(maxSeq + 1).padStart(4, '0');
+    setNextSeq(seq);
+    return seq;
   };
 
   useEffect(() => { load(); }, []);
@@ -96,6 +100,7 @@ export default function BillingCycles() {
     setNextSeq('0001');
     setFormOpen(true);
   };
+
   const openEdit = (item) => {
     setEditData(item);
     setForm({
@@ -112,30 +117,17 @@ export default function BillingCycles() {
   const handleSave = async () => {
     setSaving(true);
     if (editData) {
-      // If cheque date changed, update all trips with this billing cycle
       if (editData.cheque_date !== form.cheque_date && form.cheque_date) {
         const tripsToUpdate = await base44.entities.TripRecord.filter({ billing_cycle_id: editData.id });
-        await Promise.all(
-          tripsToUpdate.map(trip => 
-            base44.entities.TripRecord.update(trip.id, { first_cheque_date: form.cheque_date })
-          )
-        );
+        await Promise.all(tripsToUpdate.map(trip => base44.entities.TripRecord.update(trip.id, { first_cheque_date: form.cheque_date })));
       }
-      // If billing received date changed, update all trips with this billing cycle
       if (editData.billing_received_date !== form.billing_received_date && form.billing_received_date) {
         const tripsToUpdate = await base44.entities.TripRecord.filter({ billing_cycle_id: editData.id });
-        await Promise.all(
-          tripsToUpdate.map(trip => 
-            base44.entities.TripRecord.update(trip.id, { billing_date: form.billing_received_date })
-          )
-        );
+        await Promise.all(tripsToUpdate.map(trip => base44.entities.TripRecord.update(trip.id, { billing_date: form.billing_received_date })));
       }
       await base44.entities.BillingCycle.update(editData.id, form);
     } else {
-      await base44.entities.BillingCycle.create({ 
-        ...form, 
-        status: 'Open'
-      });
+      await base44.entities.BillingCycle.create({ ...form, status: 'Open' });
     }
     setSaving(false);
     setFormOpen(false);
@@ -148,16 +140,19 @@ export default function BillingCycles() {
     load();
   };
 
+  const toggleArchiveCycle = async (cycle) => {
+    await base44.entities.BillingCycle.update(cycle.id, { is_archived: !cycle.is_archived });
+    load();
+  };
+
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
 
-  // Group cycles by billing_received_date for the summary tab
+  // Group non-archived cycles by billing_received_date for summary tab
   const billingReceivedGroups = (() => {
     const groups = {};
-    cycles.forEach(cycle => {
+    cycles.filter(c => !c.is_archived).forEach(cycle => {
       if (cycle.billing_received_date) {
-        if (!groups[cycle.billing_received_date]) {
-          groups[cycle.billing_received_date] = [];
-        }
+        if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
         groups[cycle.billing_received_date].push(cycle);
       }
     });
@@ -166,23 +161,36 @@ export default function BillingCycles() {
       .sort((a, b) => b.date.localeCompare(a.date));
   })();
 
+  // Get or create summary record for a date
+  const getSummaryRecord = (date) => summaryRecords.find(r => r.billing_received_date === date);
+
+  const ensureSummaryRecord = async (date) => {
+    let record = getSummaryRecord(date);
+    if (!record) {
+      record = await base44.entities.BillingReceivedSummary.create({ billing_received_date: date, is_paid: false, payroll_processed: false, is_archived: false });
+      setSummaryRecords(prev => [...prev, record]);
+    }
+    return record;
+  };
+
+  const toggleSummaryField = async (date, field) => {
+    const record = await ensureSummaryRecord(date);
+    await base44.entities.BillingReceivedSummary.update(record.id, { [field]: !record[field] });
+    load();
+  };
+
+  const toggleArchiveSummary = async (date) => {
+    const record = await ensureSummaryRecord(date);
+    await base44.entities.BillingReceivedSummary.update(record.id, { is_archived: !record.is_archived });
+    load();
+  };
+
   const openSummary = (group) => {
     setSummaryDate(group.date);
-    // Enrich cycles with client_name for display in dialog header
-    const enriched = group.cycles.map(c => ({
-      ...c,
-      client_name: getClientName(c.client_account_id),
-    }));
+    const enriched = group.cycles.map(c => ({ ...c, client_name: getClientName(c.client_account_id) }));
     setSummaryCycles(enriched);
     setSummaryOpen(true);
   };
-
-  const filteredCycles = cycles.filter(cycle => {
-    if (activeTab === 'closed') return cycle.status === 'Closed';
-    if (activeTab === 'paid') return cycle.paid_status === 'Paid' && cycle.status === 'Open';
-    if (activeTab === 'unpaid') return cycle.paid_status === 'Unpaid' && cycle.status === 'Open';
-    return true;
-  });
 
   const openTripsView = async (cycle) => {
     setSelectedCycle(cycle);
@@ -193,157 +201,243 @@ export default function BillingCycles() {
     setTripsOpen(true);
   };
 
+  // Filtered cycles for statements tabs
+  const filteredCycles = cycles.filter(cycle => {
+    if (stmtTab === 'archived') return !!cycle.is_archived;
+    if (cycle.is_archived) return false;
+    if (stmtTab === 'closed') return cycle.status === 'Closed';
+    if (stmtTab === 'paid') return cycle.paid_status === 'Paid' && cycle.status === 'Open';
+    if (stmtTab === 'unpaid') return cycle.paid_status === 'Unpaid' && cycle.status === 'Open';
+    return true;
+  });
+
+  // Summary groups split by archived status
+  const activeSummaryGroups = billingReceivedGroups.filter(g => !getSummaryRecord(g.date)?.is_archived);
+  const archivedSummaryGroups = (() => {
+    // Also include dates that have a summary record marked archived, even if cycles are archived
+    const archivedDates = summaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
+    const groups = {};
+    cycles.filter(c => c.is_archived || archivedDates.includes(c.billing_received_date)).forEach(cycle => {
+      if (cycle.billing_received_date && archivedDates.includes(cycle.billing_received_date)) {
+        if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
+        groups[cycle.billing_received_date].push(cycle);
+      }
+    });
+    return Object.entries(groups)
+      .map(([date, items]) => ({ date, cycles: items }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  })();
+
+  const tabClass = (active) =>
+    `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`;
+
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Billing Statements</h1>
-            <p className="text-sm text-muted-foreground">Manage billing statements per client account</p>
-          </div>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Billing Cycles</h1>
+          <p className="text-sm text-muted-foreground">Manage billing statements and received summaries</p>
+        </div>
+        {mainTab === 'statements' && (
           <Button onClick={openAdd} size="sm">
             <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
           </Button>
-        </div>
-        
-        <div className="flex items-center gap-2 border-b">
-          <button
-            onClick={() => setActiveTab('unpaid')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'unpaid' 
-                ? 'border-primary text-primary' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Unpaid ({cycles.filter(c => c.paid_status === 'Unpaid' && c.status === 'Open').length})
-          </button>
-          <button
-            onClick={() => setActiveTab('paid')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'paid' 
-                ? 'border-primary text-primary' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Paid ({cycles.filter(c => c.paid_status === 'Paid' && c.status === 'Open').length})
-          </button>
-          <button
-            onClick={() => setActiveTab('closed')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'closed' 
-                ? 'border-primary text-primary' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Closed Cycle ({cycles.filter(c => c.status === 'Closed').length})
-          </button>
-          <button
-            onClick={() => setActiveTab('summary')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'summary' 
-                ? 'border-primary text-primary' 
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Billing Received Summary ({billingReceivedGroups.length})
-          </button>
-        </div>
+        )}
+      </div>
+
+      {/* Main tabs */}
+      <div className="flex items-center gap-2 border-b mb-0">
+        <button onClick={() => setMainTab('statements')} className={tabClass(mainTab === 'statements')}>
+          Billing Statements
+        </button>
+        <button onClick={() => setMainTab('summary')} className={tabClass(mainTab === 'summary')}>
+          Billing Received Summary
+        </button>
       </div>
 
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
-      ) : activeTab === 'summary' ? (
-        billingReceivedGroups.length === 0 ? (
-          <div className="text-center py-16">
-            <Calendar className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-muted-foreground text-sm">No billing received dates recorded yet</p>
+      ) : mainTab === 'statements' ? (
+        <>
+          {/* Statement sub-tabs */}
+          <div className="flex items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
+            {[
+              { key: 'unpaid', label: `Unpaid (${cycles.filter(c => !c.is_archived && c.paid_status === 'Unpaid' && c.status === 'Open').length})` },
+              { key: 'paid', label: `Paid (${cycles.filter(c => !c.is_archived && c.paid_status === 'Paid' && c.status === 'Open').length})` },
+              { key: 'closed', label: `Closed (${cycles.filter(c => !c.is_archived && c.status === 'Closed').length})` },
+              { key: 'archived', label: `Archived (${cycles.filter(c => !!c.is_archived).length})` },
+            ].map(t => (
+              <button key={t.key} onClick={() => setStmtTab(t.key)} className={tabClass(stmtTab === t.key)}>
+                {t.label}
+              </button>
+            ))}
           </div>
-        ) : (
-          <div className="bg-card border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  {['Billing Received Date', 'Billing Statements Included', '# of Statements', ''].map(h => (
-                    <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {billingReceivedGroups.map(group => (
-                  <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-semibold">{group.date}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {group.cycles.map(c => c.cycle_name).join(', ')}
-                    </td>
-                    <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => openSummary(group)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> View Summary
-                      </button>
-                    </td>
+
+          {filteredCycles.length === 0 ? (
+            <div className="text-center py-16">
+              <CreditCard className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-muted-foreground text-sm">No billing statements in this category</p>
+            </div>
+          ) : (
+            <div className="bg-card border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    {['Statement Name', 'Client', 'Billing Received', 'Cheque Date', 'Paid Status', 'Notes', ''].map(h => (
+                      <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      ) : cycles.length === 0 ? (
-        <div className="text-center py-16">
-          <CreditCard className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-muted-foreground text-sm">No billing cycles yet</p>
-        </div>
+                </thead>
+                <tbody>
+                  {filteredCycles.map(cycle => (
+                    <tr key={cycle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <button onClick={() => openTripsView(cycle)} className="font-semibold text-primary hover:underline">
+                          {cycle.cycle_name}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
+                      <td className="px-4 py-3 text-sm">{cycle.billing_received_date || '—'}</td>
+                      <td className="px-4 py-3 text-sm">{cycle.cheque_date || '—'}</td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={cycle.paid_status || 'Unpaid'} type="billing" />
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          {!cycle.is_archived && (
+                            <>
+                              <button onClick={() => openEdit(cycle)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => toggleStatus(cycle)}
+                                className={`p-1.5 rounded text-muted-foreground transition-colors ${cycle.status === 'Open' ? 'hover:bg-red-50 hover:text-red-600' : 'hover:bg-emerald-50 hover:text-emerald-600'}`}
+                                title={cycle.status === 'Open' ? 'Close cycle' : 'Reopen cycle'}
+                              >
+                                {cycle.status === 'Open' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => toggleArchiveCycle(cycle)}
+                            className={`p-1.5 rounded transition-colors ${cycle.is_archived ? 'hover:bg-blue-50 hover:text-blue-600 text-muted-foreground' : 'hover:bg-amber-50 hover:text-amber-600 text-muted-foreground'}`}
+                            title={cycle.is_archived ? 'Unarchive' : 'Archive'}
+                          >
+                            {cycle.is_archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       ) : (
-        <div className="bg-card border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                {['Statement Name', 'Client', 'Billing Received', 'Cheque Date', 'Paid Status', 'Notes', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCycles.map(cycle => (
-                <tr key={cycle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">
-                    <button 
-                      onClick={() => openTripsView(cycle)} 
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      {cycle.cycle_name}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
-                  <td className="px-4 py-3 text-sm">{cycle.billing_received_date || '—'}</td>
-                  <td className="px-4 py-3 text-sm">{cycle.cheque_date || '—'}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={cycle.paid_status || 'Unpaid'} type="billing" />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => openEdit(cycle)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => toggleStatus(cycle)}
-                        className={`p-1.5 rounded text-muted-foreground transition-colors ${cycle.status === 'Open' ? 'hover:bg-red-50 hover:text-red-600' : 'hover:bg-emerald-50 hover:text-emerald-600'}`}
-                        title={cycle.status === 'Open' ? 'Close cycle' : 'Reopen cycle'}
-                      >
-                        {cycle.status === 'Open' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Summary sub-tabs */}
+          <div className="flex items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
+            {[
+              { key: 'active', label: `Active (${activeSummaryGroups.length})` },
+              { key: 'archived', label: `Archived (${archivedSummaryGroups.length})` },
+            ].map(t => (
+              <button key={t.key} onClick={() => setSummaryTab(t.key)} className={tabClass(summaryTab === t.key)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {(() => {
+            const groups = summaryTab === 'active' ? activeSummaryGroups : archivedSummaryGroups;
+            if (groups.length === 0) {
+              return (
+                <div className="text-center py-16">
+                  <Calendar className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">
+                    {summaryTab === 'active' ? 'No billing received dates recorded yet' : 'No archived summaries'}
+                  </p>
+                </div>
+              );
+            }
+            return (
+              <div className="bg-card border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      {['Billing Received Date', 'Statements', '# Stmts', 'Paid', 'Payroll Processed', ''].map(h => (
+                        <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map(group => {
+                      const rec = getSummaryRecord(group.date);
+                      const isPaid = rec?.is_paid || false;
+                      const isPayroll = rec?.payroll_processed || false;
+                      const isArchived = rec?.is_archived || false;
+                      return (
+                        <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-3 font-semibold">{group.date}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">
+                            {group.cycles.map(c => c.cycle_name).join(', ')}
+                          </td>
+                          <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => !isArchived && toggleSummaryField(group.date, 'is_paid')}
+                              disabled={isArchived}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPaid ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
+                              title={isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                            >
+                              {isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                              {isPaid ? 'Paid' : 'Unpaid'}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => !isArchived && toggleSummaryField(group.date, 'payroll_processed')}
+                              disabled={isArchived}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPayroll ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
+                              title={isPayroll ? 'Mark as Not Processed' : 'Mark as Processed'}
+                            >
+                              {isPayroll ? <ListChecks className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                              {isPayroll ? 'Processed' : 'Pending'}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              {!isArchived && (
+                                <button
+                                  onClick={() => openSummary(group)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+                                >
+                                  <Eye className="w-3.5 h-3.5" /> View
+                                </button>
+                              )}
+                              <button
+                                onClick={() => toggleArchiveSummary(group.date)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${isArchived ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
+                                title={isArchived ? 'Unarchive' : 'Archive'}
+                              >
+                                {isArchived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                                {isArchived ? 'Unarchive' : 'Archive'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+        </>
       )}
 
+      {/* Form Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -352,19 +446,15 @@ export default function BillingCycles() {
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label>Client Account *</Label>
-              <Select 
-                value={form.client_account_id} 
+              <Select
+                value={form.client_account_id}
                 onValueChange={async (v) => {
                   const client = clients.find(c => c.id === v);
                   const clientCode = client?.client_code || 'XX';
                   const yearSuffix = new Date().getFullYear().toString().slice(-2);
                   const seq = await calculateNextSequence(v);
                   const generatedName = client ? `BS-${clientCode}${yearSuffix}-${seq}` : '';
-                  setForm(p => ({ 
-                    ...p, 
-                    client_account_id: v,
-                    cycle_name: generatedName
-                  }));
+                  setForm(p => ({ ...p, client_account_id: v, cycle_name: generatedName }));
                 }}
               >
                 <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
@@ -375,18 +465,12 @@ export default function BillingCycles() {
             </div>
             <div className="space-y-1.5">
               <Label>Cycle Name *</Label>
-              <Input 
-                value={form.cycle_name} 
-                onChange={e => setForm(p => ({ ...p, cycle_name: e.target.value }))} 
-                placeholder="e.g., BS-FL26-0001" 
-              />
+              <Input value={form.cycle_name} onChange={e => setForm(p => ({ ...p, cycle_name: e.target.value }))} placeholder="e.g., BS-FL26-0001" />
             </div>
-
             <div className="space-y-1.5">
               <Label>Billing Received Date</Label>
               <Input type="date" value={form.billing_received_date} onChange={e => setForm(p => ({ ...p, billing_received_date: e.target.value }))} />
             </div>
-
             <div className="space-y-1.5">
               <Label>Cheque Date</Label>
               <Input type="date" value={form.cheque_date} onChange={e => setForm(p => ({ ...p, cheque_date: e.target.value }))} />
@@ -394,7 +478,6 @@ export default function BillingCycles() {
                 <p className="text-xs text-muted-foreground">This will be applied to all trips in this billing statement</p>
               )}
             </div>
-
             <div className="space-y-1.5">
               <Label>Payment Status</Label>
               <Select value={form.paid_status} onValueChange={v => setForm(p => ({ ...p, paid_status: v }))}>
@@ -405,7 +488,6 @@ export default function BillingCycles() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1.5">
               <Label>Notes</Label>
               <Input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} placeholder="Optional notes" />
@@ -428,14 +510,14 @@ export default function BillingCycles() {
         fuelSubsidies={fuelSubsidies}
       />
 
+      {/* Trips Dialog */}
       <Dialog open={tripsOpen} onOpenChange={setTripsOpen}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Trips for {selectedCycle?.cycle_name} - {getClientName(selectedCycle?.client_account_id)}
+              Trips for {selectedCycle?.cycle_name} — {getClientName(selectedCycle?.client_account_id)}
             </DialogTitle>
           </DialogHeader>
-          
           {loadingTrips ? (
             <div className="text-center py-12 text-muted-foreground">Loading trips...</div>
           ) : trips.length === 0 ? (
@@ -492,7 +574,6 @@ export default function BillingCycles() {
               </table>
             </div>
           )}
-          
           <DialogFooter>
             <Button onClick={() => setTripsOpen(false)}>Close</Button>
           </DialogFooter>

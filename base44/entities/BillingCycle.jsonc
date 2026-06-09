@@ -35,6 +35,11 @@
       ],
       "default": "Unpaid"
     },
+    "is_archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this billing statement has been archived"
+    },
     "notes": {
       "type": "string"
     }
