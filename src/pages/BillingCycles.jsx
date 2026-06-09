@@ -156,6 +156,44 @@ export default function BillingCycles() {
 
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
 
+  // Calculate payout date: 30 working days from billing received date, then find nearest Tuesday
+  const calculatePayoutDate = (billingReceivedDate) => {
+    if (!billingReceivedDate) return null;
+    
+    let currentDate = new Date(billingReceivedDate);
+    let workingDaysCount = 0;
+    
+    // Count 30 working days (skip weekends)
+    while (workingDaysCount < 30) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      const dayOfWeek = currentDate.getDay();
+      // 0 = Sunday, 6 = Saturday
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDaysCount++;
+      }
+    }
+    
+    // Find nearest Tuesday
+    const dayOfWeek = currentDate.getDay();
+    const daysToTuesday = [
+      2, // Sunday (0) -> Tuesday (+2)
+      1, // Monday (1) -> Tuesday (+1)
+      0, // Tuesday (2) -> Tuesday (0)
+      -1, // Wednesday (3) -> Tuesday (-1)
+      -2, // Thursday (4) -> Tuesday (-2)
+      -3, // Friday (5) -> Tuesday (-3)
+      3  // Saturday (6) -> Tuesday (+3)
+    ];
+    
+    currentDate.setDate(currentDate.getDate() + daysToTuesday[dayOfWeek]);
+    
+    // Format as YYYY-MM-DD
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Group non-archived cycles by billing_received_date for summary tab
   const billingReceivedGroups = (() => {
     const groups = {};
@@ -469,7 +507,7 @@ export default function BillingCycles() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      {['Billing Received Date', 'Statements', '# Stmts', 'Cheque Amount', 'Paid', 'Payroll Processed', ''].map(h => (
+                      {['Billing Received Date', 'Payout Date', 'Statements', '# Stmts', 'Cheque Amount', 'Paid', 'Payroll Processed', ''].map(h => (
                         <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
@@ -483,6 +521,9 @@ export default function BillingCycles() {
                       return (
                         <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                            <td className="px-4 py-3 font-semibold">{group.date}</td>
+                           <td className="px-4 py-3 text-sm font-medium text-primary">
+                             {calculatePayoutDate(group.date)}
+                           </td>
                            <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">
                              {group.cycles.map(c => c.cycle_name).join(', ')}
                            </td>
