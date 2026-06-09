@@ -9,6 +9,7 @@ import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, Archiv
 import PageHeader from '@/components/ui/PageHeader';
 import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
 import { useAuth } from '@/lib/AuthContext';
+import { formatDateDisplay } from '@/lib/dateUtils';
 import * as XLSX from 'xlsx';
 
 export default function BillingCycles() {
@@ -445,8 +446,8 @@ export default function BillingCycles() {
                         </button>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
-                      <td className="px-4 py-3 text-sm">{cycle.billing_received_date || '—'}</td>
-                      <td className="px-4 py-3 text-sm">{cycle.cheque_date || '—'}</td>
+                      <td className="px-4 py-3 text-sm">{formatDateDisplay(cycle.billing_received_date)}</td>
+                      <td className="px-4 py-3 text-sm">{formatDateDisplay(cycle.cheque_date)}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
                       <td className="px-4 py-3">
                         {isAdmin && (
@@ -520,9 +521,9 @@ export default function BillingCycles() {
                       const isArchived = rec?.is_archived || false;
                       return (
                         <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                           <td className="px-4 py-3 font-semibold">{group.date}</td>
+                           <td className="px-4 py-3 font-semibold">{formatDateDisplay(group.date)}</td>
                            <td className="px-4 py-3 text-sm font-medium text-primary">
-                             {calculatePayoutDate(group.date)}
+                             {formatDateDisplay(calculatePayoutDate(group.date))}
                            </td>
                            <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">
                              {group.cycles.map(c => c.cycle_name).join(', ')}
@@ -720,7 +721,7 @@ export default function BillingCycles() {
                             <div>{trip.pickup_location}</div>
                             <div className="text-muted-foreground/60">→ {trip.delivery_location}</div>
                           </td>
-                          <td className="px-3 py-3 text-sm whitespace-nowrap">{trip.delivery_date}</td>
+                          <td className="px-3 py-3 text-sm whitespace-nowrap">{formatDateDisplay(trip.delivery_date)}</td>
                           <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{trip.dr_number || '—'}</td>
                           <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{gross.toFixed(2)}</td>
                           <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{tax.toFixed(2)}</td>

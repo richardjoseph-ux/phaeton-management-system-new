@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Sheet, ShieldCheck, PackageMinus } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import { formatDateDisplay } from '@/lib/dateUtils';
 import { jsPDF } from 'jspdf';
 
 export default function Payroll() {
@@ -247,7 +248,7 @@ export default function Payroll() {
                 <SelectContent>
                   {dateGroups.map(g => (
                     <SelectItem key={g.date} value={g.date}>
-                      {g.date} ({g.cycles.length} stmt{g.cycles.length > 1 ? 's' : ''})
+                      {formatDateDisplay(g.date)} ({g.cycles.length} stmt{g.cycles.length > 1 ? 's' : ''})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -343,7 +344,7 @@ export default function Payroll() {
                                 <div className="text-muted-foreground/60">→ {trip.delivery_location}</div>
                               </td>
                               <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{trip.delivery_code}</td>
-                              <td className="px-3 py-3 text-sm whitespace-nowrap">{trip.delivery_date}</td>
+                              <td className="px-3 py-3 text-sm whitespace-nowrap">{formatDateDisplay(trip.delivery_date)}</td>
                               <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{t.gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{t.tax.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{t.hidden.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>

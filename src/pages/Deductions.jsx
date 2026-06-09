@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Plus, Pencil, Receipt, DollarSign } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import { formatDateDisplay } from '@/lib/dateUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Deductions() {
@@ -627,7 +628,7 @@ export default function Deductions() {
                         <td className="px-4 py-3">
                           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-medium">Deduction</span>
                         </td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">{d.billing_received_date}</td>
+                        <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(d.billing_received_date)}</td>
                         <td className="px-4 py-3 font-mono font-semibold text-primary">{d.plate_number}</td>
                         <td className="px-4 py-3">{d.owner_name}</td>
                         <td className="px-4 py-3 text-xs">
@@ -644,7 +645,7 @@ export default function Deductions() {
                         <td className="px-4 py-3">
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">Reimbursement</span>
                         </td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">{r.billing_received_date}</td>
+                        <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(r.billing_received_date)}</td>
                         <td className="px-4 py-3 font-mono font-semibold text-primary">{r.plate_number}</td>
                         <td className="px-4 py-3">{r.owner_name}</td>
                         <td className="px-4 py-3 text-xs">

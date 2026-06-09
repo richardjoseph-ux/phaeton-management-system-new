@@ -6,6 +6,7 @@ import { Plus, Search, Pencil, Truck, Trash2, Download, Upload } from 'lucide-re
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import SubcontractorForm from '@/components/subcontractors/SubcontractorForm';
+import { formatDateDisplay } from '@/lib/dateUtils';
 import { useAuth } from '@/lib/AuthContext';
 import * as XLSX from 'xlsx';
 
@@ -224,13 +225,13 @@ export default function Subcontractors() {
                       <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{sub.truck_type}</span>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.contact_number || '—'}</td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{sub.join_date || '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{formatDateDisplay(sub.join_date)}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.garage_location || '—'}</td>
                     <td className="px-4 py-3">
                       <div>
                         <StatusBadge status={insStatus} type="insurance" />
                         {sub.insurance_end_date && (
-                          <p className="text-xs text-muted-foreground mt-0.5">Until {sub.insurance_end_date}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Until {formatDateDisplay(sub.insurance_end_date)}</p>
                         )}
                       </div>
                     </td>

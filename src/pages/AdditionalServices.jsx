@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Fuel, Sheet, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
-import { format } from 'date-fns';
+import { formatDateDisplay } from '@/lib/dateUtils';
 
 export default function AdditionalServices() {
   const [activeTab, setActiveTab] = useState('fuel-subsidies');
@@ -372,7 +372,7 @@ export default function AdditionalServices() {
                       <tr key={subsidy.id} className="border-b hover:bg-muted/30">
                         <td className="px-4 py-3 text-sm">{subsidy.client_name}</td>
                         <td className="px-4 py-3 text-sm">
-                          {format(new Date(subsidy.start_date), 'MMM d, yyyy')} - {format(new Date(subsidy.end_date), 'MMM d, yyyy')}
+                          {formatDateDisplay(subsidy.start_date)} - {formatDateDisplay(subsidy.end_date)}
                         </td>
                         <td className="px-4 py-3 text-sm">{subsidy.subsidy_percentage}%</td>
                         <td className="px-4 py-3 text-sm">₱{subsidy.total_gross_rate?.toLocaleString()}</td>
@@ -387,7 +387,7 @@ export default function AdditionalServices() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {format(new Date(subsidy.created_date), 'MMM d, yyyy')}
+                          {formatDateDisplay(subsidy.created_date)}
                         </td>
                         <td className="px-4 py-3">
                           <Button

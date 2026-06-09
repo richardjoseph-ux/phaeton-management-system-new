@@ -8,6 +8,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import TripForm from '@/components/trips/TripForm';
 import ExcelImportExport from '@/components/ui/ExcelImportExport';
 import { useAuth } from '@/lib/AuthContext';
+import { formatDateDisplay } from '@/lib/dateUtils';
 import * as XLSX from 'xlsx';
 
 export default function TripEncoding() {
@@ -345,7 +346,7 @@ export default function TripEncoding() {
                   <td className="px-4 py-3 font-mono text-xs">{trip.dr_number || '—'}</td>
                   <td className="px-4 py-3 font-mono text-xs">{trip.waybill_number || '—'}</td>
                   <td className="px-4 py-3 font-mono text-xs">{trip.trip_route_code || '—'}</td>
-                  <td className="px-4 py-3 text-sm font-medium">{trip.delivery_date || '—'}</td>
+                  <td className="px-4 py-3 text-sm font-medium">{formatDateDisplay(trip.delivery_date)}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{trip.billing_cycle_name || '—'}</td>
                   <td className="px-4 py-3">
                     {isAdmin && (

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, BarChart3, Filter } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import { formatDateDisplay } from '@/lib/dateUtils';
 import { jsPDF } from 'jspdf';
 
 export default function Reports() {
@@ -216,7 +217,7 @@ export default function Reports() {
                       <div>{trip.pickup_location}</div>
                       <div className="text-muted-foreground">→ {trip.delivery_location} <span className="font-mono">({trip.delivery_code})</span></div>
                     </td>
-                    <td className="px-3 py-2.5 text-xs">{trip.delivery_date}</td>
+                    <td className="px-3 py-2.5 text-xs">{formatDateDisplay(trip.delivery_date)}</td>
                     <td className="px-3 py-2.5 font-mono text-xs">{trip.dr_number}</td>
                     <td className="px-3 py-2.5 font-mono text-xs">{trip.waybill_number}</td>
                     <td className="px-3 py-2.5 text-xs">{trip.particular}</td>
