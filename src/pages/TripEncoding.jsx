@@ -314,6 +314,7 @@ export default function TripEncoding() {
         onClose={() => setFormOpen(false)}
         onSaved={load}
         editData={editData}
+        isDuplicate={editData && !editData.id}
         clients={clients}
         subcontractors={subcontractors}
         billingCycles={billingCycles}

@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function TripForm({ open, onClose, onSaved, editData, clients, subcontractors, billingCycles }) {
+export default function TripForm({ open, onClose, onSaved, editData, isDuplicate = false, clients, subcontractors, billingCycles }) {
   const [form, setForm] = useState({
     plate_number: '', subcontractor_id: '', owner_name: '', truck_type: '',
     client_account_id: '', client_name: '', pickup_location: '',
@@ -177,7 +177,7 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
 
   const handleSave = async () => {
     setSaving(true);
-    if (!editData) {
+    if (!editData || isDuplicate) {
       const existingTrips = await base44.entities.TripRecord.list();
       const duplicate = existingTrips.find(t => 
         t.plate_number?.toUpperCase() === form.plate_number?.toUpperCase() &&
@@ -202,7 +202,7 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
     const adminFee = grossRate * 0.06;
     const netPayroll = grossRate * 0.88;
     const data = { ...form, gross_rate: grossRate, tax_deduction: taxDeduction, hidden_fee: hiddenFee, admin_fee: adminFee, net_payroll: netPayroll };
-    if (editData) {
+    if (editData && !isDuplicate) {
       await base44.entities.TripRecord.update(editData.id, data);
     } else {
       await base44.entities.TripRecord.create(data);
@@ -234,7 +234,7 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editData ? 'Edit Trip Record' : 'Encode New Trip'}</DialogTitle>
+          <DialogTitle>{isDuplicate ? 'Duplicate Trip (Modify Before Saving)' : editData ? 'Edit Trip Record' : 'Encode New Trip'}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4 py-2">
@@ -532,7 +532,7 @@ export default function TripForm({ open, onClose, onSaved, editData, clients, su
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving || !form.plate_number || !form.client_account_id || !form.delivery_location || !form.delivery_code || !form.delivery_date}>
-            {saving ? 'Saving...' : editData ? 'Update Trip' : 'Save Trip'}
+            {saving ? 'Saving...' : isDuplicate ? 'Save as New Trip' : editData ? 'Update Trip' : 'Save Trip'}
           </Button>
         </DialogFooter>
       </DialogContent>
