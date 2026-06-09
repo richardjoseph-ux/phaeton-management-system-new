@@ -14,9 +14,33 @@ export const AuthProvider = ({ children }) => {
   const [authChecked, setAuthChecked] = useState(false);
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
 
+  const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+  const timeoutRef = React.useRef(null);
+
+  const resetTimer = React.useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      base44.auth.logout('/login');
+    }, TIMEOUT_MS);
+  }, []);
+
   useEffect(() => {
     checkAppState();
   }, []);
+
+  // Start/stop inactivity timer based on auth state
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const events = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer(); // start the timer immediately
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [isAuthenticated, resetTimer]);
 
   const checkAppState = async () => {
     try {

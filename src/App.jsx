@@ -20,7 +20,7 @@ import AdditionalServices from '@/pages/AdditionalServices';
 import Deductions from '@/pages/Deductions';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated } = useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
@@ -37,6 +37,12 @@ const AuthenticatedApp = () => {
       navigateToLogin();
       return null;
     }
+  }
+
+  // Redirect unauthenticated users to login (unless already on login page)
+  if (!isLoadingAuth && !isAuthenticated && window.location.pathname !== '/login') {
+    navigateToLogin();
+    return null;
   }
 
   return (
