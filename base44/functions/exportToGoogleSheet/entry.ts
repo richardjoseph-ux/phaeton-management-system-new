@@ -9,12 +9,12 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { sheetUrl, trips } = await req.json();
+        const { sheetUrl, trips, deductions, exportType } = await req.json();
         
-        if (!sheetUrl || !trips || trips.length === 0) {
+        if (!sheetUrl) {
             return Response.json({ 
                 success: false, 
-                message: 'Invalid sheet URL or no trip data provided' 
+                message: 'Invalid sheet URL' 
             });
         }
 
@@ -31,6 +31,48 @@ Deno.serve(async (req) => {
 
         // Get Google Sheets access token
         const { accessToken } = await base44.asServiceRole.connectors.getConnection("googlesheets");
+
+        // Handle DEDUCTION export
+        if (exportType === 'deductions') {
+            if (!deductions || deductions.length === 0) {
+                return Response.json({ success: false, message: 'No deduction data provided' });
+            }
+
+            const dedHeaders = ['Billing Received Date', 'Plate #', 'Owner / Driver', 'Insurance Charge (₱)', 'Other Charges (₱)', 'Notes'];
+            const dedRows = deductions.map(d => [
+                d.billing_received_date,
+                d.plate_number,
+                d.owner_name,
+                (d.insurance_charge || 0).toFixed(2),
+                (d.other_charges || 0).toFixed(2),
+                d.notes || ''
+            ]);
+
+            const dedValues = [dedHeaders, ...dedRows];
+
+            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/DEDUCTION!A1:Z10000:clear`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
+            });
+
+            const dedResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/DEDUCTION!A1:append?valueInputOption=USER_ENTERED`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ values: dedValues })
+            });
+
+            if (!dedResponse.ok) {
+                const error = await dedResponse.json();
+                throw new Error(error.error?.message || 'Failed to append deduction data');
+            }
+
+            return Response.json({ success: true, message: `Successfully exported ${deductions.length} deductions to Google Sheet (DEDUCTION tab)!` });
+        }
+
+        // Handle TRIP export (default)
+        if (!trips || trips.length === 0) {
+            return Response.json({ success: false, message: 'No trip data provided' });
+        }
 
         // Prepare data for Google Sheets API
         const headers = [

@@ -25,6 +25,7 @@ export default function AdditionalServices() {
   const [googleSheetUrl, setGoogleSheetUrl] = useState('');
   const [savedSheetUrl, setSavedSheetUrl] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [exportingDeductions, setExportingDeductions] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(null);
 
@@ -230,6 +231,32 @@ export default function AdditionalServices() {
     setExporting(false);
   };
 
+  const handleDeductionExport = async () => {
+    const urlToUse = savedSheetUrl || googleSheetUrl;
+    if (!urlToUse.trim()) {
+      alert('Please enter and save a Google Sheet URL');
+      return;
+    }
+
+    setExportingDeductions(true);
+    try {
+      const allDeductions = await base44.entities.BillingDeduction.list('-billing_received_date', 2000);
+      const response = await base44.functions.invoke('exportToGoogleSheet', {
+        sheetUrl: urlToUse,
+        deductions: allDeductions,
+        exportType: 'deductions'
+      });
+      if (response.data.success) {
+        alert(`Successfully exported ${allDeductions.length} deductions to the DEDUCTION tab!`);
+      } else {
+        alert('Export failed: ' + response.data.message);
+      }
+    } catch (error) {
+      alert('Error exporting: ' + error.message);
+    }
+    setExportingDeductions(false);
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
@@ -420,7 +447,7 @@ export default function AdditionalServices() {
                   </div>
                 )}
                 
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t space-y-2">
                   <Button 
                     onClick={handleGoogleSheetExport} 
                     disabled={exporting || !(savedSheetUrl || googleSheetUrl)}
@@ -429,13 +456,22 @@ export default function AdditionalServices() {
                     <Sheet className="w-4 h-4" />
                     {exporting ? 'Exporting...' : 'Export All Trips to Google Sheet (TRIP tab)'}
                   </Button>
+                  <Button 
+                    onClick={handleDeductionExport} 
+                    disabled={exportingDeductions || !(savedSheetUrl || googleSheetUrl)}
+                    variant="outline"
+                    className="gap-2 w-full"
+                  >
+                    <Sheet className="w-4 h-4" />
+                    {exportingDeductions ? 'Exporting...' : 'Export All Deductions to Google Sheet (DEDUCTION tab)'}
+                  </Button>
                 </div>
               </div>
               
               <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm font-medium mb-2">Note:</p>
                 <p className="text-sm text-muted-foreground">
-                  This will export all trip records directly to the <strong>TRIP</strong> tab in your registered Google Sheet. Make sure the sheet has a tab named exactly <strong>TRIP</strong> and the connected Google account has edit access.
+                  Make sure your Google Sheet has tabs named exactly <strong>TRIP</strong> and <strong>DEDUCTION</strong> and the connected Google account has edit access.
                 </p>
               </div>
             </div>
