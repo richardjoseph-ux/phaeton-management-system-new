@@ -196,43 +196,40 @@ export default function AdditionalServices() {
       };
 
       const tripData = allTrips.map(trip => {
-        const gross = trip.gross_rate || 0;
-        const tax = gross * 0.02;
-        const afterTax = gross - tax;
-        const hidden = afterTax * 0.04;
-        const admin = afterTax * 0.06;
-        const fs = getFuelSubsidy(trip);
-        const fuelSubsidy = fs ? gross * (fs.subsidy_percentage / 100) : 0;
-        const net = gross - tax - hidden - admin + fuelSubsidy;
-
-        return {
-          plate_number: trip.plate_number,
-          owner_name: trip.owner_name,
-          truck_type: trip.truck_type,
-          client_name: trip.client_name,
-          sub_account_name: trip.sub_account_name || '',
-          delivery_date: trip.delivery_date,
-          dr_number: trip.dr_number,
-          particular: trip.particular || '',
-          waybill_number: trip.waybill_number || '',
-          pickup_location: trip.pickup_location,
-          delivery_location: trip.delivery_location,
-          delivery_code: trip.delivery_code,
-          trip_route_code: trip.trip_route_code || '',
-          billing_cycle_name: trip.billing_cycle_name,
-          billing_received_date: trip.billing_date || '',
-          gross_rate: gross,
-          tax_2_percent: tax,
-          hidden_fee_4_percent: hidden,
-          admin_fee_6_percent: admin,
-          fuel_subsidy: fuelSubsidy,
-          net_payroll: net,
-        };
+      const gross = trip.gross_rate || 0;
+      const tax = gross * 0.02;
+      const afterTax = gross - tax;
+      const hidden = afterTax * 0.04;
+      const admin = afterTax * 0.06;
+      const fs = getFuelSubsidy(trip);
+      const fuelSubsidy = fs ? gross * (fs.subsidy_percentage / 100) : 0;
+      const net = gross - tax - hidden - admin + fuelSubsidy;
+      return {
+        plate_number: trip.plate_number,
+        owner_name: trip.owner_name,
+        truck_type: trip.truck_type,
+        client_name: trip.client_name,
+        sub_account_name: trip.sub_account_name || '',
+        delivery_date: trip.delivery_date,
+        dr_number: trip.dr_number,
+        pickup_location: trip.pickup_location,
+        delivery_location: trip.delivery_location,
+        delivery_code: trip.delivery_code,
+        trip_route_code: trip.trip_route_code || '',
+        billing_cycle_name: trip.billing_cycle_name,
+        billing_received_date: trip.billing_date || '',
+        gross_rate: gross,
+        tax_2_percent: tax,
+        hidden_fee_4_percent: hidden,
+        admin_fee_6_percent: admin,
+        fuel_subsidy: fuelSubsidy,
+        net_payroll: net,
+      };
       });
 
       const response = await base44.functions.invoke('exportToGoogleSheet', { sheetUrl: urlToUse, trips: tripData });
       if (response.data.success) {
-        alert(`Successfully exported ${tripData.length} trips to the TRIPS tab!`);
+        alert(`Successfully exported ${tripData.length} trips to the TRIP tab!`);
       } else {
         alert('Export failed: ' + response.data.message);
       }
@@ -368,11 +365,11 @@ export default function AdditionalServices() {
                       <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                       <th className="px-4 py-3 text-left text-sm font-medium">Created</th>
                       <th className="px-4 py-3 text-left text-sm font-medium"></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {subsidies.map((subsidy) => (
-                    <tr key={subsidy.id} className="border-b hover:bg-muted/30">
+                      </tr>
+                      </thead>
+                      <tbody>
+                      {subsidies.map((subsidy) => (
+                      <tr key={subsidy.id} className="border-b hover:bg-muted/30">
                         <td className="px-4 py-3 text-sm">{subsidy.client_name}</td>
                         <td className="px-4 py-3 text-sm">
                           {formatDateDisplay(subsidy.start_date)} - {formatDateDisplay(subsidy.end_date)}
@@ -484,7 +481,7 @@ export default function AdditionalServices() {
                     className="gap-2 w-full"
                   >
                     <Sheet className="w-4 h-4" />
-                    {exporting ? 'Exporting...' : 'Export All Trips to Google Sheet (TRIPS tab)'}
+                    {exporting ? 'Exporting...' : 'Export All Trips to Google Sheet (TRIP tab)'}
                   </Button>
                   <Button 
                     onClick={handleDeductionExport} 
@@ -501,7 +498,7 @@ export default function AdditionalServices() {
               <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm font-medium mb-2">Note:</p>
                 <p className="text-sm text-muted-foreground">
-                  Make sure your Google Sheet has tabs named exactly <strong>TRIPS</strong> and <strong>DEDUCTION</strong>. The DEDUCTION tab will include both deductions (negative amounts) and reimbursements (positive amounts).
+                  Make sure your Google Sheet has tabs named exactly <strong>TRIP</strong> and <strong>DEDUCTION</strong>. The DEDUCTION tab will include both deductions (negative amounts) and reimbursements (positive amounts).
                 </p>
               </div>
             </div>
