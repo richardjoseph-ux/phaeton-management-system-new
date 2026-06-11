@@ -66,13 +66,14 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
   const plateGroups = (() => {
     const groups = {};
     trips.forEach(trip => {
-      const key = trip.plate_number;
+      // UPDATED: Use sub_account_id since plate_number is missing in logs
+      const key = trip.sub_account_id || 'Unknown';
       if (!groups[key]) {
         groups[key] = {
-          plate_number: trip.plate_number,
-          owner_name: trip.owner_name,
-          truck_type: trip.truck_type,
-          client_name: trip.client_name,
+          plate_number: key, 
+          owner_name: trip.owner_name || 'N/A',
+          truck_type: trip.truck_type || 'N/A',
+          client_name: trip.client_name || 'N/A',
           gross: 0, tax: 0, hidden: 0, admin: 0, fuelSubsidy: 0, tripNet: 0,
           tripCount: 0,
         };
@@ -88,6 +89,8 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     });
 
     return Object.values(groups).map(row => {
+      // Note: If deductions/reimbursements in DB use plate_number, 
+      // you may need to update these filters to match sub_account_id as well.
       const ded = billingDeductions.find(d => d.plate_number === row.plate_number);
       const insurance = ded?.insurance_charge || 0;
       const other = ded?.other_charges || 0;
