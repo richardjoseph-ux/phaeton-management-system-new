@@ -28,16 +28,13 @@ export default function BillingCycles() {
   const [selectedCycle, setSelectedCycle] = useState(null);
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
-
-  // Tabs: statements section vs summary section
-  const [mainTab, setMainTab] = useState('statements'); // 'statements' | 'summary'
-  // Sub-tabs for statements
-  const [stmtTab, setStmtTab] = useState('active'); // 'active' | 'archived'
-  // Sub-tabs for summary
-  const [summaryTab, setSummaryTab] = useState('active'); // 'active' | 'archived'
+  const [mainTab, setMainTab] = useState('statements');
+  const [stmtTab, setStmtTab] = useState('active');
+  const [summaryTab, setSummaryTab] = useState('active');
 
   const [fuelSubsidies, setFuelSubsidies] = useState([]);
   const [deductions, setDeductions] = useState([]);
+  const [reimbursements, setReimbursements] = useState([]); // Added this state
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryDate, setSummaryDate] = useState('');
   const [summaryCycles, setSummaryCycles] = useState([]);
@@ -53,7 +50,7 @@ export default function BillingCycles() {
       base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
       base44.entities.TripRecord.list('-created_date', 500),
       base44.entities.BillingDeduction.list('-billing_received_date', 500),
-      base44.entities.Reimbursement.list('-created_date', 500), // Added this
+      base44.entities.Reimbursement.list('-created_date', 500),
     ]);
     setCycles(c);
     setClients(cl);
@@ -61,6 +58,7 @@ export default function BillingCycles() {
     setSummaryRecords(sr);
     setAllTrips(t);
     setDeductions(d);
+    setReimbursements(r); // Populating reimbursements state
     setLoading(false);
   };
 
@@ -158,45 +156,26 @@ export default function BillingCycles() {
 
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
 
-  // Calculate payout date: 30 working days from billing received date, then find nearest Tuesday
   const calculatePayoutDate = (billingReceivedDate) => {
     if (!billingReceivedDate) return null;
-    
     let currentDate = new Date(billingReceivedDate);
     let workingDaysCount = 0;
-    
-    // Count 30 working days (skip weekends)
     while (workingDaysCount < 30) {
       currentDate.setDate(currentDate.getDate() + 1);
       const dayOfWeek = currentDate.getDay();
-      // 0 = Sunday, 6 = Saturday
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         workingDaysCount++;
       }
     }
-    
-    // Find nearest Tuesday
     const dayOfWeek = currentDate.getDay();
-    const daysToTuesday = [
-      2, // Sunday (0) -> Tuesday (+2)
-      1, // Monday (1) -> Tuesday (+1)
-      0, // Tuesday (2) -> Tuesday (0)
-      -1, // Wednesday (3) -> Tuesday (-1)
-      -2, // Thursday (4) -> Tuesday (-2)
-      -3, // Friday (5) -> Tuesday (-3)
-      3  // Saturday (6) -> Tuesday (+3)
-    ];
-    
+    const daysToTuesday = [2, 1, 0, -1, -2, -3, 3];
     currentDate.setDate(currentDate.getDate() + daysToTuesday[dayOfWeek]);
-    
-    // Format as YYYY-MM-DD
     const year = currentDate.getFullYear();
     const month = String(currentDate.getMonth() + 1).padStart(2, '0');
     const day = String(currentDate.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
-  // Group non-archived cycles by billing_received_date for summary tab
   const billingReceivedGroups = (() => {
     const groups = {};
     cycles.filter(c => !c.is_archived).forEach(cycle => {
@@ -210,7 +189,6 @@ export default function BillingCycles() {
       .sort((a, b) => b.date.localeCompare(a.date));
   })();
 
-  // Get or create summary record for a date
   const getSummaryRecord = (date) => summaryRecords.find(r => r.billing_received_date === date);
 
   const ensureSummaryRecord = async (date) => {
@@ -304,28 +282,22 @@ export default function BillingCycles() {
   const getChequeAmountForDate = (date) => {
     const cyclesForDate = cycles.filter(c => c.billing_received_date === date && !c.is_archived);
     const cycleIds = cyclesForDate.map(c => c.id);
-    
     let totalGross = 0;
     let totalOtherCharges = 0;
-    
     cycleIds.forEach(cycleId => {
       const cycleTrips = allTrips.filter(t => t.billing_cycle_id === cycleId);
       cycleTrips.forEach(trip => {
         totalGross += trip.gross_rate || 0;
       });
     });
-    
-    // Get other charges deductions for this date (not insurance)
     const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
     deductionsForDate.forEach(d => {
       totalOtherCharges += d.other_charges || 0;
     });
-    
     const tax = totalGross * 0.02;
     return totalGross - tax - totalOtherCharges;
   };
 
-  // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
   const filteredCycles = cycles
     .filter(cycle => {
       if (stmtTab === 'archived') return !!cycle.is_archived;
@@ -337,27 +309,24 @@ export default function BillingCycles() {
       return dateB - dateA;
     });
 
-  // Update these definitions in your component
-const activeSummaryGroups = billingReceivedGroups
-  .filter(g => !getSummaryRecord(g.date)?.is_archived)
-  .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
-  // Change the sort below:
-  .sort((a, b) => b.date.localeCompare(a.date)); 
-
-const archivedSummaryGroups = (() => {
-  const archivedDates = summaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
-  const groups = {};
-  cycles.filter(c => c.is_archived || archivedDates.includes(c.billing_received_date)).forEach(cycle => {
-    if (cycle.billing_received_date && archivedDates.includes(cycle.billing_received_date)) {
-      if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
-      groups[cycle.billing_received_date].push(cycle);
-    }
-  });
-  return Object.entries(groups)
-    .map(([date, items]) => ({ date, cycles: items.sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
-    // Change the sort below:
+  const activeSummaryGroups = billingReceivedGroups
+    .filter(g => !getSummaryRecord(g.date)?.is_archived)
+    .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
     .sort((a, b) => b.date.localeCompare(a.date));
-})();
+
+  const archivedSummaryGroups = (() => {
+    const archivedDates = summaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
+    const groups = {};
+    cycles.filter(c => c.is_archived || archivedDates.includes(c.billing_received_date)).forEach(cycle => {
+      if (cycle.billing_received_date && archivedDates.includes(cycle.billing_received_date)) {
+        if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
+        groups[cycle.billing_received_date].push(cycle);
+      }
+    });
+    return Object.entries(groups)
+      .map(([date, items]) => ({ date, cycles: items.sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  })();
 
   const tabClass = (active) =>
     `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`;
@@ -380,13 +349,7 @@ const archivedSummaryGroups = (() => {
                   <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
                     <Upload className="w-4 h-4 mr-1.5" /> Import Excel
                   </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleImport}
-                    className="hidden"
-                  />
+                  <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImport} className="hidden" />
                 </>
               )}
             </div>
@@ -399,21 +362,15 @@ const archivedSummaryGroups = (() => {
         )}
       </div>
 
-      {/* Main tabs */}
       <div className="flex items-center gap-2 border-b mb-0">
-        <button onClick={() => setMainTab('statements')} className={tabClass(mainTab === 'statements')}>
-          Billing Statements
-        </button>
-        <button onClick={() => setMainTab('summary')} className={tabClass(mainTab === 'summary')}>
-          Billing Received Summary
-        </button>
+        <button onClick={() => setMainTab('statements')} className={tabClass(mainTab === 'statements')}>Billing Statements</button>
+        <button onClick={() => setMainTab('summary')} className={tabClass(mainTab === 'summary')}>Billing Received Summary</button>
       </div>
 
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
       ) : mainTab === 'statements' ? (
         <>
-          {/* Statement sub-tabs */}
           <div className="flex items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
             {[
               { key: 'active', label: `Billing Statements (${cycles.filter(c => !c.is_archived).length})` },
@@ -444,9 +401,7 @@ const archivedSummaryGroups = (() => {
                   {filteredCycles.map(cycle => (
                     <tr key={cycle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3">
-                        <button onClick={() => openTripsView(cycle)} className="font-semibold text-primary hover:underline">
-                          {cycle.cycle_name}
-                        </button>
+                        <button onClick={() => openTripsView(cycle)} className="font-semibold text-primary hover:underline">{cycle.cycle_name}</button>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
                       <td className="px-4 py-3 text-sm">{formatDateDisplay(cycle.billing_received_date)}</td>
@@ -460,11 +415,7 @@ const archivedSummaryGroups = (() => {
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
                             )}
-                            <button
-                              onClick={() => toggleArchiveCycle(cycle)}
-                              className={`p-1.5 rounded transition-colors ${cycle.is_archived ? 'hover:bg-blue-50 hover:text-blue-600 text-muted-foreground' : 'hover:bg-amber-50 hover:text-amber-600 text-muted-foreground'}`}
-                              title={cycle.is_archived ? 'Unarchive' : 'Archive'}
-                            >
+                            <button onClick={() => toggleArchiveCycle(cycle)} className={`p-1.5 rounded transition-colors ${cycle.is_archived ? 'hover:bg-blue-50 hover:text-blue-600 text-muted-foreground' : 'hover:bg-amber-50 hover:text-amber-600 text-muted-foreground'}`} title={cycle.is_archived ? 'Unarchive' : 'Archive'}>
                               {cycle.is_archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
                             </button>
                             <button onClick={() => handleDeleteCycle(cycle)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition-colors" title="Delete">
@@ -482,7 +433,6 @@ const archivedSummaryGroups = (() => {
         </>
       ) : (
         <>
-          {/* Summary sub-tabs */}
           <div className="flex items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
             {[
               { key: 'active', label: `Active (${activeSummaryGroups.length})` },
@@ -500,9 +450,7 @@ const archivedSummaryGroups = (() => {
               return (
                 <div className="text-center py-16">
                   <Calendar className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-muted-foreground text-sm">
-                    {summaryTab === 'active' ? 'No billing received dates recorded yet' : 'No archived summaries'}
-                  </p>
+                  <p className="text-muted-foreground text-sm">{summaryTab === 'active' ? 'No billing received dates recorded yet' : 'No archived summaries'}</p>
                 </div>
               );
             }
@@ -524,23 +472,14 @@ const archivedSummaryGroups = (() => {
                       const isArchived = rec?.is_archived || false;
                       return (
                         <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                           <td className="px-4 py-3 font-semibold">{formatDateDisplay(group.date)}</td>
-                           <td className="px-4 py-3 text-sm font-medium text-primary">
-                             {formatDateDisplay(calculatePayoutDate(group.date))}
-                           </td>
-                           <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">
-                             {group.cycles.map(c => c.cycle_name).join(', ')}
-                           </td>
-                           <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
-                           <td className="px-4 py-3 text-sm font-semibold text-amber-700">₱{getChequeAmountForDate(group.date).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                           <td className="px-4 py-3">
+                          <td className="px-4 py-3 font-semibold">{formatDateDisplay(group.date)}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-primary">{formatDateDisplay(calculatePayoutDate(group.date))}</td>
+                          <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">{group.cycles.map(c => c.cycle_name).join(', ')}</td>
+                          <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
+                          <td className="px-4 py-3 text-sm font-semibold text-amber-700">₱{getChequeAmountForDate(group.date).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="px-4 py-3">
                             {isAdmin ? (
-                              <button
-                                onClick={() => !isArchived && toggleSummaryField(group.date, 'is_paid')}
-                                disabled={isArchived}
-                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPaid ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
-                                title={isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
-                              >
+                              <button onClick={() => !isArchived && toggleSummaryField(group.date, 'is_paid')} disabled={isArchived} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPaid ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`} title={isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}>
                                 {isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
                                 {isPaid ? 'Paid' : 'Unpaid'}
                               </button>
@@ -553,12 +492,7 @@ const archivedSummaryGroups = (() => {
                           </td>
                           <td className="px-4 py-3">
                             {isAdmin ? (
-                              <button
-                                onClick={() => !isArchived && toggleSummaryField(group.date, 'payroll_processed')}
-                                disabled={isArchived}
-                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPayroll ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
-                                title={isPayroll ? 'Mark as Not Processed' : 'Mark as Processed'}
-                              >
+                              <button onClick={() => !isArchived && toggleSummaryField(group.date, 'payroll_processed')} disabled={isArchived} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPayroll ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`} title={isPayroll ? 'Mark as Not Processed' : 'Mark as Processed'}>
                                 {isPayroll ? <ListChecks className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
                                 {isPayroll ? 'Processed' : 'Pending'}
                               </button>
@@ -572,19 +506,12 @@ const archivedSummaryGroups = (() => {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
                               {!isArchived && (
-                                <button
-                                  onClick={() => openSummary(group)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
-                                >
+                                <button onClick={() => openSummary(group)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors">
                                   <Eye className="w-3.5 h-3.5" /> View
                                 </button>
                               )}
                               {isAdmin && (
-                                <button
-                                  onClick={() => toggleArchiveSummary(group.date)}
-                                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${isArchived ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
-                                  title={isArchived ? 'Unarchive' : 'Archive'}
-                                >
+                                <button onClick={() => toggleArchiveSummary(group.date)} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${isArchived ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`} title={isArchived ? 'Unarchive' : 'Archive'}>
                                   {isArchived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
                                   {isArchived ? 'Unarchive' : 'Archive'}
                                 </button>
@@ -602,7 +529,6 @@ const archivedSummaryGroups = (() => {
         </>
       )}
 
-      {/* Form Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -611,17 +537,14 @@ const archivedSummaryGroups = (() => {
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label>Client Account *</Label>
-              <Select
-                value={form.client_account_id}
-                onValueChange={async (v) => {
-                  const client = clients.find(c => c.id === v);
-                  const clientCode = client?.client_code || 'XX';
-                  const yearSuffix = new Date().getFullYear().toString().slice(-2);
-                  const seq = await calculateNextSequence(v);
-                  const generatedName = client ? `BS-${clientCode}${yearSuffix}-${seq}` : '';
-                  setForm(p => ({ ...p, client_account_id: v, cycle_name: generatedName }));
-                }}
-              >
+              <Select value={form.client_account_id} onValueChange={async (v) => {
+                const client = clients.find(c => c.id === v);
+                const clientCode = client?.client_code || 'XX';
+                const yearSuffix = new Date().getFullYear().toString().slice(-2);
+                const seq = await calculateNextSequence(v);
+                const generatedName = client ? `BS-${clientCode}${yearSuffix}-${seq}` : '';
+                setForm(p => ({ ...p, client_account_id: v, cycle_name: generatedName }));
+              }}>
                 <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
                 <SelectContent>
                   {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.client_name}</SelectItem>)}
@@ -663,10 +586,9 @@ const archivedSummaryGroups = (() => {
         billingDate={summaryDate}
         cycles={summaryCycles}
         fuelSubsidies={fuelSubsidies}
-        reimbursements={reimbursements} // Add this line
+        reimbursements={reimbursements}
       />
 
-      {/* Trips Dialog */}
       <Dialog open={tripsOpen} onOpenChange={setTripsOpen}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -683,7 +605,6 @@ const archivedSummaryGroups = (() => {
             </div>
           ) : (
             <>
-              {/* Summary Cards */}
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="bg-card border rounded-lg p-4">
                   <p className="text-xs text-muted-foreground">Total Trips</p>
