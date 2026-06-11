@@ -47,7 +47,12 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
     .map(r => ({ code: r.delivery_code, trip_route_code: r.trip_route_code || '' }));
 
   // Get unique plate numbers
-  const uniquePlates = [...new Set(subcontractors.map(s => s.plate_number))];
+  const uniquePlates = [...new Set(
+  subcontractors
+    .filter(s => s.status === 'Active')
+    .map(s => s.plate_number)
+    .filter(Boolean)
+)];
   
   // Get truck types available for the selected plate
   const availableTruckTypes = [...new Set(
@@ -292,7 +297,15 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
     obj.code.toLowerCase().includes(codeSearch.toLowerCase())
   );
 
-  const activeBillingCycles = billingCycles.filter(bc => !bc.is_archived);
+ const activeBillingCycles = billingCycles
+  .filter(bc => !bc.is_archived)
+  .sort((a, b) => {
+    // Extracts the last numeric part (e.g., "0053") to sort mathematically
+    const getNumber = (name) => parseInt(name.split('-').pop(), 10) || 0;
+    
+    // Sorts from latest (highest number) to oldest (lowest number)
+    return getNumber(b.cycle_name) - getNumber(a.cycle_name);
+  });
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
