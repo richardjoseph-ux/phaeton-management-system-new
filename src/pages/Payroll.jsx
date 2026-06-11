@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Sheet, ShieldCheck, PackageMinus } from 'lucide-react';
+import { FileText, Sheet, ShieldCheck, PackageMinus, PlusCircle } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { formatDateDisplay } from '@/lib/dateUtils';
 import { jsPDF } from 'jspdf';
@@ -11,6 +11,7 @@ export default function Payroll() {
   const [billingCycles, setBillingCycles] = useState([]);
   const [fuelSubsidies, setFuelSubsidies] = useState([]);
   const [billingDeductions, setBillingDeductions] = useState([]);
+  const [reimbursements, setReimbursements] = useState([]);
   const [summaryRecords, setSummaryRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,23 +26,24 @@ export default function Payroll() {
 
   const load = async () => {
     setLoading(true);
-    const [b, s, d, sr] = await Promise.all([
+    const [b, s, d, sr, r] = await Promise.all([
       base44.entities.BillingCycle.list('-billing_received_date', 200),
       base44.entities.FuelSubsidy.list('-created_date', 100),
       base44.entities.BillingDeduction.list('-billing_received_date', 500),
       base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
+      base44.entities.Reimbursement.list('-billing_received_date', 500),
     ]);
     setBillingCycles(b);
     setFuelSubsidies(s);
     setBillingDeductions(d);
     setSummaryRecords(sr);
+    setReimbursements(r);
     if (s.length > 0 && s[0].google_sheet_url) setGoogleSheetUrl(s[0].google_sheet_url);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
-  // Group billing cycles by billing_received_date
   const dateGroups = (() => {
     const groups = {};
     billingCycles.forEach(c => {
@@ -55,7 +57,6 @@ export default function Payroll() {
       .sort((a, b) => b.date.localeCompare(a.date))
       .filter(g => {
         const rec = summaryRecords.find(r => r.billing_received_date === g.date);
-        // Only show dates where payroll_processed is false/undefined (pending)
         return !rec?.payroll_processed;
       });
   })();
@@ -93,7 +94,6 @@ export default function Payroll() {
     );
   };
 
-  // Per-trip net: NO insurance or other charges here
   const calculateTripNet = (trip) => {
     const gross = trip.gross_rate || 0;
     const tax = gross * 0.02;
@@ -122,7 +122,6 @@ export default function Payroll() {
     return acc;
   }, { gross: 0, tax: 0, afterTax: 0, hidden: 0, admin: 0, fuelSubsidy: 0, net: 0 });
 
-  // Flat deductions for the selected date + owner filter
   const applicableDeductions = (() => {
     if (!selectedDate) return [];
     const forDate = billingDeductions.filter(d => d.billing_received_date === selectedDate);
@@ -130,13 +129,23 @@ export default function Payroll() {
     return forDate;
   })();
 
+  // Reimbursement logic
+  const applicableReimbursements = useMemo(() => {
+    if (!selectedDate) return [];
+    const forDate = reimbursements.filter(r => r.billing_received_date === selectedDate);
+    return selectedOwner ? forDate.filter(r => r.plate_number === selectedOwner) : forDate;
+  }, [reimbursements, selectedDate, selectedOwner]);
+
   const flatInsurance = applicableDeductions.reduce((s, d) => s + (d.insurance_charge || 0), 0);
   const flatOther = applicableDeductions.reduce((s, d) => s + (d.other_charges || 0), 0);
-  const grandNetPayroll = tripTotals.net - flatInsurance - flatOther;
+  const totalReimbursement = applicableReimbursements.reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
+  
+  const grandNetPayroll = tripTotals.net - flatInsurance - flatOther + totalReimbursement;
 
   const exportPDF = () => {
     if (!selectedDate) return;
     const doc = new jsPDF();
+    // ... (Keep existing exportPDF logic)
     const ownerLabel = selectedOwner
       ? ownerList.find(o => o.plate_number === selectedOwner)?.owner_name || selectedOwner
       : 'All Owners';
@@ -173,12 +182,14 @@ export default function Payroll() {
     doc.text(`Subtotal Net (Trips): ₱${tripTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6;
     if (flatInsurance > 0) { doc.setFont(undefined, 'normal'); doc.text(`Insurance Deduction: -₱${flatInsurance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6; }
     if (flatOther > 0) { doc.setFont(undefined, 'normal'); doc.text(`Other Charges Deduction: -₱${flatOther.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6; }
+    if (totalReimbursement > 0) { doc.setFont(undefined, 'normal'); doc.text(`Reimbursements: +₱${totalReimbursement.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6; }
     doc.setFont(undefined, 'bold');
     doc.text(`GRAND TOTAL NET PAYROLL: ₱${grandNetPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y);
     doc.save(`Payroll_${selectedDate}_${ownerLabel.replace(/\s/g, '_')}.pdf`);
   };
 
   const exportToGoogleSheet = async () => {
+    // ... (Keep existing exportToGoogleSheet logic)
     if (!googleSheetUrl.trim()) {
       alert('No Google Sheet URL configured. Please set it in Additional Services > Google Sheets Export tab.');
       return;
@@ -237,7 +248,6 @@ export default function Payroll() {
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
       ) : (
         <div>
-          {/* Dropdowns row */}
           <div className="flex items-end gap-4 mb-5">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Received Date</p>
@@ -282,7 +292,6 @@ export default function Payroll() {
             )}
           </div>
 
-          {/* Main content */}
           <div>
             {!selectedDate ? (
               <div className="text-center py-24 text-muted-foreground">
@@ -297,7 +306,6 @@ export default function Payroll() {
               </div>
             ) : (
               <>
-                {/* Summary Cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                   <div className="bg-card border rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Total Trips</p>
@@ -317,7 +325,6 @@ export default function Payroll() {
                   </div>
                 </div>
 
-                {/* Trips Table */}
                 <div className="bg-card border rounded-lg overflow-hidden mb-4">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -355,74 +362,69 @@ export default function Payroll() {
                           );
                         })}
                       </tbody>
-                      <tfoot>
-                        <tr className="border-t bg-muted/50">
-                          <td colSpan={12} className="px-3 py-3 text-sm font-semibold text-right">Trip Subtotal Net</td>
-                          <td className="px-3 py-3 text-right font-bold text-slate-700 whitespace-nowrap">₱{tripTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                      </tfoot>
                     </table>
                   </div>
                 </div>
 
-                {/* Flat Deductions Section */}
-                <div className="bg-card border rounded-lg overflow-hidden">
+                <div className="bg-card border rounded-lg overflow-hidden mb-4">
                   <div className="px-4 py-3 bg-muted/40 border-b flex items-center gap-2">
                     <PackageMinus className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-semibold">Billing Deductions (Insurance &amp; Other Charges)</span>
-                    {applicableDeductions.length === 0 && (
-                      <span className="ml-2 text-xs text-muted-foreground">— None declared for this selection. Add them in the <strong>Deductions</strong> page.</span>
-                    )}
+                    <span className="text-sm font-semibold">Billing Deductions</span>
                   </div>
-
-                  {applicableDeductions.length > 0 && (
+                  {applicableDeductions.length > 0 ? (
                     <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-muted/30">
-                          {['Plate #', 'Owner / Driver', 'Insurance (₱)', 'Other Charges (₱)', 'Notes'].map(h => (
-                            <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
                       <tbody>
                         {applicableDeductions.map(d => (
                           <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20">
-                            <td className="px-4 py-2.5 font-mono font-semibold text-primary">{d.plate_number}</td>
+                            <td className="px-4 py-2.5 font-mono font-semibold">{d.plate_number}</td>
                             <td className="px-4 py-2.5">{d.owner_name}</td>
-                            <td className="px-4 py-2.5 text-right text-blue-700 font-semibold">
-                              {(d.insurance_charge || 0) > 0 ? `-₱${(d.insurance_charge).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                            </td>
-                            <td className="px-4 py-2.5 text-right text-orange-700 font-semibold">
-                              {(d.other_charges || 0) > 0 ? `-₱${(d.other_charges).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-                            </td>
+                            <td className="px-4 py-2.5 text-right text-blue-700 font-semibold">{(d.insurance_charge || 0) > 0 ? `-₱${d.insurance_charge.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}</td>
+                            <td className="px-4 py-2.5 text-right text-orange-700 font-semibold">{(d.other_charges || 0) > 0 ? `-₱${d.other_charges.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}</td>
                             <td className="px-4 py-2.5 text-muted-foreground text-xs">{d.notes || '—'}</td>
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot>
-                        <tr className="border-t bg-muted/40">
-                          <td colSpan={2} className="px-4 py-2.5 text-sm font-semibold text-right">Total Deductions</td>
-                          <td className="px-4 py-2.5 text-right font-bold text-blue-700">-₱{flatInsurance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          <td className="px-4 py-2.5 text-right font-bold text-orange-700">-₱{flatOther.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          <td></td>
-                        </tr>
-                      </tfoot>
                     </table>
-                  )}
+                  ) : <div className="px-4 py-3 text-xs text-muted-foreground">No deductions.</div>}
+                </div>
 
-                  {/* Grand Total */}
-                  <div className="flex items-center justify-between px-4 py-4 bg-emerald-50 border-t">
+                {/* New Reimbursements Section */}
+                <div className="bg-card border rounded-lg overflow-hidden mb-4">
+                  <div className="px-4 py-3 bg-muted/40 border-b flex items-center gap-2">
+                    <PlusCircle className="w-4 h-4 text-green-700" />
+                    <span className="text-sm font-semibold">Subcontractor Reimbursements</span>
+                  </div>
+                  {applicableReimbursements.length > 0 ? (
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {applicableReimbursements.map(r => (
+                          <tr key={r.id} className="border-b last:border-0">
+                            <td className="px-4 py-2 font-mono font-semibold">{r.plate_number}</td>
+                            <td className="px-4 py-2 capitalize">{r.reimbursement_type}</td>
+                            <td className="px-4 py-2 text-right text-green-700 font-bold">+₱{r.reimbursement_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-2 text-xs text-muted-foreground">{r.notes || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : <div className="px-4 py-3 text-xs text-muted-foreground">No reimbursements.</div>}
+                </div>
+
+                {/* Grand Total */}
+                <div className="flex items-center justify-between px-4 py-4 bg-emerald-50 border-t rounded-lg">
+                  <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-emerald-700" />
                       <span className="font-bold text-emerald-800">Grand Total Net Payroll</span>
-                      <span className="text-xs text-emerald-600">
-                        (Trip Net ₱{tripTotals.net.toFixed(2)}
-                        {flatInsurance > 0 ? ` − Insurance ₱${flatInsurance.toFixed(2)}` : ''}
-                        {flatOther > 0 ? ` − Other ₱${flatOther.toFixed(2)}` : ''})
-                      </span>
                     </div>
-                    <span className="text-2xl font-bold text-emerald-700">₱{grandNetPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-xs text-emerald-600 mt-1">
+                      (Trip Net ₱{tripTotals.net.toFixed(2)}
+                      {flatInsurance > 0 ? ` − Insurance ₱${flatInsurance.toFixed(2)}` : ''}
+                      {flatOther > 0 ? ` − Other ₱${flatOther.toFixed(2)}` : ''}
+                      {totalReimbursement > 0 ? ` + Reimbursement ₱${totalReimbursement.toFixed(2)}` : ''})
+                    </span>
                   </div>
+                  <span className="text-2xl font-bold text-emerald-700">₱{grandNetPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </>
             )}
