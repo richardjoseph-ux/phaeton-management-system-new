@@ -90,12 +90,16 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
+  // CORRECTED CALCULATION LOGIC
   const platesNetTotal = plateGroups.reduce((acc, row) => acc + row.net, 0);
   const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
+  
+  // Calculate only those not in the table
   const orphanReimbursements = reimbursements
     .filter(r => !platesWithTrips.has(r.plate_number))
     .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
   
+  // Total = Sum of all table row nets + orphaned reimbursements
   const finalNetTotal = platesNetTotal + orphanReimbursements;
 
   const grandTotals = plateGroups.reduce((acc, row) => {
@@ -110,6 +114,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[98vw] max-h-[95vh] overflow-y-auto">
+        {/* ... (Rest of your JSX remains exactly as you provided) ... */}
         <DialogHeader>
           <DialogTitle>Billing Received Summary — {billingDate}</DialogTitle>
           {(statementNames || clientNames) && (
