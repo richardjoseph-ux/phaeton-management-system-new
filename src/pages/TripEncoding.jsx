@@ -13,7 +13,12 @@ import * as XLSX from 'xlsx';
 
 export default function TripEncoding() {
   const { user: currentUser } = useAuth();
-  const canAddTrip = currentUser?.role === 'admin' || currentUser?.role === 'user'
+  
+  // Define permissions clearly
+  const isAdmin = currentUser?.role === 'admin';
+  const canAddTrip = currentUser?.role === 'admin' || currentUser?.role === 'user';
+  
+  // State definitions
   const [trips, setTrips] = useState([]);
   const [clients, setClients] = useState([]);
   const [subcontractors, setSubcontractors] = useState([]);
@@ -26,7 +31,7 @@ export default function TripEncoding() {
   const [editData, setEditData] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncingData, setSyncingData] = useState(false);
-
+  
   const load = async () => {
     setLoading(true);
     const [t, c, s, b] = await Promise.all([
