@@ -12,7 +12,9 @@ const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
 export default function ClientAccounts() {
   const { user: currentUser } = useAuth();
-  const canEdit = currentUser?.role === 'admin' || currentUser?.role === 'user'
+  // Using canEdit for consistency
+  const canEdit = currentUser?.role === 'admin' || currentUser?.role === 'user';
+  
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -50,7 +52,7 @@ export default function ClientAccounts() {
         title="Client Accounts"
         subtitle="Manage client accounts, routes, and rates"
         actions={
-          isAdmin && (
+          canEdit && ( // Updated from isAdmin to canEdit
             <Button onClick={handleAdd} size="sm">
               <Plus className="w-4 h-4 mr-1.5" /> Create Account
             </Button>
@@ -93,7 +95,7 @@ export default function ClientAccounts() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isAdmin && (
+                  {canEdit && ( // Updated from isAdmin to canEdit
                     <>
                       <button onClick={() => handleEdit(client)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
                         <Pencil className="w-4 h-4" />
@@ -134,7 +136,6 @@ export default function ClientAccounts() {
                     )}
                   </div>
                 )}
-
                 </div>
           ))}
         </div>
