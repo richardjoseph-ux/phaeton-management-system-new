@@ -301,7 +301,7 @@ export default function BillingCycles() {
   };
 
   const getChequeAmountForDate = (date) => {
-    const cyclesForDate = cycles.filter(c => c.billing_received_date === date && !c.is_archived);
+    const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
     const cycleIds = cyclesForDate.map(c => c.id);
     
     let totalGross = 0;
