@@ -280,23 +280,38 @@ export default function BillingCycles() {
   };
 
   const getChequeAmountForDate = (date) => {
-    const cyclesForDate = cycles.filter(c => c.billing_received_date === date && !c.is_archived);
-    const cycleIds = cyclesForDate.map(c => c.id);
-    let totalGross = 0;
-    let totalOtherCharges = 0;
-    cycleIds.forEach(cycleId => {
-      const cycleTrips = allTrips.filter(t => t.billing_cycle_id === cycleId);
-      cycleTrips.forEach(trip => {
-        totalGross += trip.gross_rate || 0;
-      });
+  const cyclesForDate = cycles.filter(c => c.billing_received_date === date && !c.is_archived);
+  const cycleIds = cyclesForDate.map(c => c.id);
+  
+  let totalGross = 0;
+  let totalOtherCharges = 0;
+  let totalReimbursements = 0;
+
+  cycleIds.forEach(cycleId => {
+    const cycleTrips = allTrips.filter(t => t.billing_cycle_id === cycleId);
+    cycleTrips.forEach(trip => {
+      totalGross += trip.gross_rate || 0;
     });
-    const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
-    deductionsForDate.forEach(d => {
-      totalOtherCharges += d.other_charges || 0;
-    });
-    const tax = totalGross * 0.02;
-    return totalGross - tax - totalOtherCharges;
-  };
+  });
+
+  // Calculate total other charges
+  const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
+  deductionsForDate.forEach(d => {
+    totalOtherCharges += d.other_charges || 0;
+  });
+
+  // Calculate total reimbursements for this date
+  const reimbursementsForDate = reimbursements.filter(r => r.billing_received_date === date);
+  reimbursementsForDate.forEach(r => {
+    // UPDATED: Now using 'reimbursement_amount' from your schema
+    totalReimbursements += r.reimbursement_amount || 0; 
+  });
+
+  const tax = totalGross * 0.02;
+  
+  // Return the calculation including the addition of reimbursements
+  return totalGross - tax - totalOtherCharges + totalReimbursements;
+};
 
   const filteredCycles = cycles
     .filter(cycle => {
