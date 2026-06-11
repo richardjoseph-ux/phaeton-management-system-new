@@ -106,17 +106,11 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
-  const baseNetTotal = plateGroups.reduce((acc, row) => {
-    const baseRowNet = row.tripNet - row.insurance - row.other;
-    return acc + baseRowNet;
-  }, 0);
-
-  const allReimbursementsTotal = reimbursements.reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
-  
-  const finalNetTotal = baseNetTotal + allReimbursementsTotal;
+  // CORRECTED: Sum up the net calculated in each row to get the actual total payout
+  const finalNetTotal = plateGroups.reduce((acc, row) => acc + row.net, 0);
 
   // --- DEBUG LOGS ---
-  console.log("DEBUG: Calculation Summary:", { baseNetTotal, allReimbursementsTotal, finalNetTotal });
+  console.log("DEBUG: Calculation Summary:", { finalNetTotal });
 
   const grandTotals = plateGroups.reduce((acc, row) => {
     acc.gross += row.gross;
