@@ -37,7 +37,6 @@ function TabBar({ tabs, active, onSelect, label }) {
   );
 }
 
-// Added isAdmin prop (defaulting to false)
 export default function ClientForm({ open, onClose, onSaved, editData, isAdmin = false }) {
   const [form, setForm] = useState({
     client_name: '', client_code: '', address: '', contact_person: '',
@@ -123,12 +122,7 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
     routes[idx] = { ...routes[idx], rates: { ...routes[idx].rates, [truckType]: v } };
     return { ...p, routes };
   });
-  const addRoute = () => {
-    if (!isAdmin) return;
-    const newRoute = emptyRoute();
-    if (activePickup !== '__all__') newRoute.pickup_location = activePickup;
-    setForm(p => ({ ...p, routes: [...p.routes, newRoute] }));
-  };
+  const addRoute = () => { if (!isAdmin) return; const newRoute = emptyRoute(); if (activePickup !== '__all__') newRoute.pickup_location = activePickup; setForm(p => ({ ...p, routes: [...p.routes, newRoute] })); };
   const removeRoute = (idx) => isAdmin && setForm(p => ({ ...p, routes: p.routes.filter((_, i) => i !== idx) }));
 
   const handleExport = () => {
@@ -184,16 +178,7 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
       });
       const importedRoutes = Object.values(excelRouteMap);
       if (editData && form.routes.length > 0) {
-        const currentRouteMap = {};
-        form.routes.forEach((r, idx) => {
-          const key = `${r.pickup_location}||${r.delivery_location}||${r.delivery_code}||${r.trip_route_code}`;
-          currentRouteMap[key] = { ...r, originalIndex: idx };
-        });
-        const routesToKeep = [];
-        Object.values(excelRouteMap).forEach(excelRoute => {
-          routesToKeep.push(excelRoute);
-        });
-        setForm(p => ({ ...p, routes: routesToKeep.length ? routesToKeep : [emptyRoute()] }));
+        setForm(p => ({ ...p, routes: importedRoutes.length ? importedRoutes : [emptyRoute()] }));
       } else {
         setForm(p => ({ ...p, routes: importedRoutes.length ? importedRoutes : [emptyRoute()] }));
       }
