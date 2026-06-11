@@ -1,36 +1,55 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react'; // Added useMemo
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { Users, ShieldCheck, UserCircle } from 'lucide-react';
+import { Users, ShieldCheck, UserCircle, AlertCircle } from 'lucide-react'; // Added AlertCircle
 import { useAuth } from '@/lib/AuthContext';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); // Added error state
   const [saving, setSaving] = useState(null);
   const { user: currentUser } = useAuth();
 
   const load = async () => {
     setLoading(true);
-    const data = await base44.entities.User.list();
-    setUsers(data);
-    setLoading(false);
+    setError(null); // Clear previous errors
+    try {
+      const data = await base44.entities.User.list();
+      setUsers(data);
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+      setError("Unable to load users. Please check your permissions.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
   const updateUser = async (userId, field, value) => {
     setSaving(userId + field);
-    await base44.entities.User.update(userId, { [field]: value });
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, [field]: value } : u));
-    setSaving(null);
+    try {
+      await base44.entities.User.update(userId, { [field]: value });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, [field]: value } : u));
+    } catch (err) {
+      console.error("Update failed:", err);
+      // Optional: Add toast notification here
+    } finally {
+      setSaving(null);
+    }
   };
 
-  const admins = users.filter(u => u.role === 'admin').length;
-  const activeUsers = users.filter(u => u.status !== 'Inactive').length;
+  // Optimized with useMemo
+  const { admins, activeUsers } = useMemo(() => {
+    return {
+      admins: users.filter(u => u.role === 'admin').length,
+      activeUsers: users.filter(u => u.status !== 'Inactive').length
+    };
+  }, [users]);
 
   return (
     <div className="p-6">
@@ -57,6 +76,12 @@ export default function UserManagement() {
 
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading users...</div>
+      ) : error ? (
+        <div className="text-center py-16 text-destructive flex flex-col items-center gap-2">
+          <AlertCircle className="w-8 h-8" />
+          <p>{error}</p>
+          <Button variant="outline" onClick={load} className="mt-2">Retry</Button>
+        </div>
       ) : (
         <div className="bg-card border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
