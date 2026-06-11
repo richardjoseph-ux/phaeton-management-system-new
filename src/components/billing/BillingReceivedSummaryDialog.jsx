@@ -25,13 +25,6 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       base44.entities.BillingDeduction.filter({ billing_received_date: billingDate }, 'plate_number', 200),
       base44.entities.Reimbursement.filter({ billing_received_date: billingDate }, 'plate_number', 200),
     ]);
-    
-    // --- DIAGNOSTIC LOGS ---
-    console.log("DEBUG: Database fetch complete for date:", billingDate);
-    console.log("DEBUG: Raw Trips retrieved:", allTrips);
-    console.log("DEBUG: Raw Deductions retrieved:", deductions);
-    console.log("DEBUG: Raw Reimbursements retrieved:", reimbs);
-    
     setTrips(allTrips);
     setBillingDeductions(deductions);
     setReimbursements(reimbs);
@@ -63,6 +56,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     return { gross, tax, afterTax, hidden, admin, fuelSubsidy: fuelSubsidyAmount, net };
   };
 
+  // Group trips by plate_number and aggregate totals
   const plateGroups = (() => {
     const groups = {};
     trips.forEach(trip => {
@@ -86,37 +80,33 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       groups[key].tripNet += t.net;
       groups[key].tripCount += 1;
     });
-
+    // Apply flat deductions and reimbursements per plate
     return Object.values(groups).map(row => {
       const ded = billingDeductions.find(d => d.plate_number === row.plate_number);
       const insurance = ded?.insurance_charge || 0;
       const other = ded?.other_charges || 0;
-      
+      // Sum all reimbursements for this plate number
       const totalReimbursement = reimbursements
         .filter(r => r.plate_number === row.plate_number)
         .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
-
-      return { 
-        ...row, 
-        insurance, 
-        other, 
-        reimbursement: totalReimbursement, 
-        net: row.tripNet - insurance - other + totalReimbursement 
-      };
+      return { ...row, insurance, other, reimbursement: totalReimbursement, net: row.tripNet - insurance - other + totalReimbursement };
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
-  // CORRECTED: Sum up the net calculated in each row to get the actual total payout
-  const finalNetTotal = plateGroups.reduce((acc, row) => acc + row.net, 0);
-
-  // --- DEBUG LOGS ---
-  console.log("DEBUG: Calculation Summary:", { finalNetTotal });
-
+  // Calculate grand totals from trip-based plates
   const grandTotals = plateGroups.reduce((acc, row) => {
-    acc.gross += row.gross;
-    acc.afterTax += (row.gross - row.tax);
+    acc.afterTax += row.gross - row.tax;
+    acc.fuelSubsidy += row.fuelSubsidy;
+    acc.net += row.net;
     return acc;
-  }, { gross: 0, afterTax: 0 });
+  }, { afterTax: 0, fuelSubsidy: 0, net: 0 });
+
+  // Add reimbursements for plates without trips
+  const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
+  const orphanReimbursements = reimbursements
+    .filter(r => !platesWithTrips.has(r.plate_number))
+    .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
+  grandTotals.net += orphanReimbursements;
 
   const statementNames = cycles?.map(c => c.cycle_name).join(', ') || '';
   const clientNames = [...new Set(cycles?.map(c => c.client_name).filter(Boolean) || [])].join(', ');
@@ -143,6 +133,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
           </div>
         ) : (
           <>
+            {/* Grouped by Plate # Table */}
             <div className="border rounded-lg overflow-x-auto mb-4">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
@@ -157,7 +148,9 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
                     <tr key={row.plate_number} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="px-3 py-3 font-mono font-semibold text-primary whitespace-nowrap">{row.plate_number}</td>
                       <td className="px-3 py-3 whitespace-nowrap">{row.owner_name}</td>
-                      <td className="px-3 py-3"><span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{row.truck_type}</span></td>
+                      <td className="px-3 py-3">
+                        <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">{row.truck_type}</span>
+                      </td>
                       <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">{row.client_name}</td>
                       <td className="px-3 py-3 text-center text-xs text-muted-foreground">{row.tripCount}</td>
                       <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{row.gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -175,6 +168,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
               </table>
             </div>
 
+            {/* Reimbursements Section */}
             {reimbursements.length > 0 && (
               <div className="border rounded-lg overflow-x-auto mb-4">
                 <div className="px-4 py-3 border-b bg-muted/50">
@@ -203,10 +197,11 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
               </div>
             )}
 
+            {/* Summary Cards */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
                 <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Grand Total</p>
-                <p className="text-2xl font-bold mt-2 text-blue-700">₱{grandTotals.gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-2xl font-bold mt-2 text-blue-700">₱{plateGroups.reduce((sum, r) => sum + r.gross, 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
                 <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Cheque Amount</p>
@@ -214,7 +209,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
               </div>
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5">
                 <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Subcon Payout</p>
-                <p className="text-2xl font-bold mt-2 text-emerald-700">₱{finalNetTotal.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-2xl font-bold mt-2 text-emerald-700">₱{grandTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
           </>
