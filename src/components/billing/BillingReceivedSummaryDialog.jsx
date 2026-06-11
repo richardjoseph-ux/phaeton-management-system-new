@@ -79,14 +79,24 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       groups[key].tripNet += t.net;
       groups[key].tripCount += 1;
     });
+
     return Object.values(groups).map(row => {
       const ded = billingDeductions.find(d => d.plate_number === row.plate_number);
       const insurance = ded?.insurance_charge || 0;
       const other = ded?.other_charges || 0;
-      const totalReimbursement = reimbursements
+      
+      // Calculate only plate-specific reimbursements
+      const plateReimbursementTotal = reimbursements
         .filter(r => r.plate_number === row.plate_number)
         .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
-      return { ...row, insurance, other, reimbursement: totalReimbursement, net: row.tripNet - insurance - other + totalReimbursement };
+
+      return { 
+        ...row, 
+        insurance, 
+        other, 
+        reimbursement: plateReimbursementTotal, 
+        net: row.tripNet - insurance - other + plateReimbursementTotal 
+      };
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
@@ -114,7 +124,6 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[98vw] max-h-[95vh] overflow-y-auto">
-        {/* ... (Rest of your JSX remains exactly as you provided) ... */}
         <DialogHeader>
           <DialogTitle>Billing Received Summary — {billingDate}</DialogTitle>
           {(statementNames || clientNames) && (
