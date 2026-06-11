@@ -310,13 +310,15 @@ export default function Payroll() {
             ) : (
               <>
                 {/* Billing Cycle Info Banner */}
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-center gap-3">
-                  <Info className="w-5 h-5 text-blue-600 shrink-0" />
-                  <div className="text-sm">
-                    <p className="font-semibold text-blue-900">Statements included:</p>
-                    <p className="text-blue-700">{activeCycles.map(c => c.billing_cycle_name).join(', ')}</p>
+                {activeCycles.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-center gap-3">
+                    <Info className="w-5 h-5 text-blue-600 shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-semibold text-blue-900">Statements included:</p>
+                      <p className="text-blue-700">{activeCycles.map(c => c.cycle_name).join(', ')}</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                   <div className="bg-card border rounded-lg p-3">
@@ -337,7 +339,6 @@ export default function Payroll() {
                   </div>
                 </div>
 
-                {/* ... existing table and details sections remain unchanged ... */}
                 <div className="bg-card border rounded-lg overflow-hidden mb-4">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
