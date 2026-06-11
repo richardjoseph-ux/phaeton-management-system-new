@@ -90,19 +90,19 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
-  const grandTotals = plateGroups.reduce((acc, row) => {
-    acc.gross += row.gross;
-    acc.afterTax += (row.gross - row.tax);
-    acc.net += row.net;
-    return acc;
-  }, { gross: 0, afterTax: 0, net: 0 });
-
+  const platesNetTotal = plateGroups.reduce((acc, row) => acc + row.net, 0);
   const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
   const orphanReimbursements = reimbursements
     .filter(r => !platesWithTrips.has(r.plate_number))
     .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
   
-  grandTotals.net += orphanReimbursements;
+  const finalNetTotal = platesNetTotal + orphanReimbursements;
+
+  const grandTotals = plateGroups.reduce((acc, row) => {
+    acc.gross += row.gross;
+    acc.afterTax += (row.gross - row.tax);
+    return acc;
+  }, { gross: 0, afterTax: 0 });
 
   const statementNames = cycles?.map(c => c.cycle_name).join(', ') || '';
   const clientNames = [...new Set(cycles?.map(c => c.client_name).filter(Boolean) || [])].join(', ');
@@ -200,7 +200,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
               </div>
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5">
                 <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Subcon Payout</p>
-                <p className="text-2xl font-bold mt-2 text-emerald-700">₱{grandTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-2xl font-bold mt-2 text-emerald-700">₱{finalNetTotal.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </div>
           </>
