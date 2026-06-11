@@ -85,8 +85,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       const insurance = ded?.insurance_charge || 0;
       const other = ded?.other_charges || 0;
       
-      // Calculate only plate-specific reimbursements
-      const plateReimbursementTotal = reimbursements
+      const totalReimbursement = reimbursements
         .filter(r => r.plate_number === row.plate_number)
         .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
 
@@ -94,23 +93,24 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
         ...row, 
         insurance, 
         other, 
-        reimbursement: plateReimbursementTotal, 
-        net: row.tripNet - insurance - other + plateReimbursementTotal 
+        reimbursement: totalReimbursement, 
+        net: row.tripNet - insurance - other + totalReimbursement 
       };
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
   // CORRECTED CALCULATION LOGIC
-  const platesNetTotal = plateGroups.reduce((acc, row) => acc + row.net, 0);
-  const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
+  // Calculate Base Net (Trip Net - Insurance - Other) per row to avoid double-counting reimbursements
+  const baseNetTotal = plateGroups.reduce((acc, row) => {
+    const baseRowNet = row.tripNet - row.insurance - row.other;
+    return acc + baseRowNet;
+  }, 0);
+
+  // Sum of ALL reimbursements
+  const allReimbursementsTotal = reimbursements.reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
   
-  // Calculate only those not in the table
-  const orphanReimbursements = reimbursements
-    .filter(r => !platesWithTrips.has(r.plate_number))
-    .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
-  
-  // Total = Sum of all table row nets + orphaned reimbursements
-  const finalNetTotal = platesNetTotal + orphanReimbursements;
+  // Total Payout = Base Net + Total Reimbursements
+  const finalNetTotal = baseNetTotal + allReimbursementsTotal;
 
   const grandTotals = plateGroups.reduce((acc, row) => {
     acc.gross += row.gross;
