@@ -13,7 +13,7 @@ import * as XLSX from 'xlsx';
 
 export default function TripEncoding() {
   const { user: currentUser } = useAuth();
-  const isAdmin = currentUser?.role === 'admin';
+  const canAddTrip = currentUser?.role === 'admin' || currentUser?.role === 'user'
   const [trips, setTrips] = useState([]);
   const [clients, setClients] = useState([]);
   const [subcontractors, setSubcontractors] = useState([]);
@@ -236,7 +236,7 @@ export default function TripEncoding() {
                 </Button>
               </>
             )}
-            {isAdmin && (
+            {currentUser && (
               <Button onClick={handleAdd} size="sm">
                 <Plus className="w-4 h-4 mr-1.5" /> New Trip
               </Button>
@@ -322,20 +322,39 @@ export default function TripEncoding() {
                   <td className="px-4 py-3 text-sm font-medium">{formatDateDisplay(trip.delivery_date)}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{trip.billing_cycle_name || '—'}</td>
                   <td className="px-4 py-3">
-                    {isAdmin && (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => handleDuplicate(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Duplicate">
+                  <div className="flex items-center gap-1">
+                    {/* These are visible to any logged-in user */}
+                    {currentUser && (
+                      <>
+                        <button 
+                          onClick={() => handleDuplicate(trip)} 
+                          className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" 
+                          title="Duplicate"
+                        >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleEdit(trip)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
+                        <button 
+                          onClick={() => handleEdit(trip)} 
+                          className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" 
+                          title="Edit"
+                        >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleDelete(trip.id)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600" title="Delete">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      </>
                     )}
-                  </td>
+
+                    {/* This is visible ONLY to admin users */}
+                    {isAdmin && (
+                      <button 
+                        onClick={() => handleDelete(trip.id)} 
+                        className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600" 
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </td>
                 </tr>
               ))}
             </tbody>
