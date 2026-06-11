@@ -81,6 +81,31 @@ export default function TripEncoding() {
     load();
   };
 
+  const handleExportTrips = async () => {
+    try {
+      const data = filtered.map(t => ({
+        plate_number: t.plate_number,
+        owner_name: t.owner_name,
+        client_name: t.client_name,
+        pickup_location: t.pickup_location,
+        delivery_location: t.delivery_location,
+        delivery_code: t.delivery_code,
+        particular: t.particular,
+        dr_number: t.dr_number,
+        waybill_number: t.waybill_number,
+        delivery_date: t.delivery_date,
+        billing_date: t.billing_date,
+        billing_cycle_name: t.billing_cycle_name
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Trips');
+      XLSX.writeFile(workbook, `TripEncoding_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (error) {
+      alert('Export failed: ' + error.message);
+    }
+  };
+
   const handleSyncBillingDates = async () => {
     setSyncing(true);
     try {
@@ -96,66 +121,60 @@ export default function TripEncoding() {
   };
 
   const handleSyncTripData = async () => {
-  setSyncingData(true);
-  try {
-    const tripsToUpdate = await base44.entities.TripRecord.list();
-    const allClients = await base44.entities.ClientAccount.list('client_name', 100);
-    let updated = 0;
+    setSyncingData(true);
+    try {
+      const tripsToUpdate = await base44.entities.TripRecord.list();
+      const allClients = await base44.entities.ClientAccount.list('client_name', 100);
+      let updated = 0;
 
-    for (const trip of tripsToUpdate) {
-      const client = allClients.find(c => c.id === trip.client_account_id || c.client_name === trip.client_name);
-      
-      if (client) {
-        // Updated lookup: Match based on all 4 criteria
-        const route = client.routes?.find(r => 
-          r.pickup_location === trip.pickup_location && 
-          r.delivery_location === trip.delivery_location &&
-          r.delivery_code === trip.delivery_code // Added delivery_code to matching criteria
-        );
+      for (const trip of tripsToUpdate) {
+        const client = allClients.find(c => c.id === trip.client_account_id || c.client_name === trip.client_name);
+        
+        if (client) {
+          const route = client.routes?.find(r => 
+            r.pickup_location === trip.pickup_location && 
+            r.delivery_location === trip.delivery_location &&
+            r.delivery_code === trip.delivery_code
+          );
 
-        // 1. Calculate Financials (Kept as requested)
-        const newRate = route?.rates?.[trip.truck_type] || 0;
-        const newGross = newRate || trip.gross_rate || 0;
-        const tax = newGross * 0.02;
-        const afterTax = newGross - tax;
-        const hidden = afterTax * 0.04;
-        const admin = afterTax * 0.06;
-        const newNet = newGross - tax - hidden - admin - (trip.insurance_charge || 0) - (trip.other_charges || 0);
+          const newRate = route?.rates?.[trip.truck_type] || 0;
+          const newGross = newRate || trip.gross_rate || 0;
+          const tax = newGross * 0.02;
+          const afterTax = newGross - tax;
+          const hidden = afterTax * 0.04;
+          const admin = afterTax * 0.06;
+          const newNet = newGross - tax - hidden - admin - (trip.insurance_charge || 0) - (trip.other_charges || 0);
 
-        // 2. Check for changes (Financials + New Route Code Logic)
-        // Note: We removed delivery_code from the check because you don't want it updated
-        const hasChanges = 
-          trip.gross_rate !== newGross ||
-          trip.tax_deduction !== tax ||
-          trip.hidden_fee !== hidden ||
-          trip.admin_fee !== admin ||
-          trip.net_payroll !== newNet ||
-          trip.trip_route_code !== (route?.trip_route_code || trip.trip_route_code);
+          const hasChanges = 
+            trip.gross_rate !== newGross ||
+            trip.tax_deduction !== tax ||
+            trip.hidden_fee !== hidden ||
+            trip.admin_fee !== admin ||
+            trip.net_payroll !== newNet ||
+            trip.trip_route_code !== (route?.trip_route_code || trip.trip_route_code);
 
-        // 3. Update if changes found
-        if (hasChanges) {
-          await base44.entities.TripRecord.update(trip.id, {
-            client_account_id: client.id,
-            client_name: client.client_name,
-            gross_rate: newGross,
-            tax_deduction: tax,
-            hidden_fee: hidden,
-            admin_fee: admin,
-            net_payroll: newNet,
-            trip_route_code: route?.trip_route_code || trip.trip_route_code
-            // delivery_code is excluded, so it stays as it was
-          });
-          updated++;
+          if (hasChanges) {
+            await base44.entities.TripRecord.update(trip.id, {
+              client_account_id: client.id,
+              client_name: client.client_name,
+              gross_rate: newGross,
+              tax_deduction: tax,
+              hidden_fee: hidden,
+              admin_fee: admin,
+              net_payroll: newNet,
+              trip_route_code: route?.trip_route_code || trip.trip_route_code
+            });
+            updated++;
+          }
         }
       }
+      alert(`Synced ${updated} trip records with updated route and rate data`);
+      await load();
+    } catch (error) {
+      alert('Error syncing trip data: ' + error.message);
     }
-    alert(`Synced ${updated} trip records with updated route and rate data`);
-    await load();
-  } catch (error) {
-    alert('Error syncing trip data: ' + error.message);
-  }
-  setSyncingData(false);
-};
+    setSyncingData(false);
+  };
 
   const handleImportTrips = async (event) => {
     const file = event.target.files?.[0];
@@ -197,50 +216,23 @@ export default function TripEncoding() {
         actions={
           <div className="flex gap-2">
             <div className="flex gap-2 mr-4">
-              <Button 
-                onClick={handleExportTrips} 
-                size="sm" 
-                variant="outline"
-              >
+              <Button onClick={handleExportTrips} size="sm" variant="outline">
                 <Download className="w-4 h-4 mr-1.5" /> Export Excel
               </Button>
               <label>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  asChild
-                >
-                  <span>
-                    <Upload className="w-4 h-4 mr-1.5" /> Import Excel
-                  </span>
+                <Button size="sm" variant="outline" asChild>
+                  <span><Upload className="w-4 h-4 mr-1.5" /> Import Excel</span>
                 </Button>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleImportTrips}
-                  className="hidden"
-                />
+                <input type="file" accept=".xlsx,.xls" onChange={handleImportTrips} className="hidden" />
               </label>
             </div>
             {isAdmin && (
               <>
-                <Button 
-                  onClick={handleSyncTripData} 
-                  size="sm" 
-                  variant="outline"
-                  disabled={syncingData}
-                >
-                  <RefreshCcw className={`w-4 h-4 mr-1.5 ${syncingData ? 'animate-spin' : ''}`} /> 
-                  Sync Trip Data
+                <Button onClick={handleSyncTripData} size="sm" variant="outline" disabled={syncingData}>
+                  <RefreshCcw className={`w-4 h-4 mr-1.5 ${syncingData ? 'animate-spin' : ''}`} /> Sync Trip Data
                 </Button>
-                <Button 
-                  onClick={handleSyncBillingDates} 
-                  size="sm" 
-                  variant="outline"
-                  disabled={syncing}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} /> 
-                  Sync Billing Dates
+                <Button onClick={handleSyncBillingDates} size="sm" variant="outline" disabled={syncing}>
+                  <RefreshCw className={`w-4 h-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} /> Sync Billing Dates
                 </Button>
               </>
             )}
@@ -253,14 +245,13 @@ export default function TripEncoding() {
         }
       />
 
-      {/* Filters */}
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input className="pl-9 w-64" placeholder="Search by plate, name, DR#..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select 
-          className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           value={sortOrder}
           onChange={e => setSortOrder(e.target.value)}
         >
@@ -268,7 +259,7 @@ export default function TripEncoding() {
           <option value="oldest">Oldest First</option>
         </select>
         <select 
-          className="flex h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           value={filterBilling}
           onChange={e => setFilterBilling(e.target.value)}
         >
@@ -278,13 +269,10 @@ export default function TripEncoding() {
           ))}
         </select>
         {filterBilling && (
-          <Button variant="outline" size="sm" onClick={() => setFilterBilling('')}>
-            Clear Filters
-          </Button>
+          <Button variant="outline" size="sm" onClick={() => setFilterBilling('')}>Clear Filters</Button>
         )}
       </div>
 
-      {/* Table */}
       <div className="bg-card border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
