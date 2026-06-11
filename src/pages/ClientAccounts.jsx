@@ -1,3 +1,14 @@
+import { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import StatusBadge from '@/components/ui/StatusBadge';
+import ClientForm from '@/components/clients/ClientForm';
+// Added the missing import below:
+import { useAuth } from '@/lib/AuthContext';
+
 export default function ClientAccounts() {
   const { user: currentUser } = useAuth();
   
@@ -85,13 +96,11 @@ export default function ClientAccounts() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Edit Pencil visible to all editors */}
                   {canEdit && (
                     <button onClick={() => handleEdit(client)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
                       <Pencil className="w-4 h-4" />
                     </button>
                   )}
-                  {/* Delete Trash visible ONLY to Admins */}
                   {isAdmin && (
                     <button onClick={() => handleDelete(client)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
                       <Trash2 className="w-4 h-4" />
