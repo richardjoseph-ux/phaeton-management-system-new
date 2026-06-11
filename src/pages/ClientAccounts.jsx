@@ -12,7 +12,7 @@ const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
 export default function ClientAccounts() {
   const { user: currentUser } = useAuth();
-  const isAdmin = currentUser?.role === 'admin';
+  const canEdit = currentUser?.role === 'admin' || currentUser?.role === 'user'
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
