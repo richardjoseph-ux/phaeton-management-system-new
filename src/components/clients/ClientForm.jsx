@@ -15,7 +15,7 @@ const emptyRoute = () => ({
   rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
 });
 
-function TabBar({ tabs, active, onSelect }) {
+function TabBar({ tabs, active, onSelect, label }) {
   return (
     <div className="flex gap-1 flex-wrap border-b border-border">
       {tabs.map(tab => (
@@ -23,6 +23,7 @@ function TabBar({ tabs, active, onSelect }) {
           key={tab.value}
           type="button"
           onClick={() => onSelect(tab.value)}
+          title={tab.label}
           className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors max-w-[180px] truncate ${
             active === tab.value
               ? 'border-primary text-primary bg-primary/5'
@@ -36,6 +37,7 @@ function TabBar({ tabs, active, onSelect }) {
   );
 }
 
+// Added isAdmin prop (defaulting to false)
 export default function ClientForm({ open, onClose, onSaved, editData, isAdmin = false }) {
   const [form, setForm] = useState({
     client_name: '', client_code: '', address: '', contact_person: '',
@@ -43,7 +45,6 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
     routes: [emptyRoute()],
     sub_accounts: []
   });
-
   const [saving, setSaving] = useState(false);
   const [activePickup, setActivePickup] = useState('__all__');
   const [activeTruck, setActiveTruck] = useState('__all__');
@@ -52,7 +53,6 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
 
   const pickupTabs = [...new Set(form.routes.map(r => r.pickup_location).filter(Boolean))];
   const searchLower = routeSearch.trim().toLowerCase();
-
   const visibleIndices = form.routes.reduce((acc, r, i) => {
     const pickupMatch = activePickup === '__all__' || r.pickup_location === activePickup;
     const truckMatch = activeTruck === '__all__' || (r.rates?.[activeTruck] !== '' && r.rates?.[activeTruck] != null);
@@ -106,8 +106,8 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
   }, [editData, open]);
 
   const set = (k, v) => isAdmin && setForm(p => ({ ...p, [k]: v }));
-  const addSubAccount = () => setForm(p => ({ ...p, sub_accounts: [...p.sub_accounts, { sub_account_name: '', sub_account_code: '' }] }));
-  const removeSubAccount = (idx) => setForm(p => ({ ...p, sub_accounts: p.sub_accounts.filter((_, i) => i !== idx) }));
+  const addSubAccount = () => { isAdmin && setForm(p => ({ ...p, sub_accounts: [...p.sub_accounts, { sub_account_name: '', sub_account_code: '' }] })); };
+  const removeSubAccount = (idx) => isAdmin && setForm(p => ({ ...p, sub_accounts: p.sub_accounts.filter((_, i) => i !== idx) }));
   const setSubAccount = (idx, k, v) => isAdmin && setForm(p => {
     const sub_accounts = [...p.sub_accounts];
     sub_accounts[idx] = { ...sub_accounts[idx], [k]: v };
@@ -123,14 +123,13 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
     routes[idx] = { ...routes[idx], rates: { ...routes[idx].rates, [truckType]: v } };
     return { ...p, routes };
   });
-
   const addRoute = () => {
+    if (!isAdmin) return;
     const newRoute = emptyRoute();
     if (activePickup !== '__all__') newRoute.pickup_location = activePickup;
     setForm(p => ({ ...p, routes: [...p.routes, newRoute] }));
   };
-
-  const removeRoute = (idx) => setForm(p => ({ ...p, routes: p.routes.filter((_, i) => i !== idx) }));
+  const removeRoute = (idx) => isAdmin && setForm(p => ({ ...p, routes: p.routes.filter((_, i) => i !== idx) }));
 
   const handleExport = () => {
     const wb = XLSX.utils.book_new();
@@ -183,7 +182,6 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
           excelRouteMap[key].rates[truckType] = row['Rate'] ?? '';
         });
       });
-
       const importedRoutes = Object.values(excelRouteMap);
       if (editData && form.routes.length > 0) {
         const currentRouteMap = {};
@@ -230,18 +228,12 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
 
   const pickupTabList = editData
     ? pickupTabs.map(p => ({ value: p, label: `${p} (${form.routes.filter(r => r.pickup_location === p).length})` }))
-    : [
-        { value: '__all__', label: `All Pickups (${form.routes.length})` },
-        ...pickupTabs.map(p => ({ value: p, label: `${p} (${form.routes.filter(r => r.pickup_location === p).length})` }))
-      ];
+    : [{ value: '__all__', label: `All Pickups (${form.routes.length})` }, ...pickupTabs.map(p => ({ value: p, label: `${p} (${form.routes.filter(r => r.pickup_location === p).length})` }))];
 
   const routesInPickup = activePickup === '__all__' ? form.routes : form.routes.filter(r => r.pickup_location === activePickup);
   const truckTabList = editData
     ? TRUCK_TYPES.map(t => ({ value: t, label: `${t} (${routesInPickup.filter(r => r.rates?.[t] !== '' && r.rates?.[t] != null).length})` }))
-    : [
-        { value: '__all__', label: `All Trucks (${routesInPickup.length})` },
-        ...TRUCK_TYPES.map(t => ({ value: t, label: `${t} (${routesInPickup.filter(r => r.rates?.[t] !== '' && r.rates?.[t] != null).length})` }))
-      ];
+    : [{ value: '__all__', label: `All Trucks (${routesInPickup.length})` }, ...TRUCK_TYPES.map(t => ({ value: t, label: `${t} (${routesInPickup.filter(r => r.rates?.[t] !== '' && r.rates?.[t] != null).length})` }))];
 
   const rateColumns = activeTruck === '__all__' ? TRUCK_TYPES : [activeTruck];
 
@@ -254,74 +246,34 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
 
         <div className="overflow-y-auto flex-1 space-y-5 py-2 pr-1">
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Client Name *</Label>
-              <Input disabled={!isAdmin} value={form.client_name} onChange={e => set('client_name', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Client Code</Label>
-              <Input disabled={!isAdmin} value={form.client_code} onChange={e => set('client_code', e.target.value.toUpperCase())} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Contact Person</Label>
-              <Input disabled={!isAdmin} value={form.contact_person} onChange={e => set('contact_person', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Contact Number</Label>
-              <Input disabled={!isAdmin} value={form.contact_number} onChange={e => set('contact_number', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Address</Label>
-              <Input disabled={!isAdmin} value={form.address} onChange={e => set('address', e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select disabled={!isAdmin} value={form.status} onValueChange={v => set('status', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="space-y-1.5"><Label>Client Name *</Label><Input disabled={!isAdmin} value={form.client_name} onChange={e => set('client_name', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Client Code</Label><Input disabled={!isAdmin} value={form.client_code} onChange={e => set('client_code', e.target.value.toUpperCase())} /></div>
+            <div className="space-y-1.5"><Label>Contact Person</Label><Input disabled={!isAdmin} value={form.contact_person} onChange={e => set('contact_person', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Contact Number</Label><Input disabled={!isAdmin} value={form.contact_number} onChange={e => set('contact_number', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Address</Label><Input disabled={!isAdmin} value={form.address} onChange={e => set('address', e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Status</Label><Select disabled={!isAdmin} value={form.status} onValueChange={v => set('status', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Active">Active</SelectItem><SelectItem value="Inactive">Inactive</SelectItem></SelectContent></Select></div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-3 gap-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sub-Accounts</p>
               {isAdmin && (
-                <Button type="button" variant="outline" size="sm" onClick={addSubAccount}>
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Sub-Account
-                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={addSubAccount}><Plus className="w-3.5 h-3.5 mr-1" /> Add Sub-Account</Button>
               )}
             </div>
-            {form.sub_accounts.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No sub-accounts added</p>
-            ) : (
-              <div className="space-y-2">
-                {form.sub_accounts.map((sub, idx) => (
-                  <div key={idx} className="border rounded-lg p-3 bg-muted/20">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-semibold">Sub-Account {idx + 1}</h4>
-                      {isAdmin && (
-                        <button onClick={() => removeSubAccount(idx)} className="text-red-400 hover:text-red-600">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label>Sub-Account Name</Label>
-                        <Input disabled={!isAdmin} value={sub.sub_account_name} onChange={e => setSubAccount(idx, 'sub_account_name', e.target.value)} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Sub-Account Code</Label>
-                        <Input disabled={!isAdmin} value={sub.sub_account_code} onChange={e => setSubAccount(idx, 'sub_account_code', e.target.value.toUpperCase())} />
-                      </div>
-                    </div>
+            {form.sub_accounts.length === 0 ? <p className="text-xs text-muted-foreground">No sub-accounts added</p> : (
+              <div className="space-y-2">{form.sub_accounts.map((sub, idx) => (
+                <div key={idx} className="border rounded-lg p-3 bg-muted/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold">Sub-Account {idx + 1}</h4>
+                    {isAdmin && <button onClick={() => removeSubAccount(idx)} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>}
                   </div>
-                ))}
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5"><Label>Sub-Account Name</Label><Input disabled={!isAdmin} value={sub.sub_account_name} onChange={e => setSubAccount(idx, 'sub_account_name', e.target.value)} /></div>
+                    <div className="space-y-1.5"><Label>Sub-Account Code</Label><Input disabled={!isAdmin} value={sub.sub_account_code} onChange={e => setSubAccount(idx, 'sub_account_code', e.target.value.toUpperCase())} /></div>
+                  </div>
+                </div>
+              ))}</div>
             )}
           </div>
 
@@ -331,15 +283,9 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
               {isAdmin && (
                 <div className="flex items-center gap-2">
                   <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
-                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current.click()}>
-                    <Upload className="w-3.5 h-3.5 mr-1" /> Import Excel
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={handleExport}>
-                    <Download className="w-3.5 h-3.5 mr-1" /> Export Excel
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={addRoute}>
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Route
-                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current.click()}><Upload className="w-3.5 h-3.5 mr-1" /> Import Excel</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleExport}><Download className="w-3.5 h-3.5 mr-1" /> Export Excel</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={addRoute}><Plus className="w-3.5 h-3.5 mr-1" /> Add Route</Button>
                 </div>
               )}
             </div>
@@ -368,36 +314,16 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleIndices.length === 0 ? (
-                    <tr><td colSpan={10} className="text-center py-6 text-xs text-muted-foreground">No routes found for this filter.</td></tr>
-                  ) : visibleIndices.map(idx => {
+                  {visibleIndices.length === 0 ? <tr><td colSpan={10} className="text-center py-6 text-xs text-muted-foreground">No routes found for this filter.</td></tr> : visibleIndices.map(idx => {
                     const route = form.routes[idx];
                     return (
                       <tr key={idx} className="border-b last:border-b-0 hover:bg-muted/20">
-                        {activePickup === '__all__' && (
-                          <td className="px-2 py-1.5 border-r">
-                            <Input disabled={!isAdmin} className="h-7 text-xs min-w-[120px]" value={route.pickup_location} onChange={e => setRoute(idx, 'pickup_location', e.target.value)} />
-                          </td>
-                        )}
-                        <td className="px-2 py-1.5 border-r">
-                          <Input disabled={!isAdmin} className="h-7 text-xs min-w-[120px]" value={route.delivery_location} onChange={e => setRoute(idx, 'delivery_location', e.target.value)} />
-                        </td>
-                        <td className="px-2 py-1.5 border-r">
-                          <Input disabled={!isAdmin} className="h-7 text-xs min-w-[90px]" value={route.delivery_code} onChange={e => setRoute(idx, 'delivery_code', e.target.value)} />
-                        </td>
-                        <td className="px-2 py-1.5 border-r">
-                          <Input disabled={!isAdmin} className="h-7 text-xs min-w-[90px]" value={route.trip_route_code} onChange={e => setRoute(idx, 'trip_route_code', e.target.value)} />
-                        </td>
-                        {rateColumns.map(t => (
-                          <td key={t} className={`px-2 py-1.5 border-r ${activeTruck === t ? 'bg-primary/5' : ''}`}>
-                            <Input disabled={!isAdmin} type="number" className="h-7 text-xs text-right min-w-[80px]" value={route.rates?.[t] ?? ''} onChange={e => setRouteRate(idx, t, e.target.value)} />
-                          </td>
-                        ))}
-                        {isAdmin && (
-                          <td className="px-2 py-1.5 text-center">
-                            <button onClick={() => removeRoute(idx)} className="text-red-400 hover:text-red-600 p-0.5"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </td>
-                        )}
+                        {activePickup === '__all__' && <td className="px-2 py-1.5 border-r"><Input disabled={!isAdmin} className="h-7 text-xs min-w-[120px]" value={route.pickup_location} onChange={e => setRoute(idx, 'pickup_location', e.target.value)} placeholder="e.g. DSV Parañaque" /></td>}
+                        <td className="px-2 py-1.5 border-r"><Input disabled={!isAdmin} className="h-7 text-xs min-w-[120px]" value={route.delivery_location} onChange={e => setRoute(idx, 'delivery_location', e.target.value)} placeholder="e.g. Baguio City" /></td>
+                        <td className="px-2 py-1.5 border-r"><Input disabled={!isAdmin} className="h-7 text-xs min-w-[90px]" value={route.delivery_code} onChange={e => setRoute(idx, 'delivery_code', e.target.value)} placeholder="e.g. BGO" /></td>
+                        <td className="px-2 py-1.5 border-r"><Input disabled={!isAdmin} className="h-7 text-xs min-w-[90px]" value={route.trip_route_code} onChange={e => setRoute(idx, 'trip_route_code', e.target.value)} placeholder="Optional" /></td>
+                        {rateColumns.map(t => <td key={t} className={`px-2 py-1.5 border-r ${activeTruck === t ? 'bg-primary/5' : ''}`}><Input disabled={!isAdmin} className="h-7 text-xs text-right min-w-[80px]" type="number" min="0" step="1" placeholder="—" value={route.rates?.[t] ?? ''} onChange={e => setRouteRate(idx, t, e.target.value)} /></td>)}
+                        {isAdmin && <td className="px-2 py-1.5 text-center"><button onClick={() => removeRoute(idx)} className="text-red-400 hover:text-red-600 p-0.5"><Trash2 className="w-3.5 h-3.5" /></button></td>}
                       </tr>
                     );
                   })}
@@ -410,9 +336,7 @@ export default function ClientForm({ open, onClose, onSaved, editData, isAdmin =
         <DialogFooter className="border-t pt-4">
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           {isAdmin && (
-            <Button onClick={handleSave} disabled={saving || !form.client_name}>
-              {saving ? 'Saving...' : editData ? 'Update' : 'Create Account'}
-            </Button>
+            <Button onClick={handleSave} disabled={saving || !form.client_name}>{saving ? 'Saving...' : editData ? 'Update' : 'Create Account'}</Button>
           )}
         </DialogFooter>
       </DialogContent>
