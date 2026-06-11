@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Sheet, ShieldCheck, PackageMinus, PlusCircle } from 'lucide-react';
+import { FileText, Sheet, ShieldCheck, PackageMinus, PlusCircle, Info } from 'lucide-react'; // Added Info icon
 import PageHeader from '@/components/ui/PageHeader';
 import { formatDateDisplay } from '@/lib/dateUtils';
 import { jsPDF } from 'jspdf';
@@ -23,6 +23,12 @@ export default function Payroll() {
 
   const [googleSheetUrl, setGoogleSheetUrl] = useState('');
   const [exporting, setExporting] = useState(false);
+
+  // Helper to get active cycles for the banner
+  const activeCycles = useMemo(() => {
+    if (!selectedDate) return [];
+    return billingCycles.filter(c => c.billing_received_date === selectedDate);
+  }, [selectedDate, billingCycles]);
 
   const load = async () => {
     setLoading(true);
@@ -129,7 +135,6 @@ export default function Payroll() {
     return forDate;
   })();
 
-  // Reimbursement logic
   const applicableReimbursements = useMemo(() => {
     if (!selectedDate) return [];
     const forDate = reimbursements.filter(r => r.billing_received_date === selectedDate);
@@ -145,7 +150,6 @@ export default function Payroll() {
   const exportPDF = () => {
     if (!selectedDate) return;
     const doc = new jsPDF();
-    // ... (Keep existing exportPDF logic)
     const ownerLabel = selectedOwner
       ? ownerList.find(o => o.plate_number === selectedOwner)?.owner_name || selectedOwner
       : 'All Owners';
@@ -189,7 +193,6 @@ export default function Payroll() {
   };
 
   const exportToGoogleSheet = async () => {
-    // ... (Keep existing exportToGoogleSheet logic)
     if (!googleSheetUrl.trim()) {
       alert('No Google Sheet URL configured. Please set it in Additional Services > Google Sheets Export tab.');
       return;
@@ -306,6 +309,15 @@ export default function Payroll() {
               </div>
             ) : (
               <>
+                {/* Billing Cycle Info Banner */}
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-center gap-3">
+                  <Info className="w-5 h-5 text-blue-600 shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-semibold text-blue-900">Statements included:</p>
+                    <p className="text-blue-700">{activeCycles.map(c => c.billing_cycle_name).join(', ')}</p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                   <div className="bg-card border rounded-lg p-3">
                     <p className="text-xs text-muted-foreground">Total Trips</p>
@@ -325,6 +337,7 @@ export default function Payroll() {
                   </div>
                 </div>
 
+                {/* ... existing table and details sections remain unchanged ... */}
                 <div className="bg-card border rounded-lg overflow-hidden mb-4">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -388,7 +401,6 @@ export default function Payroll() {
                   ) : <div className="px-4 py-3 text-xs text-muted-foreground">No deductions.</div>}
                 </div>
 
-                {/* New Reimbursements Section */}
                 <div className="bg-card border rounded-lg overflow-hidden mb-4">
                   <div className="px-4 py-3 bg-muted/40 border-b flex items-center gap-2">
                     <PlusCircle className="w-4 h-4 text-green-700" />
@@ -410,7 +422,6 @@ export default function Payroll() {
                   ) : <div className="px-4 py-3 text-xs text-muted-foreground">No reimbursements.</div>}
                 </div>
 
-                {/* Grand Total */}
                 <div className="flex items-center justify-between px-4 py-4 bg-emerald-50 border-t rounded-lg">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
