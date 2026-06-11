@@ -99,18 +99,21 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
-  // CORRECTED CALCULATION LOGIC
-  // Calculate Base Net (Trip Net - Insurance - Other) per row to avoid double-counting reimbursements
   const baseNetTotal = plateGroups.reduce((acc, row) => {
     const baseRowNet = row.tripNet - row.insurance - row.other;
     return acc + baseRowNet;
   }, 0);
 
-  // Sum of ALL reimbursements
   const allReimbursementsTotal = reimbursements.reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
   
-  // Total Payout = Base Net + Total Reimbursements
   const finalNetTotal = baseNetTotal + allReimbursementsTotal;
+
+  // --- DEBUG LOGS ---
+  console.log("DEBUG: Base Net Total (Trips - Deductions):", baseNetTotal);
+  console.log("DEBUG: Total Reimbursements:", allReimbursementsTotal);
+  console.log("DEBUG: Final Payout Calculated:", finalNetTotal);
+  console.log("DEBUG: Reimbursements Data:", reimbursements);
+  console.log("DEBUG: Plate Groups Data:", plateGroups);
 
   const grandTotals = plateGroups.reduce((acc, row) => {
     acc.gross += row.gross;
