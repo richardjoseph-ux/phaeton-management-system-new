@@ -25,6 +25,13 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       base44.entities.BillingDeduction.filter({ billing_received_date: billingDate }, 'plate_number', 200),
       base44.entities.Reimbursement.filter({ billing_received_date: billingDate }, 'plate_number', 200),
     ]);
+    
+    // --- DIAGNOSTIC LOGS ---
+    console.log("DEBUG: Database fetch complete for date:", billingDate);
+    console.log("DEBUG: Raw Trips retrieved:", allTrips);
+    console.log("DEBUG: Raw Deductions retrieved:", deductions);
+    console.log("DEBUG: Raw Reimbursements retrieved:", reimbs);
+    
     setTrips(allTrips);
     setBillingDeductions(deductions);
     setReimbursements(reimbs);
@@ -109,11 +116,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
   const finalNetTotal = baseNetTotal + allReimbursementsTotal;
 
   // --- DEBUG LOGS ---
-  console.log("DEBUG: Base Net Total (Trips - Deductions):", baseNetTotal);
-  console.log("DEBUG: Total Reimbursements:", allReimbursementsTotal);
-  console.log("DEBUG: Final Payout Calculated:", finalNetTotal);
-  console.log("DEBUG: Reimbursements Data:", reimbursements);
-  console.log("DEBUG: Plate Groups Data:", plateGroups);
+  console.log("DEBUG: Calculation Summary:", { baseNetTotal, allReimbursementsTotal, finalNetTotal });
 
   const grandTotals = plateGroups.reduce((acc, row) => {
     acc.gross += row.gross;
