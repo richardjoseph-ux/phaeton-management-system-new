@@ -570,14 +570,14 @@ const archivedSummaryGroups = (() => {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
-                              {!isArchived && (
-                                <button
-                                  onClick={() => openSummary(group)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
-                                >
-                                  <Eye className="w-3.5 h-3.5" /> View
-                                </button>
-                              )}
+                              {/* Removed the {!isArchived && ( ... )} wrapper */}
+                              <button
+                                onClick={() => openSummary(group)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" /> View
+                              </button>
+                              
                               {isAdmin && (
                                 <button
                                   onClick={() => toggleArchiveSummary(group.date)}
