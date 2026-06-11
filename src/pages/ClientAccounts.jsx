@@ -1,19 +1,9 @@
-import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
-import PageHeader from '@/components/ui/PageHeader';
-import StatusBadge from '@/components/ui/StatusBadge';
-import ClientForm from '@/components/clients/ClientForm';
-import { useAuth } from '@/lib/AuthContext';
-
-const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
-
 export default function ClientAccounts() {
   const { user: currentUser } = useAuth();
-  // Using canEdit for consistency
-  const canEdit = currentUser?.role === 'admin' || currentUser?.role === 'user';
+  
+  // Define granular permissions
+  const isAdmin = currentUser?.role === 'admin';
+  const canEdit = isAdmin || currentUser?.role === 'user';
   
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +42,7 @@ export default function ClientAccounts() {
         title="Client Accounts"
         subtitle="Manage client accounts, routes, and rates"
         actions={
-          canEdit && ( // Updated from isAdmin to canEdit
+          canEdit && ( 
             <Button onClick={handleAdd} size="sm">
               <Plus className="w-4 h-4 mr-1.5" /> Create Account
             </Button>
@@ -95,48 +85,50 @@ export default function ClientAccounts() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {canEdit && ( // Updated from isAdmin to canEdit
-                    <>
-                      <button onClick={() => handleEdit(client)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(client)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </>
+                  {/* Edit Pencil visible to all editors */}
+                  {canEdit && (
+                    <button onClick={() => handleEdit(client)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                  {/* Delete Trash visible ONLY to Admins */}
+                  {isAdmin && (
+                    <button onClick={() => handleDelete(client)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   )}
                   <button onClick={() => toggleExpand(client.id)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
                     {expanded[client.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </button>
                 </div>
-                </div>
+              </div>
 
-                {expanded[client.id] && (
-                  <div className="px-5 py-4 border-t bg-muted/20">
-                    <h4 className="text-sm font-semibold mb-3">Sub-Accounts</h4>
-                    {client.sub_accounts?.length === 0 || !client.sub_accounts ? (
-                      <p className="text-xs text-muted-foreground">No sub-accounts</p>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {client.sub_accounts.map((sub, idx) => (
-                          <div key={idx} className="bg-card border rounded-lg p-3">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h5 className="text-sm font-semibold">{sub.sub_account_name || 'Unnamed'}</h5>
-                              {sub.sub_account_code && (
-                                <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{sub.sub_account_code}</span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                              {sub.contact_person && <span>{sub.contact_person}</span>}
-                              {sub.contact_number && <span>{sub.contact_number}</span>}
-                            </div>
+              {expanded[client.id] && (
+                <div className="px-5 py-4 border-t bg-muted/20">
+                  <h4 className="text-sm font-semibold mb-3">Sub-Accounts</h4>
+                  {client.sub_accounts?.length === 0 || !client.sub_accounts ? (
+                    <p className="text-xs text-muted-foreground">No sub-accounts</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {client.sub_accounts.map((sub, idx) => (
+                        <div key={idx} className="bg-card border rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h5 className="text-sm font-semibold">{sub.sub_account_name || 'Unnamed'}</h5>
+                            {sub.sub_account_code && (
+                              <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{sub.sub_account_code}</span>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                          <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                            {sub.contact_person && <span>{sub.contact_person}</span>}
+                            {sub.contact_number && <span>{sub.contact_number}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+              )}
+            </div>
           ))}
         </div>
       )}
