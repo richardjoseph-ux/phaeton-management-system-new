@@ -52,8 +52,8 @@ export default function Layout() {
             <Truck className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="text-white font-semibold text-sm leading-tight">PT Tracking</p>
-            <p className="text-white/50 text-xs">Payroll System</p>
+            <p className="text-white font-semibold text-sm leading-tight">Phaeton Trucking Services</p>
+            <p className="text-white/50 text-xs">Management System</p>
           </div>
           <button className="ml-auto lg:hidden text-white/60" onClick={() => setSidebarOpen(false)}>
             <X className="w-4 h-4" />
