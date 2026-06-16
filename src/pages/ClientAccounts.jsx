@@ -112,24 +112,33 @@ export default function ClientAccounts() {
                 </div>
               </div>
 
-              {expanded[client.id] && (
+                            {expanded[client.id] && (
                 <div className="px-5 py-4 border-t bg-muted/20">
-                  <h4 className="text-sm font-semibold mb-3">Sub-Accounts</h4>
-                  {client.sub_accounts?.length === 0 || !client.sub_accounts ? (
-                    <p className="text-xs text-muted-foreground">No sub-accounts</p>
+                  <h4 className="text-sm font-semibold mb-3">Routes & Rates</h4>
+                  {!client.routes || client.routes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No routes defined for this client</p>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {client.sub_accounts.map((sub, idx) => (
+                    <div className="space-y-2">
+                      {client.routes.map((route, idx) => (
                         <div key={idx} className="bg-card border rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h5 className="text-sm font-semibold">{sub.sub_account_name || 'Unnamed'}</h5>
-                            {sub.sub_account_code && (
-                              <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{sub.sub_account_code}</span>
-                            )}
+                          <div className="flex items-center gap-2 mb-2 border-b pb-1">
+                            <h5 className="text-sm font-semibold">
+                              {route.pickup_location} → {route.delivery_location}
+                            </h5>
+                            <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {route.delivery_code}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                            {sub.contact_person && <span>{sub.contact_person}</span>}
-                            {sub.contact_number && <span>{sub.contact_number}</span>}
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                            {Object.entries(route.rates || {}).map(([type, rate]) => (
+                              <div key={type} className="text-xs">
+                                <span className="text-muted-foreground block">{type}</span>
+                                <span className="font-medium text-foreground">
+                                  {rate ? `₱${Number(rate).toLocaleString()}` : '—'}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))}
