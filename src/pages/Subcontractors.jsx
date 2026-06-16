@@ -9,18 +9,29 @@ import SubcontractorForm from '@/components/subcontractors/SubcontractorForm';
 import { formatDateDisplay } from '@/lib/dateUtils';
 import { useAuth } from '@/lib/AuthContext';
 import * as XLSX from 'xlsx';
+import moment from 'moment'; // Assuming you use Moment.js for date manipulation
+
+const calculateBusinessDaysBetweenDates = (startDate, endDate) => {
+  // Implement your business day calculation logic here.
+  // Example using Moment.js:
+  return moment(endDate).diff(moment(startDate), 'businessDays');
+};
+
+const calculateDaysRemaining = (dueDate) => {
+  return moment().diff(moment(dueDate), 'days');
+};
 
 const getInsuranceStatus = (sub) => {
   if (!sub.is_insured || !sub.insurance_start_date) return 'Uninsured';
-  
+
   const start = new Date(sub.insurance_start_date);
   const nextDueDate = new Date(start);
   nextDueDate.setMonth(nextDueDate.getMonth() + 3); // Quarterly = 3 months
-  
+
   const today = new Date();
   const thirtyDaysBeforeDue = new Date(nextDueDate);
   thirtyDaysBeforeDue.setDate(thirtyDaysBeforeDue.getDate() - 30);
-  
+
   if (today > nextDueDate) return { status: 'Expired', dueDate: nextDueDate };
   if (today >= thirtyDaysBeforeDue) return { status: 'Payment Due Soon', dueDate: nextDueDate };
   return { status: 'Insured', dueDate: nextDueDate };
@@ -46,12 +57,20 @@ export default function Subcontractors() {
 
   useEffect(() => { load(); }, []);
 
-    const filtered = list.filter(s => {
+  const processedList = list.map(sub => {
+    const insStatus = getInsuranceStatus(sub);
+    // Calculate quarter based on due date
+    const quarter = insStatus.dueDate ? Math.floor((insStatus.dueDate.getMonth() + 3) / 3) : null;
+
+    return { ...sub, insStatus, quarter };
+  });
+
+  const filtered = processedList.filter(s => {
     const matchesSearch = !search ||
       s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
       s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
       s.sub_id?.toLowerCase().includes(search.toLowerCase());
-        const insStatus = getInsuranceStatus(s);
+        const insStatus = s.insStatus;
     let matchesStatus = true;
     if (statusTab === 'active') matchesStatus = s.status === 'Active';
     else if (statusTab === 'inactive') matchesStatus = s.status === 'Inactive';
@@ -239,7 +258,7 @@ export default function Subcontractors() {
                   </td>
                 </tr>
               ) : filtered.map(sub => {
-                const insStatus = getInsuranceStatus(sub);
+                const insStatus = sub.insStatus;
                 return (
                   <tr key={sub.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-primary font-semibold">{sub.sub_id}</td>
@@ -253,12 +272,18 @@ export default function Subcontractors() {
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.garage_location || '—'}</td>
                                         <td className="px-4 py-3">
                                           <div>
-                                            <StatusBadge status={insStatus.status} type="insurance" />
+                                            <StatusBadge status={typeof insStatus === 'string' ? insStatus : insStatus.status} type="insurance" />
                                             {insStatus.dueDate && (
-                                              <p className="text-xs text-muted-foreground mt-0.5">Due: {formatDateDisplay(insStatus.dueDate)}</p>
+                                              <p className={`text-xs text-muted-foreground mt-0.5 ${calculateDaysRemaining(insStatus.dueDate) <= 5 ? 'text-red-600' : ''}`}>Due: {formatDateDisplay(insStatus.dueDate)}</p>
                                             )}
                                           </div>
-                                        </td>
+                      {/* Display due dates per quarter */}
+                      {sub.quarter && (
+                        <p className="text-[10px] text-muted-foreground font-mono mt-1 uppercase">
+                          Q{sub.quarter} Renewal
+                        </p>
+                      )}
+                    </td>
                     <td className="px-4 py-3"><StatusBadge status={sub.status} type="account" /></td>
                     <td className="px-4 py-3">
                       {isAdmin && (
@@ -277,8 +302,8 @@ export default function Subcontractors() {
               })}
             </tbody>
           </table>
-        </div>
       </div>
+    </div>
 
       <SubcontractorForm
         open={formOpen}
