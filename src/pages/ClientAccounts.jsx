@@ -152,7 +152,16 @@ export default function ClientAccounts() {
                                   ))}
                                 </div>
 
-                                <div className="p-5">
+                                                                <div className="p-5">
+                                  <div className="relative mb-3">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                    <Input
+                                      className="pl-8 h-8 text-xs"
+                                      placeholder="Search destination or code..."
+                                      value={expanded[`${client.id}_search`] || ''}
+                                      onChange={e => setExpanded(p => ({ ...p, [`${client.id}_search`]: e.target.value }))}
+                                    />
+                                  </div>
                                   <table className="w-full text-sm border-collapse">
                                     <thead>
                                       <tr className="border-b bg-muted/30">
@@ -168,6 +177,11 @@ export default function ClientAccounts() {
                                           .filter(r => {
                                               const truckType = expanded[`${client.id}_truck`] || 'AUV';
                                               return r.rates?.[truckType] != null && r.rates?.[truckType] !== '';
+                                          })
+                                          .filter(r => {
+                                              const s = expanded[`${client.id}_search`] || '';
+                                              return r.delivery_location?.toLowerCase().includes(s.toLowerCase()) || 
+                                                     r.delivery_code?.toLowerCase().includes(s.toLowerCase());
                                           })
                                           .reduce((acc, route) => {
                                             const key = `${route.delivery_location}|${route.delivery_code}`;
