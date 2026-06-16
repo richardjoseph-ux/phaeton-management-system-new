@@ -21,9 +21,9 @@ const getInsuranceStatus = (sub) => {
   const thirtyDaysBeforeDue = new Date(nextDueDate);
   thirtyDaysBeforeDue.setDate(thirtyDaysBeforeDue.getDate() - 30);
   
-  if (today > nextDueDate) return 'Expired';
-  if (today >= thirtyDaysBeforeDue) return 'Payment Due Soon';
-  return 'Insured';
+  if (today > nextDueDate) return { status: 'Expired', dueDate: nextDueDate };
+  if (today >= thirtyDaysBeforeDue) return { status: 'Payment Due Soon', dueDate: nextDueDate };
+  return { status: 'Insured', dueDate: nextDueDate };
 };
 
 export default function Subcontractors() {
@@ -51,11 +51,11 @@ export default function Subcontractors() {
       s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
       s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
       s.sub_id?.toLowerCase().includes(search.toLowerCase());
-    const insStatus = getInsuranceStatus(s);
+        const insStatus = getInsuranceStatus(s);
     let matchesStatus = true;
     if (statusTab === 'active') matchesStatus = s.status === 'Active';
     else if (statusTab === 'inactive') matchesStatus = s.status === 'Inactive';
-    else if (statusTab === 'insurance') matchesStatus = insStatus === 'Expired' || insStatus === 'Payment Due Soon';
+    else if (statusTab === 'insurance') matchesStatus = insStatus.status === 'Expired' || insStatus.status === 'Payment Due Soon';
     return matchesSearch && matchesStatus;
   });
 
@@ -63,7 +63,7 @@ export default function Subcontractors() {
   const inactiveCount = list.filter(s => s.status === 'Inactive').length;
   const insuranceCount = list.filter(s => {
     const status = getInsuranceStatus(s);
-    return status === 'Expired' || status === 'Payment Due Soon';
+    return status.status === 'Expired' || status.status === 'Payment Due Soon';
   }).length;
 
   const handleEdit = (item) => { setEditData(item); setFormOpen(true); };
@@ -252,13 +252,13 @@ export default function Subcontractors() {
                     <td className="px-4 py-3 text-muted-foreground text-xs">{formatDateDisplay(sub.join_date)}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.garage_location || '—'}</td>
                                         <td className="px-4 py-3">
-                      <div>
-                        <StatusBadge status={insStatus} type="insurance" />
-                        {sub.insurance_start_date && (
-                          <p className="text-xs text-muted-foreground mt-0.5">Started {formatDateDisplay(sub.insurance_start_date)}</p>
-                        )}
-                      </div>
-                    </td>
+                                          <div>
+                                            <StatusBadge status={insStatus.status} type="insurance" />
+                                            {insStatus.dueDate && (
+                                              <p className="text-xs text-muted-foreground mt-0.5">Due: {formatDateDisplay(insStatus.dueDate)}</p>
+                                            )}
+                                          </div>
+                                        </td>
                     <td className="px-4 py-3"><StatusBadge status={sub.status} type="account" /></td>
                     <td className="px-4 py-3">
                       {isAdmin && (
