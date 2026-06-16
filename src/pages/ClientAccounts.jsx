@@ -153,62 +153,107 @@ export default function ClientAccounts() {
                                 </div>
 
                                                                 <div className="p-5">
-                                  <div className="relative mb-3">
-                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                                    <Input
-                                      className="pl-8 h-8 text-xs"
-                                      placeholder="Search destination or code..."
-                                      value={expanded[`${client.id}_search`] || ''}
-                                      onChange={e => setExpanded(p => ({ ...p, [`${client.id}_search`]: e.target.value }))}
-                                    />
-                                  </div>
-                                  <table className="w-full text-sm border-collapse">
-                                    <thead>
-                                      <tr className="border-b bg-muted/30">
-                                        <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Destination</th>
-                                        <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Code</th>
-                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">Rate</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {Object.values(
-                                        (client.routes || [])
-                                          .filter(r => r.pickup_location === (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]))
-                                          .filter(r => {
-                                              const truckType = expanded[`${client.id}_truck`] || 'AUV';
-                                              return r.rates?.[truckType] != null && r.rates?.[truckType] !== '';
-                                          })
-                                          .filter(r => {
-                                              const s = expanded[`${client.id}_search`] || '';
-                                              return r.delivery_location?.toLowerCase().includes(s.toLowerCase()) || 
-                                                     r.delivery_code?.toLowerCase().includes(s.toLowerCase());
-                                          })
-                                          .reduce((acc, route) => {
-                                            const key = `${route.delivery_location}|${route.delivery_code}`;
-                                            if (!acc[key]) {
-                                              acc[key] = { ...route, rates: { ...route.rates } };
-                                            } else {
-                                              const truckType = expanded[`${client.id}_truck`] || 'AUV';
-                                              if (!acc[key].rates[truckType] && route.rates[truckType]) {
-                                                acc[key].rates[truckType] = route.rates[truckType];
-                                              }
-                                            }
-                                            return acc;
-                                          }, {})
-                                      )
-                                      .sort((a, b) => a.delivery_location.localeCompare(b.delivery_location))
-                                      .map((route, idx) => (
-                                        <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
-                                          <td className="px-3 py-2">{route.delivery_location}</td>
-                                          <td className="px-3 py-2 text-xs font-mono">{route.delivery_code}</td>
-                                          <td className="px-3 py-2 text-right font-medium">
-                                            {route.rates?.[expanded[`${client.id}_truck`] || 'AUV'] ? `₱${Number(route.rates[expanded[`${client.id}_truck`] || 'AUV']).toLocaleString()}` : '—'}
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
+                                                                  <div className="relative mb-3">
+                                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                                                    <Input
+                                                                      className="pl-8 h-8 text-xs"
+                                                                      placeholder="Search destination or code..."
+                                                                      value={expanded[`${client.id}_search`] || ''}
+                                                                      onChange={e => setExpanded(p => ({ ...p, [`${client.id}_search`]: e.target.value }))}
+                                                                    />
+                                                                  </div>
+                                                                  <div className="overflow-x-auto">
+                                                                    <table className="w-full text-xs border-collapse">
+                                                                      <thead>
+                                                                        <tr className="border-b bg-muted/30">
+                                                                          <th className="text-left px-2 py-2 font-semibold text-muted-foreground">Destination</th>
+                                                                          <th className="text-left px-2 py-2 font-semibold text-muted-foreground">Code</th>
+                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground">Gross</th>
+                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-red-600">Tax(2%)</th>
+                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-orange-600">Hidden(4%)</th>
+                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-amber-600">Admin(6%)</th>
+                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-emerald-600">Net</th>
+                                                                        </tr>
+                                                                      </thead>
+                                                                      <tbody>
+                                                                        {(() => {
+                                                                          let totalGross = 0;
+                                                                          let totalTax = 0;
+                                                                          let totalHidden = 0;
+                                                                          let totalAdmin = 0;
+                                                                          let totalNet = 0;
+
+                                                                          const data = Object.values(
+                                                                            (client.routes || [])
+                                                                              .filter(r => r.pickup_location === (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]))
+                                                                              .filter(r => {
+                                                                                const truckType = expanded[`${client.id}_truck`] || 'AUV';
+                                                                                return r.rates?.[truckType] != null && r.rates?.[truckType] !== '';
+                                                                              })
+                                                                              .filter(r => {
+                                                                                const s = expanded[`${client.id}_search`] || '';
+                                                                                return r.delivery_location?.toLowerCase().includes(s.toLowerCase()) || 
+                                                                                       r.delivery_code?.toLowerCase().includes(s.toLowerCase());
+                                                                              })
+                                                                              .reduce((acc, route) => {
+                                                                                const key = `${route.delivery_location}|${route.delivery_code}`;
+                                                                                if (!acc[key]) {
+                                                                                  acc[key] = { ...route, rates: { ...route.rates } };
+                                                                                } else {
+                                                                                  const truckType = expanded[`${client.id}_truck`] || 'AUV';
+                                                                                  if (!acc[key].rates[truckType] && route.rates[truckType]) {
+                                                                                    acc[key].rates[truckType] = route.rates[truckType];
+                                                                                  }
+                                                                                }
+                                                                                return acc;
+                                                                              }, {})
+                                                                          ).sort((a, b) => a.delivery_location.localeCompare(b.delivery_location));
+
+                                                                          return (
+                                                                            <>
+                                                                              {data.map((route, idx) => {
+                                                                                const gross = Number(route.rates?.[expanded[`${client.id}_truck`] || 'AUV'] || 0);
+                                                                                const tax = gross * 0.02;
+                                                                                const afterTax = gross - tax;
+                                                                                const hidden = afterTax * 0.04;
+                                                                                const admin = afterTax * 0.06;
+                                                                                const net = gross - tax - hidden - admin;
+
+                                                                                totalGross += gross;
+                                                                                totalTax += tax;
+                                                                                totalHidden += hidden;
+                                                                                totalAdmin += admin;
+                                                                                totalNet += net;
+
+                                                                                return (
+                                                                                  <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                                                                                    <td className="px-2 py-2">{route.delivery_location}</td>
+                                                                                    <td className="px-2 py-2 font-mono">{route.delivery_code}</td>
+                                                                                    <td className="px-2 py-2 text-right font-medium">₱{gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                    <td className="px-2 py-2 text-right text-red-600">-₱{tax.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                    <td className="px-2 py-2 text-right text-orange-600">-₱{hidden.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                    <td className="px-2 py-2 text-right text-amber-600">-₱{admin.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                    <td className="px-2 py-2 text-right font-bold text-emerald-700">₱{net.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                  </tr>
+                                                                                );
+                                                                              })}
+                                                                              {data.length > 0 && (
+                                                                                <tr className="bg-muted/50 font-bold border-t">
+                                                                                  <td className="px-2 py-2" colSpan={2}>TOTAL</td>
+                                                                                  <td className="px-2 py-2 text-right">₱{totalGross.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                  <td className="px-2 py-2 text-right text-red-600">-₱{totalTax.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                  <td className="px-2 py-2 text-right text-orange-600">-₱{totalHidden.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                  <td className="px-2 py-2 text-right text-amber-600">-₱{totalAdmin.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                  <td className="px-2 py-2 text-right text-emerald-700">₱{totalNet.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                                                </tr>
+                                                                              )}
+                                                                            </>
+                                                                          );
+                                                                        })()}
+                                                                      </tbody>
+                                                                    </table>
+                                                                  </div>
+                                                                </div>
                               </div>
                             )}
             </div>
