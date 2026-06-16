@@ -177,12 +177,6 @@ export default function ClientAccounts() {
                                                                       </thead>
                                                                       <tbody>
                                                                         {(() => {
-                                                                          let totalGross = 0;
-                                                                          let totalTax = 0;
-                                                                          let totalHidden = 0;
-                                                                          let totalAdmin = 0;
-                                                                          let totalNet = 0;
-
                                                                           const data = Object.values(
                                                                             (client.routes || [])
                                                                               .filter(r => r.pickup_location === (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]))
@@ -219,12 +213,6 @@ export default function ClientAccounts() {
                                                                                 const admin = afterTax * 0.06;
                                                                                 const net = gross - tax - hidden - admin;
 
-                                                                                totalGross += gross;
-                                                                                totalTax += tax;
-                                                                                totalHidden += hidden;
-                                                                                totalAdmin += admin;
-                                                                                totalNet += net;
-
                                                                                 return (
                                                                                   <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
                                                                                     <td className="px-2 py-2">{route.delivery_location}</td>
@@ -237,16 +225,6 @@ export default function ClientAccounts() {
                                                                                   </tr>
                                                                                 );
                                                                               })}
-                                                                              {data.length > 0 && (
-                                                                                <tr className="bg-muted/50 font-bold border-t">
-                                                                                  <td className="px-2 py-2" colSpan={2}>TOTAL</td>
-                                                                                  <td className="px-2 py-2 text-right">₱{totalGross.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                  <td className="px-2 py-2 text-right text-red-600">-₱{totalTax.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                  <td className="px-2 py-2 text-right text-orange-600">-₱{totalHidden.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                  <td className="px-2 py-2 text-right text-amber-600">-₱{totalAdmin.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                  <td className="px-2 py-2 text-right text-emerald-700">₱{totalNet.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                </tr>
-                                                                              )}
                                                                             </>
                                                                           );
                                                                         })()}
@@ -270,3 +248,4 @@ export default function ClientAccounts() {
     </div>
   );
 }
+
