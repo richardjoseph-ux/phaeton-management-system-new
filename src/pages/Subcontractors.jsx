@@ -59,19 +59,25 @@ export default function Subcontractors() {
 
   const processedList = list.map(sub => {
     const insStatus = getInsuranceStatus(sub);
-    // Conditional logic for active tab
-    if (statusTab === 'active') {
-      return {
-        ...sub,
-        insStatus: {
-          status: insStatus.status, // Keep the status if it's not 'active'
-          dueDate: sub.insurance_start_date ? moment(sub.insurance_start_date).format('MMM YYYY') : null // Only display start date for active
-        },
-      };
-    } else {
+    if (statusTab === 'insurance') {
       // Calculate quarter based on due date
-      const quarter = insStatus.dueDate ? Math.floor((insStatus.dueDate.getMonth() + 3) / 3) : null;
+      const quarter = Math.floor((insStatus.dueDate.getMonth() + 3) / 3); //  Get the current quarter (0-indexed)
       return { ...sub, insStatus, quarter };
+    } else {
+      // Conditional logic for active tab
+      if (statusTab === 'active') {
+        return {
+          ...sub,
+          insStatus: {
+            status: insStatus.status, // Keep the status if it's not 'active'
+            dueDate: sub.insurance_start_date ? moment(sub.insurance_start_date).format('MMM YYYY') : null // Only display start date for active
+          },
+        };
+      } else {
+        // Calculate quarter based on due date
+        const quarter = insStatus.dueDate ? Math.floor((insStatus.dueDate.getMonth() + 3) / 3) : null;
+        return { ...sub, insStatus, quarter };
+      }
     }
   });
 
