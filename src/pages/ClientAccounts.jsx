@@ -165,6 +165,10 @@ export default function ClientAccounts() {
                                       {Object.values(
                                         (client.routes || [])
                                           .filter(r => r.pickup_location === (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]))
+                                          .filter(r => {
+                                              const truckType = expanded[`${client.id}_truck`] || 'AUV';
+                                              return r.rates?.[truckType] != null && r.rates?.[truckType] !== '';
+                                          })
                                           .reduce((acc, route) => {
                                             const key = `${route.delivery_location}|${route.delivery_code}`;
                                             if (!acc[key]) {
