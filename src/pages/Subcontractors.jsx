@@ -11,11 +11,19 @@ import { useAuth } from '@/lib/AuthContext';
 import * as XLSX from 'xlsx';
 
 const getInsuranceStatus = (sub) => {
-  if (!sub.is_insured) return 'Uninsured';
-  if (!sub.insurance_end_date) return 'Insured';
+  if (!sub.is_insured || !sub.insurance_start_date) return 'Uninsured';
+  
+  const start = new Date(sub.insurance_start_date);
+  const nextDueDate = new Date(start);
+  nextDueDate.setMonth(nextDueDate.getMonth() + 3); // Quarterly = 3 months
+  
   const today = new Date();
-  const end = new Date(sub.insurance_end_date);
-  return end < today ? 'Expired' : 'Insured';
+  const thirtyDaysBeforeDue = new Date(nextDueDate);
+  thirtyDaysBeforeDue.setDate(thirtyDaysBeforeDue.getDate() - 30);
+  
+  if (today > nextDueDate) return 'Expired';
+  if (today >= thirtyDaysBeforeDue) return 'Payment Due Soon';
+  return 'Insured';
 };
 
 export default function Subcontractors() {
@@ -38,17 +46,25 @@ export default function Subcontractors() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = list.filter(s => {
+    const filtered = list.filter(s => {
     const matchesSearch = !search ||
       s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
       s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
       s.sub_id?.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusTab === 'all' || s.status?.toLowerCase() === statusTab;
+    const insStatus = getInsuranceStatus(s);
+    let matchesStatus = true;
+    if (statusTab === 'active') matchesStatus = s.status === 'Active';
+    else if (statusTab === 'inactive') matchesStatus = s.status === 'Inactive';
+    else if (statusTab === 'insurance') matchesStatus = insStatus === 'Expired' || insStatus === 'Payment Due Soon';
     return matchesSearch && matchesStatus;
   });
 
   const activeCount = list.filter(s => s.status === 'Active').length;
   const inactiveCount = list.filter(s => s.status === 'Inactive').length;
+  const insuranceCount = list.filter(s => {
+    const status = getInsuranceStatus(s);
+    return status === 'Expired' || status === 'Payment Due Soon';
+  }).length;
 
   const handleEdit = (item) => { setEditData(item); setFormOpen(true); };
   const handleAdd = () => { setEditData(null); setFormOpen(true); };
@@ -149,9 +165,9 @@ export default function Subcontractors() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total', value: list.length, color: 'text-foreground' },
+                    { label: 'Total', value: list.length, color: 'text-foreground' },
           { label: 'Active', value: list.filter(s => s.status === 'Active').length, color: 'text-emerald-600' },
-          { label: 'Insured', value: list.filter(s => getInsuranceStatus(s) === 'Insured').length, color: 'text-blue-600' },
+          { label: 'Insurance Due', value: insuranceCount, color: 'text-amber-600' },
           { label: 'Inactive', value: list.filter(s => s.status === 'Inactive').length, color: 'text-red-500' },
         ].map(stat => (
           <div key={stat.label} className="bg-card border rounded-lg p-4">
@@ -179,13 +195,21 @@ export default function Subcontractors() {
         >
           Active ({activeCount})
         </button>
-        <button
+                <button
           onClick={() => setStatusTab('inactive')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             statusTab === 'inactive' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
           Inactive ({inactiveCount})
+        </button>
+        <button
+          onClick={() => setStatusTab('insurance')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            statusTab === 'insurance' ? 'border-amber-600 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Insurance Due ({insuranceCount})
         </button>
       </div>
 
@@ -205,11 +229,11 @@ export default function Subcontractors() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Loading...</td></tr>
+                            {loading ? (
+                <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">Loading...</td></tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-16">
+                  <td colSpan={10} className="text-center py-16">
                     <Truck className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
                     <p className="text-muted-foreground text-sm">No subcontractors found</p>
                   </td>
@@ -227,11 +251,11 @@ export default function Subcontractors() {
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.contact_number || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{formatDateDisplay(sub.join_date)}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.garage_location || '—'}</td>
-                    <td className="px-4 py-3">
+                                        <td className="px-4 py-3">
                       <div>
                         <StatusBadge status={insStatus} type="insurance" />
-                        {sub.insurance_end_date && (
-                          <p className="text-xs text-muted-foreground mt-0.5">Until {formatDateDisplay(sub.insurance_end_date)}</p>
+                        {sub.insurance_start_date && (
+                          <p className="text-xs text-muted-foreground mt-0.5">Started {formatDateDisplay(sub.insurance_start_date)}</p>
                         )}
                       </div>
                     </td>
