@@ -84,9 +84,13 @@
     "client_name"
   ],
   "rls": {
-    "create": null,
-    "read": null,
-    "update": null,
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {},
     "delete": {
       "user_condition": {
         "role": "admin"
