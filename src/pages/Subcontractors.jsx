@@ -59,10 +59,20 @@ export default function Subcontractors() {
 
   const processedList = list.map(sub => {
     const insStatus = getInsuranceStatus(sub);
-    // Calculate quarter based on due date
-    const quarter = insStatus.dueDate ? Math.floor((insStatus.dueDate.getMonth() + 3) / 3) : null;
-
-    return { ...sub, insStatus, quarter };
+    // Conditional logic for active tab
+    if (statusTab === 'active') {
+      return {
+        ...sub,
+        insStatus: {
+          status: insStatus.status, // Keep the status if it's not 'active'
+          dueDate: sub.insurance_start_date ? moment(sub.insurance_start_date).format('MMM YYYY') : null // Only display start date for active
+        },
+      };
+    } else {
+      // Calculate quarter based on due date
+      const quarter = insStatus.dueDate ? Math.floor((insStatus.dueDate.getMonth() + 3) / 3) : null;
+      return { ...sub, insStatus, quarter };
+    }
   });
 
   const filtered = processedList.filter(s => {
@@ -274,7 +284,9 @@ export default function Subcontractors() {
                                           <div>
                                             <StatusBadge status={typeof insStatus === 'string' ? insStatus : insStatus.status} type="insurance" />
                                             {insStatus.dueDate && (
-                                              <p className={`text-xs text-muted-foreground mt-0.5 ${calculateDaysRemaining(insStatus.dueDate) <= 5 ? 'text-red-600' : ''}`}>Due: {formatDateDisplay(insStatus.dueDate)}</p>
+                                              <p className={`text-xs text-muted-foreground mt-0.5 ${typeof insStatus.dueDate !== 'string' && calculateDaysRemaining(insStatus.dueDate) <= 5 ? 'text-red-600' : ''}`}>
+                                                {typeof insStatus.dueDate === 'string' ? `Start: ${insStatus.dueDate}` : `Due: ${formatDateDisplay(insStatus.dueDate)}`}
+                                              </p>
                                             )}
                                           </div>
                       {/* Display due dates per quarter */}
