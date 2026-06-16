@@ -162,16 +162,30 @@ export default function ClientAccounts() {
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {client.routes
-                                        ?.filter(r => r.pickup_location === (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]))
-                                        .map((route, idx) => (
-                                          <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
-                                            <td className="px-3 py-2">{route.delivery_location}</td>
-                                            <td className="px-3 py-2 text-xs font-mono">{route.delivery_code}</td>
-                                            <td className="px-3 py-2 text-right font-medium">
-                                              {route.rates?.[expanded[`${client.id}_truck`] || 'AUV'] ? `₱${Number(route.rates[expanded[`${client.id}_truck`] || 'AUV']).toLocaleString()}` : '—'}
-                                            </td>
-                                          </tr>
+                                      {Object.values(
+                                        (client.routes || [])
+                                          .filter(r => r.pickup_location === (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]))
+                                          .reduce((acc, route) => {
+                                            const key = `${route.delivery_location}|${route.delivery_code}`;
+                                            if (!acc[key]) {
+                                              acc[key] = { ...route, rates: { ...route.rates } };
+                                            } else {
+                                              // If duplicate destination/code, keep the first rate found or merge logic
+                                              const truckType = expanded[`${client.id}_truck`] || 'AUV';
+                                              if (!acc[key].rates[truckType] && route.rates[truckType]) {
+                                                acc[key].rates[truckType] = route.rates[truckType];
+                                              }
+                                            }
+                                            return acc;
+                                          }, {})
+                                      ).map((route, idx) => (
+                                        <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                                          <td className="px-3 py-2">{route.delivery_location}</td>
+                                          <td className="px-3 py-2 text-xs font-mono">{route.delivery_code}</td>
+                                          <td className="px-3 py-2 text-right font-medium">
+                                            {route.rates?.[expanded[`${client.id}_truck`] || 'AUV'] ? `₱${Number(route.rates[expanded[`${client.id}_truck`] || 'AUV']).toLocaleString()}` : '—'}
+                                          </td>
+                                        </tr>
                                       ))}
                                     </tbody>
                                   </table>
