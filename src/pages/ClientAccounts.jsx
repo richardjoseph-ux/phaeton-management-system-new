@@ -174,7 +174,6 @@ export default function ClientAccounts() {
                                             if (!acc[key]) {
                                               acc[key] = { ...route, rates: { ...route.rates } };
                                             } else {
-                                              // If duplicate destination/code, keep the first rate found or merge logic
                                               const truckType = expanded[`${client.id}_truck`] || 'AUV';
                                               if (!acc[key].rates[truckType] && route.rates[truckType]) {
                                                 acc[key].rates[truckType] = route.rates[truckType];
@@ -182,7 +181,9 @@ export default function ClientAccounts() {
                                             }
                                             return acc;
                                           }, {})
-                                      ).map((route, idx) => (
+                                      )
+                                      .sort((a, b) => a.delivery_location.localeCompare(b.delivery_location))
+                                      .map((route, idx) => (
                                         <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
                                           <td className="px-3 py-2">{route.delivery_location}</td>
                                           <td className="px-3 py-2 text-xs font-mono">{route.delivery_code}</td>
