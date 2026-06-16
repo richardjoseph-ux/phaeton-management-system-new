@@ -113,39 +113,58 @@ export default function ClientAccounts() {
               </div>
 
                             {expanded[client.id] && (
-                <div className="px-5 py-4 border-t bg-muted/20">
-                  <h4 className="text-sm font-semibold mb-3">Routes & Rates</h4>
-                  {!client.routes || client.routes.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No routes defined for this client</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {client.routes.map((route, idx) => (
-                        <div key={idx} className="bg-card border rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-2 border-b pb-1">
-                            <h5 className="text-sm font-semibold">
-                              {route.pickup_location} → {route.delivery_location}
-                            </h5>
-                            <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                              {route.delivery_code}
-                            </span>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                            {Object.entries(route.rates || {}).map(([type, rate]) => (
-                              <div key={type} className="text-xs">
-                                <span className="text-muted-foreground block">{type}</span>
-                                <span className="font-medium text-foreground">
-                                  {rate ? `₱${Number(rate).toLocaleString()}` : '—'}
-                                </span>
+                              <div className="border-t bg-muted/20">
+                                <div className="px-5 py-4 border-b">
+                                  <h4 className="text-sm font-semibold">Routes & Rates</h4>
+                                </div>
+                  
+                                {/* Pickup Tabs */}
+                                <div className="flex gap-1 px-5 pt-3 border-b border-border overflow-x-auto">
+                                  {[...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))].map(loc => (
+                                    <button
+                                      key={loc}
+                                      onClick={() => setExpanded(p => ({ ...p, [`${client.id}_tab`]: loc }))}
+                                      className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors ${
+                                        (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]) === loc
+                                          ? 'border-primary text-primary bg-primary/5'
+                                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                                      }`}
+                                    >
+                                      {loc}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <div className="p-5">
+                                  <table className="w-full text-sm border-collapse">
+                                    <thead>
+                                      <tr className="border-b bg-muted/30">
+                                        <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Destination</th>
+                                        <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Code</th>
+                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">AUV</th>
+                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">Sub-4W</th>
+                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">6-Wheel</th>
+                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">10-Wheel</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {client.routes
+                                        ?.filter(r => r.pickup_location === (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]))
+                                        .map((route, idx) => (
+                                          <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                                            <td className="px-3 py-2">{route.delivery_location}</td>
+                                            <td className="px-3 py-2 text-xs font-mono">{route.delivery_code}</td>
+                                            <td className="px-3 py-2 text-right">{route.rates?.AUV ? `₱${Number(route.rates.AUV).toLocaleString()}` : '—'}</td>
+                                            <td className="px-3 py-2 text-right">{route.rates?.['Sub-4W'] ? `₱${Number(route.rates['Sub-4W']).toLocaleString()}` : '—'}</td>
+                                            <td className="px-3 py-2 text-right">{route.rates?.['6-Wheel'] ? `₱${Number(route.rates['6-Wheel']).toLocaleString()}` : '—'}</td>
+                                            <td className="px-3 py-2 text-right">{route.rates?.['10-Wheel'] ? `₱${Number(route.rates['10-Wheel']).toLocaleString()}` : '—'}</td>
+                                          </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                            )}
             </div>
           ))}
         </div>
