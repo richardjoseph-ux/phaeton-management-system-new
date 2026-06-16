@@ -135,16 +135,30 @@ export default function ClientAccounts() {
                                   ))}
                                 </div>
 
+                                {/* Truck Tabs */}
+                                <div className="flex gap-1 px-5 pt-2 border-b border-border bg-muted/30 overflow-x-auto">
+                                  {['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'].map(type => (
+                                    <button
+                                      key={type}
+                                      onClick={() => setExpanded(p => ({ ...p, [`${client.id}_truck`]: type }))}
+                                      className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
+                                        (expanded[`${client.id}_truck`] || 'AUV') === type
+                                          ? 'border-primary text-primary'
+                                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                                      }`}
+                                    >
+                                      {type}
+                                    </button>
+                                  ))}
+                                </div>
+
                                 <div className="p-5">
                                   <table className="w-full text-sm border-collapse">
                                     <thead>
                                       <tr className="border-b bg-muted/30">
                                         <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Destination</th>
                                         <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Code</th>
-                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">AUV</th>
-                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">Sub-4W</th>
-                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">6-Wheel</th>
-                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">10-Wheel</th>
+                                        <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">Rate</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -154,10 +168,9 @@ export default function ClientAccounts() {
                                           <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
                                             <td className="px-3 py-2">{route.delivery_location}</td>
                                             <td className="px-3 py-2 text-xs font-mono">{route.delivery_code}</td>
-                                            <td className="px-3 py-2 text-right">{route.rates?.AUV ? `₱${Number(route.rates.AUV).toLocaleString()}` : '—'}</td>
-                                            <td className="px-3 py-2 text-right">{route.rates?.['Sub-4W'] ? `₱${Number(route.rates['Sub-4W']).toLocaleString()}` : '—'}</td>
-                                            <td className="px-3 py-2 text-right">{route.rates?.['6-Wheel'] ? `₱${Number(route.rates['6-Wheel']).toLocaleString()}` : '—'}</td>
-                                            <td className="px-3 py-2 text-right">{route.rates?.['10-Wheel'] ? `₱${Number(route.rates['10-Wheel']).toLocaleString()}` : '—'}</td>
+                                            <td className="px-3 py-2 text-right font-medium">
+                                              {route.rates?.[expanded[`${client.id}_truck`] || 'AUV'] ? `₱${Number(route.rates[expanded[`${client.id}_truck`] || 'AUV']).toLocaleString()}` : '—'}
+                                            </td>
                                           </tr>
                                       ))}
                                     </tbody>
