@@ -22,7 +22,7 @@ const calculateDaysRemaining = (dueDate) => {
 };
 
 const getInsuranceStatus = (sub) => {
-  if (!sub.is_insured || !sub.insurance_start_date) return 'Uninsured';
+  if (!sub.is_insured || !sub.insurance_start_date) return { status: 'Uninsured', dueDate: null };
 
   const start = new Date(sub.insurance_start_date);
   const nextDueDate = new Date(start);
