@@ -483,7 +483,7 @@ export default function AdditionalServices() {
                     className="gap-2 w-full"
                   >
                     <Sheet className="w-4 h-4" />
-                    {exporting ? 'Exporting...' : 'Export All Trips to Google Sheet (TRIP tab)'}
+                    {exporting ? 'Exporting...' : 'Export All Trips'}
                   </Button>
                   <Button 
                     onClick={handleDeductionExport} 
@@ -492,7 +492,7 @@ export default function AdditionalServices() {
                     className="gap-2 w-full"
                   >
                     <Sheet className="w-4 h-4" />
-                    {exportingDeductions ? 'Exporting...' : 'Export Deductions & Reimbursements to Google Sheet (DEDUCTION tab)'}
+                    {exportingDeductions ? 'Exporting...' : 'Export Deductions & Reimbursements'}
                   </Button>
                 </div>
               </div>
