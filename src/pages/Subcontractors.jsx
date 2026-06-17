@@ -28,9 +28,6 @@ const getInsuranceStatus = (sub) => {
   const today = moment().startOf('day');
   const daysRemaining = nextDueDate.diff(today, 'days');
 
-  // Logic: 
-  // If negative, it's expired.
-  // If positive, return the number of days.
   if (daysRemaining < 0) return { status: 'Expired', days: daysRemaining, dueDate: nextDueDate.toDate() };
   if (daysRemaining <= 30) return { status: 'Due in ' + daysRemaining + ' days', days: daysRemaining, dueDate: nextDueDate.toDate() };
   
@@ -304,10 +301,13 @@ const filtered = processedList
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.garage_location || '—'}</td>
                                         <td className="px-4 py-3">
                                           <div>
-                                            <StatusBadge status={typeof insStatus === 'string' ? insStatus : insStatus.status} type="insurance" />
+                                            {/* The badge will now display the text "Due in X days" or "Expired" */}
+                                            <StatusBadge status={insStatus.status} type="insurance" />
+                                            
+                                            {/* The sub-text now only needs to show the formal Due Date */}
                                             {insStatus.dueDate && (
-                                              <p className={`text-xs text-muted-foreground mt-0.5 ${typeof insStatus.dueDate !== 'string' && calculateDaysRemaining(insStatus.dueDate) <= 5 ? 'text-red-600' : ''}`}>
-                                                {typeof insStatus.dueDate === 'string' ? `Start: ${insStatus.dueDate}` : `Due: ${formatDateDisplay(insStatus.dueDate)}`}
+                                              <p className={`text-xs text-muted-foreground mt-0.5 ${insStatus.days <= 5 ? 'text-red-600 font-bold' : ''}`}>
+                                                {`Due: ${formatDateDisplay(insStatus.dueDate)}`}
                                               </p>
                                             )}
                                           </div>
