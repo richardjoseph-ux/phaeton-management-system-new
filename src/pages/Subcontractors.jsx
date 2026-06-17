@@ -51,11 +51,14 @@ const processedList = list.map(sub => {
     return {
       ...sub,
       insStatus: {
-        status: 'Insured', 
-        dueDate: sub.insurance_start_date ? moment(sub.insurance_start_date).format('MMM YYYY') : null
+        status: 'Insured',
+        // Change: Use insurance_start_date instead of dueDate
+        dateDisplay: sub.insurance_start_date ? formatDateDisplay(sub.insurance_start_date) : '—',
+        days: null // Ensure this doesn't trigger red text
       },
     };
   } else {
+    // Keep original logic for other tabs
     const quarter = insStatus.dueDate ? Math.floor((insStatus.dueDate.getMonth() + 3) / 3) : null;
     return { ...sub, insStatus, quarter };
   }
