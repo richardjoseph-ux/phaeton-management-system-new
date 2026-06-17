@@ -11,16 +11,6 @@ import { useAuth } from '@/lib/AuthContext';
 import * as XLSX from 'xlsx';
 import moment from 'moment'; // Assuming you use Moment.js for date manipulation
 
-const calculateBusinessDaysBetweenDates = (startDate, endDate) => {
-  // Implement your business day calculation logic here.
-  // Example using Moment.js:
-  return moment(endDate).diff(moment(startDate), 'businessDays');
-};
-
-const calculateDaysRemaining = (dueDate) => {
-  return moment().diff(moment(dueDate), 'days');
-};
-
 const getInsuranceStatus = (sub) => {
   if (!sub.is_insured || !sub.insurance_start_date) return { status: 'Uninsured', dueDate: null };
 
@@ -111,9 +101,10 @@ const filtered = processedList
 
   const activeCount = list.filter(s => s.status === 'Active').length;
   const inactiveCount = list.filter(s => s.status === 'Inactive').length;
-  const insuranceCount = list.filter(s => {
-    const status = getInsuranceStatus(s);
-    return status.status === 'Expired' || status.status === 'Payment Due Soon';
+  const insuranceCount = list.filter(sub => {
+  const status = getInsuranceStatus(sub);
+  if (sub.status === 'Inactive' || status.status === 'Uninsured') return false;
+    return status.days !== undefined && status.days <= 10;
   }).length;
 
   const handleEdit = (item) => { setEditData(item); setFormOpen(true); };
