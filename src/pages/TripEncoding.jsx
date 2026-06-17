@@ -301,12 +301,14 @@ export default function TripEncoding() {
           <div className="flex justify-around items-center">
             <div className="text-center">
               <p className="text-[10px] uppercase font-bold text-muted-foreground">{dashboardStats.currentMonthName}</p>
-              <p className="text-3xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
+              {/* Font size increased to 5xl */}
+              <p className="text-5xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
             </div>
-            <div className="border-l h-10"></div>
+            <div className="border-l h-12"></div>
             <div className="text-center">
               <p className="text-[10px] uppercase font-bold text-muted-foreground">{new Date().getFullYear()}</p>
-              <p className="text-3xl font-bold">{dashboardStats.yearCount}</p>
+              {/* Font size increased to 5xl */}
+              <p className="text-5xl font-bold">{dashboardStats.yearCount}</p>
             </div>
           </div>
         </div>
