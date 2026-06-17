@@ -301,33 +301,39 @@ export default function TripEncoding() {
           <p className="text-5xl font-bold mt-2 text-emerald-600">{dashboardStats.monthCount}</p>
         </div>
 
-        {/* Half-Year Breakdown (Stacked) */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col">
-               <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">1st Half</p>
-               <div className="flex justify-between gap-1 text-[10px]">
-                 {dashboardStats.h1Names.map((m, i) => (
-                   <div key={m} className="flex flex-col items-center">
-                     <span className="text-muted-foreground">{m}</span>
-                     <span className="font-bold">{dashboardStats.half1[i]}</span>
-                   </div>
-                 ))}
-               </div>
-            </div>
-            <div className="flex flex-col border-t pt-3">
-               <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">2nd Half</p>
-               <div className="flex justify-between gap-1 text-[10px]">
-                 {dashboardStats.h2Names.map((m, i) => (
-                   <div key={m} className="flex flex-col items-center">
-                     <span className="text-muted-foreground">{m}</span>
-                     <span className="font-bold">{dashboardStats.half2[i]}</span>
-                   </div>
-                 ))}
-               </div>
-            </div>
-          </div>
-        </div>
+        {/* Half-Year Breakdown (Stacked & Compact) */}
+<div className="bg-card border rounded-lg p-4 shadow-sm text-center">
+  <div className="flex flex-col gap-2">
+    {/* 1st Half */}
+    <div className="flex flex-col">
+       <p className="text-[11px] font-bold text-muted-foreground mb-1 tracking-wider">1ST HALF</p>
+       <div className="grid grid-cols-6 gap-1">
+         {dashboardStats.h1Names.map((m, i) => (
+           <div key={m} className="flex flex-col items-center">
+             <span className="text-xs font-medium text-muted-foreground">{m}</span>
+             <span className="text-sm font-bold text-slate-800">{dashboardStats.half1[i]}</span>
+           </div>
+         ))}
+       </div>
+    </div>
+    
+    {/* Divider */}
+    <div className="border-t my-1"></div>
+    
+    {/* 2nd Half */}
+    <div className="flex flex-col">
+       <p className="text-[11px] font-bold text-muted-foreground mb-1 tracking-wider">2ND HALF</p>
+       <div className="grid grid-cols-6 gap-1">
+         {dashboardStats.h2Names.map((m, i) => (
+           <div key={m} className="flex flex-col items-center">
+             <span className="text-xs font-medium text-muted-foreground">{m}</span>
+             <span className="text-sm font-bold text-slate-800">{dashboardStats.half2[i]}</span>
+           </div>
+         ))}
+       </div>
+    </div>
+  </div>
+</div>
 
         {/* Year Total */}
         <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
