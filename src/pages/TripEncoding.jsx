@@ -75,49 +75,43 @@ export default function TripEncoding() {
     });
   }, [trips, search, filterBilling, sortOrder]);
 
-  const dashboardStats = useMemo(() => {
+    const dashboardStats = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-    const currentQuarter = Math.floor(currentMonth / 3) + 1;
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    
+    // Initialize quarters: 0 to 3
+    const quarters = [0, 0, 0, 0]; 
 
-    return filtered.reduce((acc, trip) => {
+    const stats = filtered.reduce((acc, trip) => {
       const d = new Date(trip.delivery_date);
       if (isNaN(d.getTime())) return acc;
 
       const year = d.getFullYear();
       const month = d.getMonth();
-      const quarter = Math.floor(month / 3) + 1;
+      const qIndex = Math.floor(month / 3);
 
-      // Current Year
       if (year === currentYear) {
         acc.yearCount++;
-        // Current Quarter
-        if (quarter === currentQuarter) {
-          acc.quarterCount++;
-          // Current Month
-          if (month === currentMonth) {
-            acc.monthCount++;
-          }
-        }
+        acc.quarters[qIndex]++; // Increment specific quarter index
+        if (month === currentMonth) acc.monthCount++;
       }
-      // Previous Month
-      if (year === prevYear && month === prevMonth) {
-        acc.prevMonthCount++;
-      }
+      if (year === prevYear && month === prevMonth) acc.prevMonthCount++;
       return acc;
     }, { 
       yearCount: 0, 
-      quarterCount: 0, 
       monthCount: 0, 
       prevMonthCount: 0,
-      currentMonthName: monthNames[currentMonth],
-      prevMonthName: monthNames[prevMonth],
-      currentQuarterName: `Q${currentQuarter}`
+      quarters: [0, 0, 0, 0] // Store counts for Q1, Q2, Q3, Q4
     });
+
+    return {
+      ...stats,
+      currentMonthName: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][currentMonth],
+      prevMonthName: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][prevMonth]
+    };
   }, [filtered]);
 
   const handleEdit = (trip) => { setEditData(trip); setFormOpen(true); };
@@ -303,17 +297,23 @@ export default function TripEncoding() {
           <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
           <p className="text-2xl font-bold">{dashboardStats.yearCount}</p>
         </div>
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentQuarterName})</p>
-          <p className="text-2xl font-bold text-blue-600">{dashboardStats.quarterCount}</p>
+        
+        {/* Combined Quarterly Box */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm md:col-span-2 lg:col-span-2">
+          <p className="text-sm text-muted-foreground mb-2">Quarterly Breakdown</p>
+          <div className="flex justify-between gap-2">
+            {dashboardStats.quarters.map((count, i) => (
+              <div key={i} className="text-center">
+                <p className="text-xs font-semibold text-muted-foreground">Q{i + 1}</p>
+                <p className="text-lg font-bold text-blue-600">{count}</p>
+              </div>
+            ))}
+          </div>
         </div>
+
         <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
           <p className="text-2xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
-        </div>
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.prevMonthName})</p>
-          <p className="text-2xl font-bold text-slate-500">{dashboardStats.prevMonthCount}</p>
         </div>
       </div>
 
