@@ -24,17 +24,17 @@ const calculateDaysRemaining = (dueDate) => {
 const getInsuranceStatus = (sub) => {
   if (!sub.is_insured || !sub.insurance_start_date) return { status: 'Uninsured', dueDate: null };
 
-  const start = new Date(sub.insurance_start_date);
-  const nextDueDate = new Date(start);
-  nextDueDate.setMonth(nextDueDate.getMonth() + 3); // Quarterly = 3 months
+  const nextDueDate = moment(sub.insurance_start_date).add(3, 'months');
+  const today = moment().startOf('day');
+  const daysRemaining = nextDueDate.diff(today, 'days');
 
-  const today = new Date();
-  const thirtyDaysBeforeDue = new Date(nextDueDate);
-  thirtyDaysBeforeDue.setDate(thirtyDaysBeforeDue.getDate() - 30);
-
-  if (today > nextDueDate) return { status: 'Expired', dueDate: nextDueDate };
-  if (today >= thirtyDaysBeforeDue) return { status: 'Payment Due Soon', dueDate: nextDueDate };
-  return { status: 'Insured', dueDate: nextDueDate };
+  // Logic: 
+  // If negative, it's expired.
+  // If positive, return the number of days.
+  if (daysRemaining < 0) return { status: 'Expired', days: daysRemaining, dueDate: nextDueDate.toDate() };
+  if (daysRemaining <= 30) return { status: 'Due in ' + daysRemaining + ' days', days: daysRemaining, dueDate: nextDueDate.toDate() };
+  
+  return { status: 'Insured', days: daysRemaining, dueDate: nextDueDate.toDate() };
 };
 
 export default function Subcontractors() {
