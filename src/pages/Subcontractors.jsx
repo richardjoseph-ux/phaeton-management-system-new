@@ -87,17 +87,32 @@ const processedList = list.map(sub => {
   }
 });
 
-  const filtered = processedList.filter(s => {
+const filtered = processedList
+  .filter(s => {
+    // Keep search logic the same
     const matchesSearch = !search ||
       s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
       s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
       s.sub_id?.toLowerCase().includes(search.toLowerCase());
-        const insStatus = s.insStatus;
+
+    // Update status logic
     let matchesStatus = true;
     if (statusTab === 'active') matchesStatus = s.status === 'Active';
     else if (statusTab === 'inactive') matchesStatus = s.status === 'Inactive';
-    else if (statusTab === 'insurance') matchesStatus = insStatus.status === 'Expired' || insStatus.status === 'Payment Due Soon';
+    // For 'insurance', we set to true to show everyone
+    else if (statusTab === 'insurance') matchesStatus = true; 
+    
     return matchesSearch && matchesStatus;
+  })
+  .sort((a, b) => {
+    // Only sort when on the 'insurance' tab
+    if (statusTab === 'insurance') {
+      const order = { 'Expired': 0, 'Payment Due Soon': 1, 'Insured': 2, 'Uninsured': 3 };
+      const statusA = a.insStatus.status;
+      const statusB = b.insStatus.status;
+      return (order[statusA] ?? 99) - (order[statusB] ?? 99);
+    }
+    return 0; // Keep original order for other tabs
   });
 
   const activeCount = list.filter(s => s.status === 'Active').length;
@@ -282,7 +297,7 @@ const processedList = list.map(sub => {
               ) : filtered.map(sub => {
                 const insStatus = sub.insStatus;
                 return (
-                  <tr key={sub.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                 <tr key={sub.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${insStatus.status === 'Insured' ? 'opacity-60' : ''}`}>
                     <td className="px-4 py-3 font-mono text-xs text-primary font-semibold">{sub.sub_id}</td>
                     <td className="px-4 py-3 font-semibold">{sub.plate_number}</td>
                     <td className="px-4 py-3">{sub.owner_name}</td>
