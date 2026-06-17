@@ -89,26 +89,39 @@ const processedList = list.map(sub => {
 
 const filtered = processedList
   .filter(s => {
-    // 1. Existing search logic
+    // 1. Search Logic
     const matchesSearch = !search ||
       s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
       s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
       s.sub_id?.toLowerCase().includes(search.toLowerCase());
 
-    // 2. Hide "Uninsured" and "Inactive" globally
-    // We check if the sub is Uninsured OR Inactive, and if so, return false to hide them
-    if (s.insStatus.status === 'Uninsured' || s.status === 'Inactive') {
-      return false;
-    }
-
-    // 3. Existing status tab logic
+    // 2. Tab-Specific Logic
     let matchesStatus = true;
-    if (statusTab === 'active') matchesStatus = s.status === 'Active';
-    else if (statusTab === 'inactive') matchesStatus = s.status === 'Inactive';
-    else if (statusTab === 'insurance') matchesStatus = true; 
+    
+    if (statusTab === 'active') {
+      matchesStatus = s.status === 'Active';
+    } 
+    else if (statusTab === 'inactive') {
+      matchesStatus = s.status === 'Inactive';
+    } 
+    else if (statusTab === 'insurance') {
+      // EXCLUDE Uninsured and Inactive ONLY on this tab
+      if (s.insStatus.status === 'Uninsured' || s.status === 'Inactive') {
+        return false;
+      }
+      matchesStatus = true; // Show everything else (Expired, Payment Due, Insured)
+    }
     
     return matchesSearch && matchesStatus;
   })
+  .sort((a, b) => {
+    // Keep your priority sorting here for the insurance tab
+    if (statusTab === 'insurance') {
+      const order = { 'Expired': 0, 'Payment Due Soon': 1, 'Insured': 2 };
+      return (order[a.insStatus.status] ?? 99) - (order[b.insStatus.status] ?? 99);
+    }
+    return 0;
+  });
 
   const activeCount = list.filter(s => s.status === 'Active').length;
   const inactiveCount = list.filter(s => s.status === 'Inactive').length;
