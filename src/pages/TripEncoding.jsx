@@ -80,7 +80,7 @@ export default function TripEncoding() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
-    // Create an array of the last 3 months: [Current, Prev 1, Prev 2]
+    // Create array for Current, Prev 1, Prev 2
     const months = [0, 1, 2].map(i => {
       let d = new Date(currentYear, currentMonth - i);
       return { 
@@ -103,7 +103,6 @@ export default function TripEncoding() {
         acc.quarters[qIndex]++;
       }
       
-      // Accumulate counts for the 3 tracked months
       months.forEach((m, i) => {
         if (year === m.year && month === m.month) acc.last3Months[i]++;
       });
@@ -111,16 +110,16 @@ export default function TripEncoding() {
       return acc;
     }, { 
       yearCount: 0, 
-      last3Months: [0, 0, 0], // Index 0: Current, 1: Prev, 2: Prev-Prev
+      last3Months: [0, 0, 0], 
       quarters: [0, 0, 0, 0] 
     });
 
     return { 
       ...stats, 
-      monthNames: months.map(m => m.name) 
+      monthData: months // Return the objects so we have names and counts linked
     };
   }, [filtered]);
-  
+
   const handleEdit = (trip) => { setEditData(trip); setFormOpen(true); };
   const handleDuplicate = (trip) => { 
     const { id, created_date, updated_date, created_by_id, ...rest } = trip;
@@ -299,31 +298,36 @@ export default function TripEncoding() {
       />
 
       {/* Dashboard Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        {/* 3-Month Display */}
-        {dashboardStats.monthNames.map((name, i) => (
-          <div key={name} className="bg-card border rounded-lg p-4 shadow-sm">
-            <p className="text-sm text-muted-foreground">{i === 0 ? "Current Month" : i === 1 ? "Last Month" : "2 Months Ago"}</p>
-            <p className="text-xs text-muted-foreground mb-1">{name}</p>
-            <p className={`text-2xl font-bold ${i === 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
-              {dashboardStats.last3Months[i]}
-            </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        
+        {/* Combined 3-Month Trend Box */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground mb-3">Trips (Last 3 Months)</p>
+          <div className="flex justify-between items-center gap-4">
+            {dashboardStats.monthData.map((m, i) => (
+              <div key={m.name} className="text-center">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">{m.name.slice(0, 3)}</p>
+                <p className={`text-xl font-bold ${i === 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+                  {dashboardStats.last3Months[i]}
+                </p>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
 
         {/* Year Total */}
         <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
-          <p className="text-2xl font-bold">{dashboardStats.yearCount}</p>
+          <p className="text-2xl font-bold mt-2">{dashboardStats.yearCount}</p>
         </div>
         
-        {/* Quarterly Breakdown (Spanning 2 columns for space) */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm md:col-span-2">
-          <p className="text-sm text-muted-foreground mb-2">Quarterly Breakdown</p>
+        {/* Quarterly Breakdown */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground mb-3">Quarterly Breakdown</p>
           <div className="flex justify-between gap-2">
             {dashboardStats.quarters.map((count, i) => (
               <div key={i} className="text-center">
-                <p className="text-xs font-semibold text-muted-foreground">Q{i + 1}</p>
+                <p className="text-[10px] font-bold text-muted-foreground">Q{i + 1}</p>
                 <p className="text-lg font-bold text-blue-600">{count}</p>
               </div>
             ))}
