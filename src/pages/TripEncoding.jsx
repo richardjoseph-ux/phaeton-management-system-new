@@ -79,6 +79,8 @@ export default function TripEncoding() {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
     const currentQuarter = Math.floor(currentMonth / 3) + 1;
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -90,21 +92,30 @@ export default function TripEncoding() {
       const month = d.getMonth();
       const quarter = Math.floor(month / 3) + 1;
 
+      // Current Year
       if (year === currentYear) {
         acc.yearCount++;
+        // Current Quarter
         if (quarter === currentQuarter) {
           acc.quarterCount++;
+          // Current Month
           if (month === currentMonth) {
             acc.monthCount++;
           }
         }
       }
+      // Previous Month
+      if (year === prevYear && month === prevMonth) {
+        acc.prevMonthCount++;
+      }
       return acc;
     }, { 
       yearCount: 0, 
       quarterCount: 0, 
-      monthCount: 0,
+      monthCount: 0, 
+      prevMonthCount: 0,
       currentMonthName: monthNames[currentMonth],
+      prevMonthName: monthNames[prevMonth],
       currentQuarterName: `Q${currentQuarter}`
     });
   }, [filtered]);
@@ -287,7 +298,7 @@ export default function TripEncoding() {
       />
 
       {/* Dashboard Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
           <p className="text-2xl font-bold">{dashboardStats.yearCount}</p>
@@ -299,6 +310,10 @@ export default function TripEncoding() {
         <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
           <p className="text-2xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
+        </div>
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.prevMonthName})</p>
+          <p className="text-2xl font-bold text-slate-500">{dashboardStats.prevMonthCount}</p>
         </div>
       </div>
 
