@@ -293,59 +293,60 @@ export default function TripEncoding() {
         }
       />
 {/* Dashboard Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         
         {/* Current Month */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-1">
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
           <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
           <p className="text-5xl font-bold mt-2 text-emerald-600">{dashboardStats.monthCount}</p>
         </div>
 
-        {/* 1st Half - Separate Box */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-1">
+        {/* 1st Half - Compact Single Row */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
           <p className="text-[11px] font-bold text-muted-foreground mb-2 tracking-wider">1ST HALF</p>
-          <div className="grid grid-cols-3 gap-y-3">
+          <div className="flex justify-between">
             {dashboardStats.h1Names.map((m, i) => (
               <div key={m} className="flex flex-col items-center">
                 <span className="text-[10px] text-muted-foreground">{m}</span>
-                <span className="text-lg font-bold">{dashboardStats.half1[i]}</span>
+                <span className="text-sm font-bold">{dashboardStats.half1[i]}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* 2nd Half - Separate Box */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-1">
+        {/* 2nd Half - Compact Single Row */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
           <p className="text-[11px] font-bold text-muted-foreground mb-2 tracking-wider">2ND HALF</p>
-          <div className="grid grid-cols-3 gap-y-3">
+          <div className="flex justify-between">
             {dashboardStats.h2Names.map((m, i) => (
               <div key={m} className="flex flex-col items-center">
                 <span className="text-[10px] text-muted-foreground">{m}</span>
-                <span className="text-lg font-bold">{dashboardStats.half2[i]}</span>
+                <span className="text-sm font-bold">{dashboardStats.half2[i]}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Year Total */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-1">
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
           <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
           <p className="text-5xl font-bold mt-2">{dashboardStats.yearCount}</p>
         </div>
 
-        {/* Quarterly Breakdown - Spanning 2 columns to fit nicely */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-2">
+        {/* Quarterly Breakdown - Minimized spacing */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
           <p className="text-sm text-muted-foreground mb-3">Quarterly Breakdown</p>
-          <div className="flex justify-around">
+          <div className="flex justify-between px-2">
             {dashboardStats.quarters.map((count, i) => (
               <div key={i} className="text-center">
                 <p className="text-[10px] font-bold text-muted-foreground">Q{i + 1}</p>
-                <p className="text-2xl font-bold text-blue-600">{count}</p>
+                <p className="text-xl font-bold text-blue-600">{count}</p>
               </div>
             ))}
           </div>
         </div>
       </div>
+      
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
