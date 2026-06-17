@@ -295,20 +295,24 @@ const filtered = processedList
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.contact_number || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{formatDateDisplay(sub.join_date)}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.garage_location || '—'}</td>
-                                        <td className="px-4 py-3">
-                                          <div>
-                                            {/* The badge will now display the text "Due in X days" or "Expired" */}
-                                            <StatusBadge status={insStatus.status} type="insurance" />
-                                            
-                                            {/* The sub-text now only needs to show the formal Due Date */}
-                                            {insStatus.dueDate && (
-                                              <p className={`text-xs text-muted-foreground mt-0.5 ${insStatus.days <= 5 ? 'text-red-600 font-bold' : ''}`}>
-                                                {`Due: ${formatDateDisplay(insStatus.dueDate)}`}
-                                              </p>
-                                            )}
-                                          </div>
-                      {/* Display due dates per quarter */}
-                      {sub.quarter && (
+                    <td className="px-4 py-3">
+                      <div>
+                        {/* Badge remains the same */}
+                        <StatusBadge status={insStatus.status} type="insurance" />
+                        
+                        {/* Dynamic display based on tab */}
+                        {(insStatus.dateDisplay || insStatus.dueDate) && (
+                          <p className={`text-xs text-muted-foreground mt-0.5 ${insStatus.days <= 5 ? 'text-red-600 font-bold' : ''}`}>
+                            {statusTab === 'active' 
+                              ? `Started: ${insStatus.dateDisplay}` 
+                              : `Due: ${formatDateDisplay(insStatus.dueDate)}`
+                            }
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Quarter info should only show for the Insurance tab as requested */}
+                      {statusTab === 'insurance' && sub.quarter && (
                         <p className="text-[10px] text-muted-foreground font-mono mt-1 uppercase">
                           Q{sub.quarter} Renewal
                         </p>
