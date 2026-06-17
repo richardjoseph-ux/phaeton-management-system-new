@@ -292,12 +292,25 @@ export default function TripEncoding() {
 
 {/* Dashboard Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Current Month */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
+          <p className="text-2xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
+        </div>
+
+        {/* Previous Month */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.prevMonthName})</p>
+          <p className="text-2xl font-bold text-slate-500">{dashboardStats.prevMonthCount}</p>
+        </div>
+
+        {/* Year Total */}
         <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
           <p className="text-2xl font-bold">{dashboardStats.yearCount}</p>
         </div>
         
-        {/* Combined Quarterly Box */}
+        {/* Quarterly Breakdown */}
         <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground mb-2">Quarterly Breakdown</p>
           <div className="flex justify-between gap-2">
@@ -308,16 +321,6 @@ export default function TripEncoding() {
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
-          <p className="text-2xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
-        </div>
-
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.prevMonthName})</p>
-          <p className="text-2xl font-bold text-slate-500">{dashboardStats.prevMonthCount}</p>
         </div>
       </div>
 
