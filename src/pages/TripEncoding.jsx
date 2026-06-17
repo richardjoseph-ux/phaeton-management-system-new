@@ -293,62 +293,54 @@ export default function TripEncoding() {
         }
       />
 {/* Dashboard Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         
         {/* Current Month */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-1">
           <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
           <p className="text-5xl font-bold mt-2 text-emerald-600">{dashboardStats.monthCount}</p>
         </div>
 
-        {/* Half-Year Breakdown (Stacked & Compact) */}
-<div className="bg-card border rounded-lg p-4 shadow-sm text-center">
-  <div className="flex flex-col gap-2">
-    {/* 1st Half */}
-    <div className="flex flex-col">
-       <p className="text-[11px] font-bold text-muted-foreground mb-1 tracking-wider">1ST HALF</p>
-       <div className="grid grid-cols-6 gap-1">
-         {dashboardStats.h1Names.map((m, i) => (
-           <div key={m} className="flex flex-col items-center">
-             <span className="text-xs font-medium text-muted-foreground">{m}</span>
-             <span className="text-sm font-bold text-slate-800">{dashboardStats.half1[i]}</span>
-           </div>
-         ))}
-       </div>
-    </div>
-    
-    {/* Divider */}
-    <div className="border-t my-1"></div>
-    
-    {/* 2nd Half */}
-    <div className="flex flex-col">
-       <p className="text-[11px] font-bold text-muted-foreground mb-1 tracking-wider">2ND HALF</p>
-       <div className="grid grid-cols-6 gap-1">
-         {dashboardStats.h2Names.map((m, i) => (
-           <div key={m} className="flex flex-col items-center">
-             <span className="text-xs font-medium text-muted-foreground">{m}</span>
-             <span className="text-sm font-bold text-slate-800">{dashboardStats.half2[i]}</span>
-           </div>
-         ))}
-       </div>
-    </div>
-  </div>
-</div>
+        {/* 1st Half - Separate Box */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-1">
+          <p className="text-[11px] font-bold text-muted-foreground mb-2 tracking-wider">1ST HALF</p>
+          <div className="grid grid-cols-3 gap-y-3">
+            {dashboardStats.h1Names.map((m, i) => (
+              <div key={m} className="flex flex-col items-center">
+                <span className="text-[10px] text-muted-foreground">{m}</span>
+                <span className="text-lg font-bold">{dashboardStats.half1[i]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 2nd Half - Separate Box */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-1">
+          <p className="text-[11px] font-bold text-muted-foreground mb-2 tracking-wider">2ND HALF</p>
+          <div className="grid grid-cols-3 gap-y-3">
+            {dashboardStats.h2Names.map((m, i) => (
+              <div key={m} className="flex flex-col items-center">
+                <span className="text-[10px] text-muted-foreground">{m}</span>
+                <span className="text-lg font-bold">{dashboardStats.half2[i]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Year Total */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-1">
           <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
           <p className="text-5xl font-bold mt-2">{dashboardStats.yearCount}</p>
         </div>
 
-        {/* Quarterly Breakdown */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
+        {/* Quarterly Breakdown - Spanning 2 columns to fit nicely */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-2">
           <p className="text-sm text-muted-foreground mb-3">Quarterly Breakdown</p>
-          <div className="flex justify-center gap-2">
+          <div className="flex justify-around">
             {dashboardStats.quarters.map((count, i) => (
               <div key={i} className="text-center">
                 <p className="text-[10px] font-bold text-muted-foreground">Q{i + 1}</p>
-                <p className="text-lg font-bold text-blue-600">{count}</p>
+                <p className="text-2xl font-bold text-blue-600">{count}</p>
               </div>
             ))}
           </div>
