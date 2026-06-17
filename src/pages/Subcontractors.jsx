@@ -305,7 +305,7 @@ const filtered = processedList
               ) : filtered.map(sub => {
                 const insStatus = sub.insStatus;
                 return (
-                 <tr key={sub.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${insStatus.status === 'Insured' ? 'opacity-60' : ''}`}>
+                 <tr key={sub.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-primary font-semibold">{sub.sub_id}</td>
                     <td className="px-4 py-3 font-semibold">{sub.plate_number}</td>
                     <td className="px-4 py-3">{sub.owner_name}</td>
