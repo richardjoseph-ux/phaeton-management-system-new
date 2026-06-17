@@ -302,12 +302,15 @@ const filtered = processedList
                         
                         {/* Dynamic display based on tab */}
                         {(insStatus.dateDisplay || insStatus.dueDate) && (
-                          <p className={`text-xs text-muted-foreground mt-0.5 ${insStatus.days <= 5 ? 'text-red-600 font-bold' : ''}`}>
-                            {statusTab === 'active' 
-                              ? `Started: ${insStatus.dateDisplay}` 
-                              : `Due: ${formatDateDisplay(insStatus.dueDate)}`
-                            }
-                          </p>
+                        <p className={`text-xs text-muted-foreground mt-0.5 ${
+                          // Only turn red if it's the Insurance tab AND it's due soon
+                          (statusTab === 'insurance' && insStatus.days <= 5) ? 'text-red-600 font-bold' : ''
+                        }`}>
+                          {statusTab === 'active' 
+                            ? `Started: ${insStatus.dateDisplay}` 
+                            : `Due: ${formatDateDisplay(insStatus.dueDate)}`
+                          }
+                        </p>
                         )}
                       </div>
                       
