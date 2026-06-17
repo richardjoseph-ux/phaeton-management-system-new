@@ -75,11 +75,12 @@ export default function TripEncoding() {
     });
   }, [trips, search, filterBilling, sortOrder]);
 
-   const dashboardStats = useMemo(() => {
+  const dashboardStats = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
+    // Initialize structure: [Jan...Jun] and [Jul...Dec]
     const stats = filtered.reduce((acc, trip) => {
       const d = new Date(trip.delivery_date);
       if (isNaN(d.getTime())) return acc;
@@ -91,9 +92,10 @@ export default function TripEncoding() {
       if (year === currentYear) {
         acc.yearCount++;
         acc.quarters[qIndex]++;
-        // 1st half (0-5), 2nd half (6-11)
-        if (month < 6) acc.halfYear[0]++;
-        else acc.halfYear[1]++;
+        
+        // Track specific month: 1st half (0-5), 2nd half (6-11)
+        if (month < 6) acc.half1[month]++;
+        else acc.half2[month - 6]++;
         
         if (month === currentMonth) acc.monthCount++;
       }
@@ -101,13 +103,16 @@ export default function TripEncoding() {
     }, { 
       yearCount: 0, 
       monthCount: 0, 
-      halfYear: [0, 0],
+      half1: new Array(6).fill(0), 
+      half2: new Array(6).fill(0),
       quarters: [0, 0, 0, 0] 
     });
 
     return { 
       ...stats, 
-      currentMonthName: now.toLocaleString('default', { month: 'long' }) 
+      currentMonthName: now.toLocaleString('default', { month: 'long' }),
+      h1Names: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+      h2Names: ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     };
   }, [filtered]);
 
@@ -296,17 +301,21 @@ export default function TripEncoding() {
           <p className="text-5xl font-bold mt-2 text-emerald-600">{dashboardStats.monthCount}</p>
         </div>
 
-        {/* Half-Year Breakdown */}
+        {/* Half-Year Breakdown (Showing months) */}
         <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
-          <p className="text-sm text-muted-foreground mb-3">Half-Year Breakdown</p>
-          <div className="flex justify-center gap-6">
-            <div className="text-center">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground">1st Half</p>
-              <p className="text-xl font-bold text-blue-600">{dashboardStats.halfYear[0]}</p>
+          <p className="text-sm text-muted-foreground mb-3">Half-Year Monthly View</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <div>
+               <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">1st Half</p>
+               <div className="flex justify-between gap-1 text-[10px]">
+                 {dashboardStats.h1Names.map((m, i) => <div key={m}>{m}: {dashboardStats.half1[i]}</div>)}
+               </div>
             </div>
-            <div className="text-center">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground">2nd Half</p>
-              <p className="text-xl font-bold text-blue-600">{dashboardStats.halfYear[1]}</p>
+            <div>
+               <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">2nd Half</p>
+               <div className="flex justify-between gap-1 text-[10px]">
+                 {dashboardStats.h2Names.map((m, i) => <div key={m}>{m}: {dashboardStats.half2[i]}</div>)}
+               </div>
             </div>
           </div>
         </div>
