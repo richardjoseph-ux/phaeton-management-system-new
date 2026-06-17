@@ -59,31 +59,18 @@ export default function Subcontractors() {
 
 const processedList = list.map(sub => {
   const insStatus = getInsuranceStatus(sub);
-  
-  // Calculate how many months have passed since the start date
-  let currentQuarter = null;
-  if (sub.insurance_start_date) {
-    const start = new Date(sub.insurance_start_date);
-    const today = new Date();
-    
-    // Calculate total months difference
-    const monthsDiff = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
-    
-    // Calculate quarter (1, 2, 3, or 4) relative to the start date
-    // Each quarter is 3 months long
-    currentQuarter = (Math.floor(monthsDiff / 3) % 4) + 1;
-  }
 
   if (statusTab === 'active') {
     return {
       ...sub,
       insStatus: {
-        status: insStatus.status,
+        status: 'Insured', 
         dueDate: sub.insurance_start_date ? moment(sub.insurance_start_date).format('MMM YYYY') : null
       },
     };
   } else {
-    return { ...sub, insStatus, quarter: currentQuarter };
+    const quarter = insStatus.dueDate ? Math.floor((insStatus.dueDate.getMonth() + 3) / 3) : null;
+    return { ...sub, insStatus, quarter };
   }
 });
 
