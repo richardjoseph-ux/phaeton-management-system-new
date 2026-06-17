@@ -293,12 +293,22 @@ export default function TripEncoding() {
         }
       />
 {/* Dashboard Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         
-        {/* Current Month */}
+        {/* Combined Monthly & Yearly Box */}
         <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
-          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
-          <p className="text-5xl font-bold mt-2 text-emerald-600">{dashboardStats.monthCount}</p>
+          <p className="text-sm text-muted-foreground mb-4">Trip Totals</p>
+          <div className="flex justify-around items-center">
+            <div className="text-center">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">{dashboardStats.currentMonthName}</p>
+              <p className="text-3xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
+            </div>
+            <div className="border-l h-10"></div>
+            <div className="text-center">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">{new Date().getFullYear()}</p>
+              <p className="text-3xl font-bold">{dashboardStats.yearCount}</p>
+            </div>
+          </div>
         </div>
 
         {/* 1st Half - Compact Single Row */}
@@ -325,12 +335,6 @@ export default function TripEncoding() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Year Total */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
-          <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
-          <p className="text-5xl font-bold mt-2">{dashboardStats.yearCount}</p>
         </div>
 
         {/* Quarterly Breakdown - Minimized spacing */}
