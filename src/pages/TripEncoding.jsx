@@ -298,42 +298,42 @@ export default function TripEncoding() {
       />
 
  {/* Dashboard Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        
-        {/* Combined 3-Month Trend Box */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground mb-3">Trips (Last 3 Months)</p>
-          <div className="flex justify-between items-center gap-4">
-            {dashboardStats.monthData.map((m, i) => (
-              <div key={m.name} className="text-center">
-                <p className="text-[10px] uppercase font-bold text-muted-foreground">{m.name.slice(0, 3)}</p>
-                <p className={`text-xl font-bold ${i === 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
-                  {dashboardStats.last3Months[i]}
-                </p>
-              </div>
-            ))}
-          </div>
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+  
+  {/* Combined 3-Month Trend Box */}
+  <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
+    <p className="text-sm text-muted-foreground mb-3">Trips (Last 3 Months)</p>
+    <div className="flex justify-center items-center gap-6">
+      {dashboardStats.monthData.map((m, i) => (
+        <div key={m.name} className="text-center">
+          <p className="text-[10px] uppercase font-bold text-muted-foreground">{m.name.slice(0, 3)}</p>
+          <p className={`text-xl font-bold ${i === 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+            {dashboardStats.last3Months[i]}
+          </p>
         </div>
+      ))}
+    </div>
+  </div>
 
-        {/* Quarterly Breakdown (Moved to middle) */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground mb-3">Quarterly Breakdown</p>
-          <div className="flex justify-between gap-2">
-            {dashboardStats.quarters.map((count, i) => (
-              <div key={i} className="text-center">
-                <p className="text-[10px] font-bold text-muted-foreground">Q{i + 1}</p>
-                <p className="text-lg font-bold text-blue-600">{count}</p>
-              </div>
-            ))}
-          </div>
+  {/* Quarterly Breakdown */}
+  <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
+    <p className="text-sm text-muted-foreground mb-3">Quarterly Breakdown</p>
+    <div className="flex justify-center gap-4">
+      {dashboardStats.quarters.map((count, i) => (
+        <div key={i} className="text-center">
+          <p className="text-[10px] font-bold text-muted-foreground">Q{i + 1}</p>
+          <p className="text-lg font-bold text-blue-600">{count}</p>
         </div>
+      ))}
+    </div>
+  </div>
 
-        {/* Year Total (Moved to end) */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
-          <p className="text-2xl font-bold mt-2">{dashboardStats.yearCount}</p>
-        </div>
-      </div>
+  {/* Year Total - Now centered */}
+  <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
+    <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
+    <p className="text-2xl font-bold mt-2">{dashboardStats.yearCount}</p>
+  </div>
+</div>
 
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative">
