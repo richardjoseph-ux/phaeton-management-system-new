@@ -301,20 +301,29 @@ export default function TripEncoding() {
           <p className="text-5xl font-bold mt-2 text-emerald-600">{dashboardStats.monthCount}</p>
         </div>
 
-        {/* Half-Year Breakdown (Showing months) */}
+        {/* Half-Year Breakdown (Stacked) */}
         <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
-          <p className="text-sm text-muted-foreground mb-3">Half-Year Monthly View</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <div>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col">
                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">1st Half</p>
                <div className="flex justify-between gap-1 text-[10px]">
-                 {dashboardStats.h1Names.map((m, i) => <div key={m}>{m}: {dashboardStats.half1[i]}</div>)}
+                 {dashboardStats.h1Names.map((m, i) => (
+                   <div key={m} className="flex flex-col items-center">
+                     <span className="text-muted-foreground">{m}</span>
+                     <span className="font-bold">{dashboardStats.half1[i]}</span>
+                   </div>
+                 ))}
                </div>
             </div>
-            <div>
+            <div className="flex flex-col border-t pt-3">
                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">2nd Half</p>
                <div className="flex justify-between gap-1 text-[10px]">
-                 {dashboardStats.h2Names.map((m, i) => <div key={m}>{m}: {dashboardStats.half2[i]}</div>)}
+                 {dashboardStats.h2Names.map((m, i) => (
+                   <div key={m} className="flex flex-col items-center">
+                     <span className="text-muted-foreground">{m}</span>
+                     <span className="font-bold">{dashboardStats.half2[i]}</span>
+                   </div>
+                 ))}
                </div>
             </div>
           </div>
