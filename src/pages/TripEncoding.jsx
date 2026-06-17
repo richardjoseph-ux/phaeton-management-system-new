@@ -79,10 +79,16 @@ export default function TripEncoding() {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
-    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
     
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    // Create an array of the last 3 months: [Current, Prev 1, Prev 2]
+    const months = [0, 1, 2].map(i => {
+      let d = new Date(currentYear, currentMonth - i);
+      return { 
+        month: d.getMonth(), 
+        year: d.getFullYear(), 
+        name: d.toLocaleString('default', { month: 'long' }) 
+      };
+    });
 
     const stats = filtered.reduce((acc, trip) => {
       const d = new Date(trip.delivery_date);
@@ -95,24 +101,26 @@ export default function TripEncoding() {
       if (year === currentYear) {
         acc.yearCount++;
         acc.quarters[qIndex]++;
-        if (month === currentMonth) acc.monthCount++;
       }
-      if (year === prevYear && month === prevMonth) acc.prevMonthCount++;
+      
+      // Accumulate counts for the 3 tracked months
+      months.forEach((m, i) => {
+        if (year === m.year && month === m.month) acc.last3Months[i]++;
+      });
+
       return acc;
     }, { 
       yearCount: 0, 
-      monthCount: 0, 
-      prevMonthCount: 0,
-      quarters: [0, 0, 0, 0]
+      last3Months: [0, 0, 0], // Index 0: Current, 1: Prev, 2: Prev-Prev
+      quarters: [0, 0, 0, 0] 
     });
 
-    return {
-      ...stats,
-      currentMonthName: monthNames[currentMonth],
-      prevMonthName: monthNames[prevMonth]
+    return { 
+      ...stats, 
+      monthNames: months.map(m => m.name) 
     };
   }, [filtered]);
-
+  
   const handleEdit = (trip) => { setEditData(trip); setFormOpen(true); };
   const handleDuplicate = (trip) => { 
     const { id, created_date, updated_date, created_by_id, ...rest } = trip;
@@ -290,19 +298,18 @@ export default function TripEncoding() {
         }
       />
 
-{/* Dashboard Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Current Month */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
-          <p className="text-2xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
-        </div>
-
-        {/* Previous Month */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.prevMonthName})</p>
-          <p className="text-2xl font-bold text-slate-500">{dashboardStats.prevMonthCount}</p>
-        </div>
+      {/* Dashboard Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        {/* 3-Month Display */}
+        {dashboardStats.monthNames.map((name, i) => (
+          <div key={name} className="bg-card border rounded-lg p-4 shadow-sm">
+            <p className="text-sm text-muted-foreground">{i === 0 ? "Current Month" : i === 1 ? "Last Month" : "2 Months Ago"}</p>
+            <p className="text-xs text-muted-foreground mb-1">{name}</p>
+            <p className={`text-2xl font-bold ${i === 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+              {dashboardStats.last3Months[i]}
+            </p>
+          </div>
+        ))}
 
         {/* Year Total */}
         <div className="bg-card border rounded-lg p-4 shadow-sm">
@@ -310,8 +317,8 @@ export default function TripEncoding() {
           <p className="text-2xl font-bold">{dashboardStats.yearCount}</p>
         </div>
         
-        {/* Quarterly Breakdown */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
+        {/* Quarterly Breakdown (Spanning 2 columns for space) */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm md:col-span-2">
           <p className="text-sm text-muted-foreground mb-2">Quarterly Breakdown</p>
           <div className="flex justify-between gap-2">
             {dashboardStats.quarters.map((count, i) => (
