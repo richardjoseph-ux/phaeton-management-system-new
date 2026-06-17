@@ -297,7 +297,7 @@ export default function TripEncoding() {
         }
       />
 
-      {/* Dashboard Summary Cards */}
+ {/* Dashboard Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         
         {/* Combined 3-Month Trend Box */}
@@ -315,13 +315,7 @@ export default function TripEncoding() {
           </div>
         </div>
 
-        {/* Year Total */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
-          <p className="text-2xl font-bold mt-2">{dashboardStats.yearCount}</p>
-        </div>
-        
-        {/* Quarterly Breakdown */}
+        {/* Quarterly Breakdown (Moved to middle) */}
         <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground mb-3">Quarterly Breakdown</p>
           <div className="flex justify-between gap-2">
@@ -332,6 +326,12 @@ export default function TripEncoding() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Year Total (Moved to end) */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
+          <p className="text-2xl font-bold mt-2">{dashboardStats.yearCount}</p>
         </div>
       </div>
 
