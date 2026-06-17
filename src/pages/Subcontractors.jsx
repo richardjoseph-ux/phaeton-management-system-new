@@ -47,19 +47,28 @@ export default function Subcontractors() {
 const processedList = list.map(sub => {
   const insStatus = getInsuranceStatus(sub);
 
+  // Calculate quarter based on insurance start date
+  let quarter = null;
+  if (sub.insurance_start_date) {
+    const startDate = moment(sub.insurance_start_date);
+    const today = moment();
+    
+    // Calculate how many 3-month periods have passed since the start date
+    // This makes the "Quarter" relative to when their specific insurance began
+    const monthsDiff = today.diff(startDate, 'months');
+    quarter = Math.floor(monthsDiff / 3) + 1;
+  }
+
   if (statusTab === 'active') {
     return {
       ...sub,
       insStatus: {
         status: 'Insured',
-        // Change: Use insurance_start_date instead of dueDate
         dateDisplay: sub.insurance_start_date ? formatDateDisplay(sub.insurance_start_date) : '—',
-        days: null // Ensure this doesn't trigger red text
+        days: null 
       },
     };
   } else {
-    // Keep original logic for other tabs
-    const quarter = insStatus.dueDate ? Math.floor((insStatus.dueDate.getMonth() + 3) / 3) : null;
     return { ...sub, insStatus, quarter };
   }
 });
