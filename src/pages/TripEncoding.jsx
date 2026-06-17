@@ -109,8 +109,8 @@ export default function TripEncoding() {
 
     return {
       ...stats,
-      currentMonthName: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][currentMonth],
-      prevMonthName: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][prevMonth]
+      currentMonthName: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][currentMonth],
+      prevMonthName: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][prevMonth]
     };
   }, [filtered]);
 
