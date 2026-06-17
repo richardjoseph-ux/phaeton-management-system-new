@@ -89,31 +89,26 @@ const processedList = list.map(sub => {
 
 const filtered = processedList
   .filter(s => {
-    // Keep search logic the same
+    // 1. Existing search logic
     const matchesSearch = !search ||
       s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
       s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
       s.sub_id?.toLowerCase().includes(search.toLowerCase());
 
-    // Update status logic
+    // 2. Hide "Uninsured" and "Inactive" globally
+    // We check if the sub is Uninsured OR Inactive, and if so, return false to hide them
+    if (s.insStatus.status === 'Uninsured' || s.status === 'Inactive') {
+      return false;
+    }
+
+    // 3. Existing status tab logic
     let matchesStatus = true;
     if (statusTab === 'active') matchesStatus = s.status === 'Active';
     else if (statusTab === 'inactive') matchesStatus = s.status === 'Inactive';
-    // For 'insurance', we set to true to show everyone
     else if (statusTab === 'insurance') matchesStatus = true; 
     
     return matchesSearch && matchesStatus;
   })
-  .sort((a, b) => {
-    // Only sort when on the 'insurance' tab
-    if (statusTab === 'insurance') {
-      const order = { 'Expired': 0, 'Payment Due Soon': 1, 'Insured': 2, 'Uninsured': 3 };
-      const statusA = a.insStatus.status;
-      const statusB = b.insStatus.status;
-      return (order[statusA] ?? 99) - (order[statusB] ?? 99);
-    }
-    return 0; // Keep original order for other tabs
-  });
 
   const activeCount = list.filter(s => s.status === 'Active').length;
   const inactiveCount = list.filter(s => s.status === 'Inactive').length;
