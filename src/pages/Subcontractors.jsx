@@ -98,14 +98,16 @@ const filtered = processedList
     
     return matchesSearch && matchesStatus;
   })
-  .sort((a, b) => {
-    // Keep your priority sorting here for the insurance tab
-    if (statusTab === 'insurance') {
-      const order = { 'Expired': 0, 'Payment Due Soon': 1, 'Insured': 2 };
-      return (order[a.insStatus.status] ?? 99) - (order[b.insStatus.status] ?? 99);
-    }
-    return 0;
-  });
+.sort((a, b) => {
+  if (statusTab === 'insurance') {
+
+    const daysA = a.insStatus.days ?? 999;
+    const daysB = b.insStatus.days ?? 999;
+    
+    return daysA - daysB;
+  }
+  return 0; // No sorting for other tabs
+});
 
   const activeCount = list.filter(s => s.status === 'Active').length;
   const inactiveCount = list.filter(s => s.status === 'Inactive').length;
