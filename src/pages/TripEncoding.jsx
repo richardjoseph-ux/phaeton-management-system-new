@@ -75,15 +75,14 @@ export default function TripEncoding() {
     });
   }, [trips, search, filterBilling, sortOrder]);
 
-    const dashboardStats = useMemo(() => {
+   const dashboardStats = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
     
-    // Initialize quarters: 0 to 3
-    const quarters = [0, 0, 0, 0]; 
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     const stats = filtered.reduce((acc, trip) => {
       const d = new Date(trip.delivery_date);
@@ -95,7 +94,7 @@ export default function TripEncoding() {
 
       if (year === currentYear) {
         acc.yearCount++;
-        acc.quarters[qIndex]++; // Increment specific quarter index
+        acc.quarters[qIndex]++;
         if (month === currentMonth) acc.monthCount++;
       }
       if (year === prevYear && month === prevMonth) acc.prevMonthCount++;
@@ -104,13 +103,13 @@ export default function TripEncoding() {
       yearCount: 0, 
       monthCount: 0, 
       prevMonthCount: 0,
-      quarters: [0, 0, 0, 0] // Store counts for Q1, Q2, Q3, Q4
+      quarters: [0, 0, 0, 0]
     });
 
     return {
       ...stats,
-      currentMonthName: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][currentMonth],
-      prevMonthName: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][prevMonth]
+      currentMonthName: monthNames[currentMonth],
+      prevMonthName: monthNames[prevMonth]
     };
   }, [filtered]);
 
@@ -291,7 +290,7 @@ export default function TripEncoding() {
         }
       />
 
-      {/* Dashboard Summary Cards */}
+{/* Dashboard Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
@@ -299,7 +298,7 @@ export default function TripEncoding() {
         </div>
         
         {/* Combined Quarterly Box */}
-        <div className="bg-card border rounded-lg p-4 shadow-sm md:col-span-2 lg:col-span-2">
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground mb-2">Quarterly Breakdown</p>
           <div className="flex justify-between gap-2">
             {dashboardStats.quarters.map((count, i) => (
@@ -314,6 +313,11 @@ export default function TripEncoding() {
         <div className="bg-card border rounded-lg p-4 shadow-sm">
           <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
           <p className="text-2xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
+        </div>
+
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.prevMonthName})</p>
+          <p className="text-2xl font-bold text-slate-500">{dashboardStats.prevMonthCount}</p>
         </div>
       </div>
 
