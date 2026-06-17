@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,29 +49,65 @@ export default function TripEncoding() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = [...trips].filter(t => {
-    const matchSearch = !search ||
-      t.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
-      t.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
-      t.truck_type?.toLowerCase().includes(search.toLowerCase()) ||
-      t.client_name?.toLowerCase().includes(search.toLowerCase()) ||
-      t.pickup_location?.toLowerCase().includes(search.toLowerCase()) ||
-      t.delivery_location?.toLowerCase().includes(search.toLowerCase()) ||
-      t.delivery_code?.toLowerCase().includes(search.toLowerCase()) ||
-      t.particular?.toLowerCase().includes(search.toLowerCase()) ||
-      t.dr_number?.toLowerCase().includes(search.toLowerCase()) ||
-      t.waybill_number?.toLowerCase().includes(search.toLowerCase()) ||
-      t.trip_route_code?.toLowerCase().includes(search.toLowerCase()) ||
-      t.billing_cycle_name?.toLowerCase().includes(search.toLowerCase());
-    const matchBilling = !filterBilling || t.billing_cycle_name?.toLowerCase() === filterBilling.toLowerCase();
-    return matchSearch && matchBilling;
-  }).sort((a, b) => {
-    if (sortOrder === 'latest') {
-      return (b.delivery_date || '').localeCompare(a.delivery_date || '');
-    } else {
-      return (a.delivery_date || '').localeCompare(b.delivery_date || '');
-    }
-  });
+  const filtered = useMemo(() => {
+    return [...trips].filter(t => {
+      const matchSearch = !search ||
+        t.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
+        t.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
+        t.truck_type?.toLowerCase().includes(search.toLowerCase()) ||
+        t.client_name?.toLowerCase().includes(search.toLowerCase()) ||
+        t.pickup_location?.toLowerCase().includes(search.toLowerCase()) ||
+        t.delivery_location?.toLowerCase().includes(search.toLowerCase()) ||
+        t.delivery_code?.toLowerCase().includes(search.toLowerCase()) ||
+        t.particular?.toLowerCase().includes(search.toLowerCase()) ||
+        t.dr_number?.toLowerCase().includes(search.toLowerCase()) ||
+        t.waybill_number?.toLowerCase().includes(search.toLowerCase()) ||
+        t.trip_route_code?.toLowerCase().includes(search.toLowerCase()) ||
+        t.billing_cycle_name?.toLowerCase().includes(search.toLowerCase());
+      const matchBilling = !filterBilling || t.billing_cycle_name?.toLowerCase() === filterBilling.toLowerCase();
+      return matchSearch && matchBilling;
+    }).sort((a, b) => {
+      if (sortOrder === 'latest') {
+        return (b.delivery_date || '').localeCompare(a.delivery_date || '');
+      } else {
+        return (a.delivery_date || '').localeCompare(b.delivery_date || '');
+      }
+    });
+  }, [trips, search, filterBilling, sortOrder]);
+
+  const dashboardStats = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentQuarter = Math.floor(currentMonth / 3) + 1;
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    return filtered.reduce((acc, trip) => {
+      const d = new Date(trip.delivery_date);
+      if (isNaN(d.getTime())) return acc;
+
+      const year = d.getFullYear();
+      const month = d.getMonth();
+      const quarter = Math.floor(month / 3) + 1;
+
+      if (year === currentYear) {
+        acc.yearCount++;
+        if (quarter === currentQuarter) {
+          acc.quarterCount++;
+          if (month === currentMonth) {
+            acc.monthCount++;
+          }
+        }
+      }
+      return acc;
+    }, { 
+      yearCount: 0, 
+      quarterCount: 0, 
+      monthCount: 0,
+      currentMonthName: monthNames[currentMonth],
+      currentQuarterName: `Q${currentQuarter}`
+    });
+  }, [filtered]);
 
   const handleEdit = (trip) => { setEditData(trip); setFormOpen(true); };
   const handleDuplicate = (trip) => { 
@@ -250,6 +286,22 @@ export default function TripEncoding() {
         }
       />
 
+      {/* Dashboard Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
+          <p className="text-2xl font-bold">{dashboardStats.yearCount}</p>
+        </div>
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentQuarterName})</p>
+          <p className="text-2xl font-bold text-blue-600">{dashboardStats.quarterCount}</p>
+        </div>
+        <div className="bg-card border rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">Trips ({dashboardStats.currentMonthName})</p>
+          <p className="text-2xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
+        </div>
+      </div>
+
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -328,7 +380,6 @@ export default function TripEncoding() {
                   <td className="px-4 py-3 text-xs text-muted-foreground">{trip.billing_cycle_name || '—'}</td>
                   <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
-                    {/* These are visible to any logged-in user */}
                     {currentUser && (
                       <>
                         <button 
@@ -347,8 +398,6 @@ export default function TripEncoding() {
                         </button>
                       </>
                     )}
-
-                    {/* This is visible ONLY to admin users */}
                     {isAdmin && (
                       <button 
                         onClick={() => handleDelete(trip.id)} 
