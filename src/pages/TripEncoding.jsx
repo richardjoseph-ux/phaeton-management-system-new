@@ -328,12 +328,12 @@ export default function TripEncoding() {
     </div>
   </div>
 
-  {/* Year Total - Now centered */}
-  <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
-    <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
-    <p className="text-2xl font-bold mt-2">{dashboardStats.yearCount}</p>
-  </div>
-</div>
+{/* Year Total - Font size enlarged */}
+        <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
+          <p className="text-sm text-muted-foreground">Trips (Year {new Date().getFullYear()})</p>
+          <p className="text-5xl font-bold mt-2">{dashboardStats.yearCount}</p>
+        </div>
+      </div>
 
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative">
