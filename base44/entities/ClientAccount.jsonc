@@ -78,6 +78,41 @@
           }
         }
       }
+    },
+    "pickup_location_fees": {
+      "type": "array",
+      "description": "Hidden fee percentage configuration per pickup location and truck type",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pickup_location": {
+            "type": "string",
+            "description": "Pickup location code (e.g., DSV_SILANG_ANKO, DSV_MAKATI)"
+          },
+          "truck_type_fees": {
+            "type": "array",
+            "description": "Hidden fee percentage for each truck type at this pickup location",
+            "items": {
+              "type": "object",
+              "properties": {
+                "truck_type": {
+                  "type": "string",
+                  "enum": ["AUV", "Sub-4W", "6-Wheel", "10-Wheel"],
+                  "description": "Truck type identifier"
+                },
+                "hidden_fee_percentage": {
+                  "type": "number",
+                  "description": "Hidden fee percentage (e.g., 3.5)",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": ["truck_type", "hidden_fee_percentage"]
+            }
+          }
+        },
+        "required": ["pickup_location", "truck_type_fees"]
+      }
     }
   },
   "required": [
