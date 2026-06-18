@@ -67,6 +67,7 @@ export default function Reports() {
 
   const totalGross = filtered.reduce((s, t) => s + (t.gross_rate || 0), 0);
   const totalNet = filtered.reduce((s, t) => s + (t.net_payroll || 0), 0);
+  const companyIncome = totalGross - totalNet;
 
   // Pagination Logic
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
@@ -186,7 +187,7 @@ export default function Reports() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Records Found</p>
           <p className="text-2xl font-bold mt-1">{filtered.length}</p>
@@ -198,6 +199,10 @@ export default function Reports() {
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Total Net Payroll</p>
           <p className="text-2xl font-bold mt-1 text-emerald-700">{formatCurrency(totalNet)}</p>
+        </div>
+        <div className="bg-card border rounded-lg p-4 border-l-4 border-l-amber-500">
+          <p className="text-xs text-muted-foreground">Company Income</p>
+          <p className="text-2xl font-bold mt-1 text-amber-700">{formatCurrency(companyIncome)}</p>
         </div>
       </div>
 
