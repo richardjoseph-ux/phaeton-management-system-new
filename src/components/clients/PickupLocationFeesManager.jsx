@@ -5,7 +5,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Save } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
@@ -69,17 +68,13 @@ export default function PickupLocationFeesManager({ clientAccount, onUpdate }) {
         return;
       }
 
-      await base44.entities.ClientAccount.update(clientAccount.id, {
-        ...clientAccount,
-        pickup_location_fees: pickupLocationFees,
-      });
-
-      alert('Pickup location fees saved successfully!');
+      // Just update the callback - the parent form will save everything
       if (onUpdate) {
         onUpdate({ ...clientAccount, pickup_location_fees: pickupLocationFees });
       }
+      alert('Fees updated. Click Save in the form to persist changes.');
     } catch (error) {
-      alert('Error saving fees: ' + error.message);
+      alert('Error: ' + error.message);
     }
     setSaving(false);
   };
@@ -154,7 +149,7 @@ export default function PickupLocationFeesManager({ clientAccount, onUpdate }) {
           </Button>
 
           <Button onClick={handleSave} disabled={saving} className="w-full">
-            <Save className="w-4 h-4 mr-2" /> {saving ? 'Saving...' : 'Save Fees'}
+            <Save className="w-4 h-4 mr-2" /> {saving ? 'Updating...' : 'Update Fees'}
           </Button>
         </div>
       </CardContent>
