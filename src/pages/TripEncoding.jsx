@@ -240,9 +240,11 @@ const handleImportTrips = async (event) => {
         return;
       }
 
-      const [existing, allClients] = await Promise.all([
+      // Fetch existing records, clients, and billing cycles simultaneously
+      const [existing, allClients, allBillingCycles] = await Promise.all([
         base44.entities.TripRecord.list(),
-        base44.entities.ClientAccount.list('client_name', 100)
+        base44.entities.ClientAccount.list('client_name', 100),
+        base44.entities.BillingCycle.list('cycle_name', 100)
       ]);
 
       const existingKeys = new Set(existing.map(t => `${t.plate_number?.toLowerCase() || ''}-${t.dr_number?.toLowerCase() || ''}-${t.delivery_date || ''}`));
@@ -258,17 +260,19 @@ const handleImportTrips = async (event) => {
           if (formattedDate instanceof Date) {
             formattedDate = formattedDate.toISOString().split('T')[0];
           } else if (typeof formattedDate === 'number') {
-            // Converts Excel serial date to JS Date then string
             const date = new Date(Math.round((formattedDate - 25569) * 86400 * 1000));
             formattedDate = date.toISOString().split('T')[0];
           }
 
+          // Find IDs for linking
           const client = allClients.find(c => c.client_name?.toLowerCase() === item.client_name?.toLowerCase());
+          const cycle = allBillingCycles.find(b => b.cycle_name === item.billing_cycle_name);
           
           return {
             ...item,
-            delivery_date: formattedDate, // Now guaranteed to be a string
-            client_account_id: client ? client.id : null
+            delivery_date: formattedDate,
+            client_account_id: client ? client.id : null,
+            billing_cycle_id: cycle ? cycle.id : null
           };
         })
         .filter(row => row.client_account_id !== null);
@@ -288,7 +292,7 @@ const handleImportTrips = async (event) => {
     }
     event.target.value = '';
   };
-
+  
   return (
     <div className="p-6">
       <PageHeader
