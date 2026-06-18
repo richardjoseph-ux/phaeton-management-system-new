@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Plus, Trash2, Upload, Download, Search, X } from 'lucide-react';
+import PickupLocationFeesManager from './PickupLocationFeesManager';
 
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
@@ -512,6 +513,14 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                 : 'Rates in ₱. Leave blank if a truck type does not serve a route.'}
             </p>
           </div>
+
+          {/* Truck Type Hidden Fee Configuration */}
+          {editData && (
+            <PickupLocationFeesManager 
+              clientAccount={editData} 
+              onUpdate={(updated) => setForm({ ...form, pickup_location_fees: updated.pickup_location_fees })}
+            />
+          )}
 
         </div>
 
