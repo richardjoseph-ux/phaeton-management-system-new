@@ -9,6 +9,7 @@ import TripForm from '@/components/trips/TripForm';
 import ExcelImportExport from '@/components/ui/ExcelImportExport';
 import { useAuth } from '@/lib/AuthContext';
 import { formatDateDisplay } from '@/lib/dateUtils';
+import { calculateTripFees } from '@/lib/feeCalculator';
 import * as XLSX from 'xlsx';
 
 export default function TripEncoding() {
@@ -189,29 +190,35 @@ const handleExportTrips = async () => {
 
           const newRate = route?.rates?.[trip.truck_type] || 0;
           const newGross = newRate || trip.gross_rate || 0;
-          const tax = newGross * 0.02;
-          const afterTax = newGross - tax;
-          const hidden = afterTax * 0.04;
-          const admin = afterTax * 0.06;
-          const newNet = newGross - tax - hidden - admin - (trip.insurance_charge || 0) - (trip.other_charges || 0);
+
+          // Use the new fee calculator which respects pickup_location_fees configuration
+          const feeBreakdown = calculateTripFees({
+            grossRate: newGross,
+            clientData: client,
+            pickupLocation: trip.pickup_location,
+            truckType: trip.truck_type,
+            insuranceCharge: trip.insurance_charge || 0,
+            otherCharges: trip.other_charges || 0,
+            fuelSubsidy: 0,
+          });
 
           const hasChanges = 
-            trip.gross_rate !== newGross ||
-            trip.tax_deduction !== tax ||
-            trip.hidden_fee !== hidden ||
-            trip.admin_fee !== admin ||
-            trip.net_payroll !== newNet ||
+            trip.gross_rate !== feeBreakdown.gross_rate ||
+            trip.tax_deduction !== feeBreakdown.tax_deduction ||
+            trip.hidden_fee !== feeBreakdown.hidden_fee ||
+            trip.admin_fee !== feeBreakdown.admin_fee ||
+            trip.net_payroll !== feeBreakdown.net_payroll ||
             trip.trip_route_code !== (route?.trip_route_code || trip.trip_route_code);
 
           if (hasChanges) {
             await base44.entities.TripRecord.update(trip.id, {
               client_account_id: client.id,
               client_name: client.client_name,
-              gross_rate: newGross,
-              tax_deduction: tax,
-              hidden_fee: hidden,
-              admin_fee: admin,
-              net_payroll: newNet,
+              gross_rate: feeBreakdown.gross_rate,
+              tax_deduction: feeBreakdown.tax_deduction,
+              hidden_fee: feeBreakdown.hidden_fee,
+              admin_fee: feeBreakdown.admin_fee,
+              net_payroll: feeBreakdown.net_payroll,
               trip_route_code: route?.trip_route_code || trip.trip_route_code
             });
             updated++;

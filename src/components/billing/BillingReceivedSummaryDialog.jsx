@@ -44,16 +44,15 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
 
   const calculateTotals = (trip) => {
     const gross = trip.gross_rate || 0;
-    const tax = gross * 0.02;
-    const afterTax = gross - tax;
-    const hidden = afterTax * 0.04;
-    const admin = afterTax * 0.06;
+    const tax = trip.tax_deduction || 0;
+    const hidden = trip.hidden_fee || 0;
+    const admin = trip.admin_fee || 0;
     const fuelSubsidyAmount = (() => {
       const s = getFuelSubsidy(trip);
       return s ? gross * (s.subsidy_percentage / 100) : 0;
     })();
-    const net = gross - tax - hidden - admin + fuelSubsidyAmount;
-    return { gross, tax, afterTax, hidden, admin, fuelSubsidy: fuelSubsidyAmount, net };
+    const net = trip.net_payroll || (gross - tax - hidden - admin + fuelSubsidyAmount);
+    return { gross, tax, hidden, admin, fuelSubsidy: fuelSubsidyAmount, net };
   };
 
   // Group trips by plate_number and aggregate totals

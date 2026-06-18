@@ -9,6 +9,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { calculateTripFees } from '@/lib/feeCalculator';
 
 export default function TripForm({ open, onClose, onSaved, editData, isDuplicate = false, clients, subcontractors, billingCycles }) {
   const [form, setForm] = useState({
@@ -256,18 +257,25 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
     
     const grossRate = getDirectRouteRate(matchedRoute, currentTruckType);
     
-    const taxDeduction = grossRate * 0.02;
-    const hiddenFee = grossRate * 0.04;
-    const adminFee = grossRate * 0.06;
-    const netPayroll = grossRate * 0.88;
+    // Calculate all fees using the new fee calculator
+    // This will lookup the hidden fee percentage from ClientAccount.pickup_location_fees
+    const feeBreakdown = calculateTripFees({
+      grossRate,
+      clientData: client,
+      pickupLocation: currentPickup,
+      truckType: currentTruckType,
+      insuranceCharge: form.insurance_charge || 0,
+      otherCharges: form.other_charges || 0,
+      fuelSubsidy: 0,
+    });
 
     const data = { 
       ...form, 
-      gross_rate: grossRate, 
-      tax_deduction: taxDeduction, 
-      hidden_fee: hiddenFee, 
-      admin_fee: adminFee, 
-      net_payroll: netPayroll 
+      gross_rate: feeBreakdown.gross_rate, 
+      tax_deduction: feeBreakdown.tax_deduction, 
+      hidden_fee: feeBreakdown.hidden_fee, 
+      admin_fee: feeBreakdown.admin_fee, 
+      net_payroll: feeBreakdown.net_payroll 
     };
 
     if (editData && !isDuplicate) {
