@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,11 +14,19 @@ export default function Reports() {
   const [subcontractors, setSubcontractors] = useState([]);
   const [billingCycles, setBillingCycles] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  
+  // Pagination & Filter States
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
   const [filters, setFilters] = useState({
     client_id: 'all', sub_id: 'all', cycle_id: 'all',
-    date_from: '', date_to: ''
+    year: 'all', date_from: '', date_to: ''
   });
+
+  // Currency Formatter
+  const formatCurrency = (val) => new Intl.NumberFormat('en-PH', { 
+    style: 'currency', currency: 'PHP', minimumFractionDigits: 2 
+  }).format(val || 0);
 
   const load = async () => {
     setLoading(true);
@@ -37,12 +45,21 @@ export default function Reports() {
 
   useEffect(() => { load(); }, []);
 
+  // Reset to page 1 on filter change
+  useEffect(() => { setCurrentPage(1); }, [filters]);
+
   const setF = (k, v) => setFilters(p => ({ ...p, [k]: v }));
+
+  const availableYears = useMemo(() => {
+    const years = new Set(trips.map(t => t.delivery_date?.substring(0, 4)).filter(Boolean));
+    return Array.from(years).sort((a, b) => b - a);
+  }, [trips]);
 
   const filtered = trips.filter(t => {
     if (filters.client_id !== 'all' && t.client_account_id !== filters.client_id) return false;
     if (filters.sub_id !== 'all' && t.subcontractor_id !== filters.sub_id) return false;
     if (filters.cycle_id !== 'all' && t.billing_cycle_id !== filters.cycle_id) return false;
+    if (filters.year !== 'all' && t.delivery_date?.substring(0, 4) !== filters.year) return false;
     if (filters.date_from && t.delivery_date < filters.date_from) return false;
     if (filters.date_to && t.delivery_date > filters.date_to) return false;
     return true;
@@ -50,6 +67,10 @@ export default function Reports() {
 
   const totalGross = filtered.reduce((s, t) => s + (t.gross_rate || 0), 0);
   const totalNet = filtered.reduce((s, t) => s + (t.net_payroll || 0), 0);
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const paginatedData = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   const exportPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
@@ -120,23 +141,25 @@ export default function Reports() {
         subtitle="Filter and export trip records"
         actions={
           <div className="flex gap-2">
-            <Button onClick={exportCSV} size="sm" variant="outline">
-              <Download className="w-4 h-4 mr-1.5" /> Export CSV
-            </Button>
-            <Button onClick={exportPDF} size="sm" variant="outline">
-              <Download className="w-4 h-4 mr-1.5" /> Export PDF
-            </Button>
+            <Button onClick={exportCSV} size="sm" variant="outline"><Download className="w-4 h-4 mr-1.5" /> Export CSV</Button>
+            <Button onClick={exportPDF} size="sm" variant="outline"><Download className="w-4 h-4 mr-1.5" /> Export PDF</Button>
           </div>
         }
       />
 
-      {/* Filters */}
       <div className="bg-card border rounded-lg p-4 mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium">Filters</span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Select value={filters.year} onValueChange={v => setF('year', v)}>
+            <SelectTrigger><SelectValue placeholder="All Years" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {availableYears.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={filters.client_id} onValueChange={v => setF('client_id', v)}>
             <SelectTrigger><SelectValue placeholder="All Clients" /></SelectTrigger>
             <SelectContent>
@@ -158,16 +181,11 @@ export default function Reports() {
               {billingCycles.map(b => <SelectItem key={b.id} value={b.id}>{b.cycle_name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <div>
-            <Input type="date" placeholder="Date from" value={filters.date_from} onChange={e => setF('date_from', e.target.value)} />
-          </div>
-          <div>
-            <Input type="date" placeholder="Date to" value={filters.date_to} onChange={e => setF('date_to', e.target.value)} />
-          </div>
+          <Input type="date" placeholder="Date from" value={filters.date_from} onChange={e => setF('date_from', e.target.value)} />
+          <Input type="date" placeholder="Date to" value={filters.date_to} onChange={e => setF('date_to', e.target.value)} />
         </div>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Records Found</p>
@@ -175,15 +193,14 @@ export default function Reports() {
         </div>
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Total Gross</p>
-          <p className="text-2xl font-bold mt-1 text-blue-700">₱{totalGross.toFixed(2)}</p>
+          <p className="text-2xl font-bold mt-1 text-blue-700">{formatCurrency(totalGross)}</p>
         </div>
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Total Net Payroll</p>
-          <p className="text-2xl font-bold mt-1 text-emerald-700">₱{totalNet.toFixed(2)}</p>
+          <p className="text-2xl font-bold mt-1 text-emerald-700">{formatCurrency(totalNet)}</p>
         </div>
       </div>
 
-      {/* Table */}
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
       ) : (
@@ -198,20 +215,18 @@ export default function Reports() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {paginatedData.length === 0 ? (
                   <tr>
                     <td colSpan={12} className="text-center py-16">
                       <BarChart3 className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
                       <p className="text-muted-foreground text-sm">No records match the selected filters</p>
                     </td>
                   </tr>
-                ) : filtered.map(trip => (
+                ) : paginatedData.map(trip => (
                   <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-3 py-2.5 font-mono font-semibold text-xs text-primary">{trip.plate_number}</td>
                     <td className="px-3 py-2.5 text-xs">{trip.owner_name}</td>
-                    <td className="px-3 py-2.5">
-                      <span className="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">{trip.truck_type}</span>
-                    </td>
+                    <td className="px-3 py-2.5"><span className="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">{trip.truck_type}</span></td>
                     <td className="px-3 py-2.5 text-xs text-muted-foreground">{trip.client_name}</td>
                     <td className="px-3 py-2.5 text-xs">
                       <div>{trip.pickup_location}</div>
@@ -222,12 +237,19 @@ export default function Reports() {
                     <td className="px-3 py-2.5 font-mono text-xs">{trip.waybill_number}</td>
                     <td className="px-3 py-2.5 text-xs">{trip.particular}</td>
                     <td className="px-3 py-2.5 text-xs text-muted-foreground">{trip.billing_cycle_name}</td>
-                    <td className="px-3 py-2.5 text-right text-xs">{trip.gross_rate ? `₱${trip.gross_rate.toFixed(2)}` : '—'}</td>
-                    <td className="px-3 py-2.5 text-right font-semibold text-xs text-emerald-700">{trip.net_payroll ? `₱${trip.net_payroll.toFixed(2)}` : '—'}</td>
+                    <td className="px-3 py-2.5 text-right text-xs">{formatCurrency(trip.gross_rate)}</td>
+                    <td className="px-3 py-2.5 text-right font-semibold text-xs text-emerald-700">{formatCurrency(trip.net_payroll)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="flex items-center justify-between p-4 border-t">
+            <span className="text-xs text-muted-foreground">Page {currentPage} of {totalPages || 1}</span>
+            <div className="flex gap-2">
+              <Button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} size="sm" variant="outline">Previous</Button>
+              <Button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)} size="sm" variant="outline">Next</Button>
+            </div>
           </div>
         </div>
       )}
