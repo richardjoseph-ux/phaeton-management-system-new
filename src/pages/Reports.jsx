@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,8 @@ export default function Reports() {
   const [subcontractors, setSubcontractors] = useState([]);
   const [billingCycles, setBillingCycles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   const [filters, setFilters] = useState({
     client_id: 'all', sub_id: 'all', cycle_id: 'all',
@@ -22,34 +24,50 @@ export default function Reports() {
 
   const load = async () => {
     setLoading(true);
-    const [t, c, s, b] = await Promise.all([
-      base44.entities.TripRecord.list('-delivery_date', 1000),
-      base44.entities.ClientAccount.list('client_name', 100),
-      base44.entities.Subcontractor.list('owner_name', 200),
-      base44.entities.BillingCycle.list('-created_date', 100),
-    ]);
-    setTrips(t);
-    setClients(c);
-    setSubcontractors(s);
-    setBillingCycles(b);
-    setLoading(false);
+    try {
+      const [t, c, s, b] = await Promise.all([
+        base44.entities.TripRecord.list('-delivery_date', 1000),
+        base44.entities.ClientAccount.list('client_name', 100),
+        base44.entities.Subcontractor.list('owner_name', 200),
+        base44.entities.BillingCycle.list('-created_date', 100),
+      ]);
+      setTrips(t);
+      setClients(c);
+      setSubcontractors(s);
+      setBillingCycles(b);
+    } catch (error) {
+      console.error("Failed to load data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => { setCurrentPage(1); }, [filters]);
+
   const setF = (k, v) => setFilters(p => ({ ...p, [k]: v }));
 
-  const filtered = trips.filter(t => {
+  const filtered = useMemo(() => trips.filter(t => {
     if (filters.client_id !== 'all' && t.client_account_id !== filters.client_id) return false;
     if (filters.sub_id !== 'all' && t.subcontractor_id !== filters.sub_id) return false;
     if (filters.cycle_id !== 'all' && t.billing_cycle_id !== filters.cycle_id) return false;
     if (filters.date_from && t.delivery_date < filters.date_from) return false;
     if (filters.date_to && t.delivery_date > filters.date_to) return false;
     return true;
-  });
+  }), [trips, filters]);
 
-  const totalGross = filtered.reduce((s, t) => s + (t.gross_rate || 0), 0);
-  const totalNet = filtered.reduce((s, t) => s + (t.net_payroll || 0), 0);
+  const { totalGross, totalNet } = useMemo(() => filtered.reduce((acc, t) => ({
+    totalGross: acc.totalGross + (t.gross_rate || 0),
+    totalNet: acc.totalNet + (t.net_payroll || 0)
+  }), { totalGross: 0, totalNet: 0 }), [filtered]);
+
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return filtered.slice(start, start + rowsPerPage);
+  }, [filtered, currentPage]);
+
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
 
   const exportPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
@@ -130,7 +148,6 @@ export default function Reports() {
         }
       />
 
-      {/* Filters */}
       <div className="bg-card border rounded-lg p-4 mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="w-4 h-4 text-muted-foreground" />
@@ -158,16 +175,11 @@ export default function Reports() {
               {billingCycles.map(b => <SelectItem key={b.id} value={b.id}>{b.cycle_name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <div>
-            <Input type="date" placeholder="Date from" value={filters.date_from} onChange={e => setF('date_from', e.target.value)} />
-          </div>
-          <div>
-            <Input type="date" placeholder="Date to" value={filters.date_to} onChange={e => setF('date_to', e.target.value)} />
-          </div>
+          <Input type="date" value={filters.date_from} onChange={e => setF('date_from', e.target.value)} />
+          <Input type="date" value={filters.date_to} onChange={e => setF('date_to', e.target.value)} />
         </div>
       </div>
 
-      {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Records Found</p>
@@ -183,7 +195,6 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Table */}
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
       ) : (
@@ -198,20 +209,18 @@ export default function Reports() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {paginatedData.length === 0 ? (
                   <tr>
                     <td colSpan={12} className="text-center py-16">
                       <BarChart3 className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
                       <p className="text-muted-foreground text-sm">No records match the selected filters</p>
                     </td>
                   </tr>
-                ) : filtered.map(trip => (
+                ) : paginatedData.map(trip => (
                   <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-3 py-2.5 font-mono font-semibold text-xs text-primary">{trip.plate_number}</td>
                     <td className="px-3 py-2.5 text-xs">{trip.owner_name}</td>
-                    <td className="px-3 py-2.5">
-                      <span className="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">{trip.truck_type}</span>
-                    </td>
+                    <td className="px-3 py-2.5"><span className="text-xs bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">{trip.truck_type}</span></td>
                     <td className="px-3 py-2.5 text-xs text-muted-foreground">{trip.client_name}</td>
                     <td className="px-3 py-2.5 text-xs">
                       <div>{trip.pickup_location}</div>
@@ -228,6 +237,13 @@ export default function Reports() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="flex items-center justify-between p-4 border-t">
+            <span className="text-xs text-muted-foreground">Page {currentPage} of {totalPages || 1}</span>
+            <div className="flex gap-2">
+              <Button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} size="sm" variant="outline">Previous</Button>
+              <Button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)} size="sm" variant="outline">Next</Button>
+            </div>
           </div>
         </div>
       )}
