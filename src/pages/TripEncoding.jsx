@@ -240,7 +240,6 @@ const handleImportTrips = async (event) => {
         return;
       }
 
-      // Fetch both existing records and client list simultaneously
       const [existing, allClients] = await Promise.all([
         base44.entities.TripRecord.list(),
         base44.entities.ClientAccount.list('client_name', 100)
@@ -248,21 +247,31 @@ const handleImportTrips = async (event) => {
 
       const existingKeys = new Set(existing.map(t => `${t.plate_number?.toLowerCase() || ''}-${t.dr_number?.toLowerCase() || ''}-${t.delivery_date || ''}`));
 
-      // Process records to add client_account_id and filter duplicates
       const toImport = jsonData
         .filter(item => {
           const key = `${item.plate_number?.toLowerCase() || ''}-${item.dr_number?.toLowerCase() || ''}-${item.delivery_date || ''}`;
           return !existingKeys.has(key);
         })
         .map(item => {
-          // Map the client_name from Excel to the system ID of the client
+          // Helper to force YYYY-MM-DD string format
+          let formattedDate = item.delivery_date;
+          if (formattedDate instanceof Date) {
+            formattedDate = formattedDate.toISOString().split('T')[0];
+          } else if (typeof formattedDate === 'number') {
+            // Converts Excel serial date to JS Date then string
+            const date = new Date(Math.round((formattedDate - 25569) * 86400 * 1000));
+            formattedDate = date.toISOString().split('T')[0];
+          }
+
           const client = allClients.find(c => c.client_name?.toLowerCase() === item.client_name?.toLowerCase());
+          
           return {
             ...item,
+            delivery_date: formattedDate, // Now guaranteed to be a string
             client_account_id: client ? client.id : null
           };
         })
-        .filter(row => row.client_account_id !== null); // Remove rows where client wasn't found
+        .filter(row => row.client_account_id !== null);
 
       const skipped = jsonData.length - toImport.length;
 
@@ -272,7 +281,7 @@ const handleImportTrips = async (event) => {
       }
 
       await base44.entities.TripRecord.bulkCreate(toImport);
-      alert(`Successfully imported ${toImport.length} trip records (${skipped} duplicates/invalid client rows skipped). Click "Sync Trip Data" to populate client, rates, and fees.`);
+      alert(`Successfully imported ${toImport.length} trip records. Click "Sync Trip Data" to populate rates.`);
       load();
     } catch (error) {
       alert('Import failed: ' + error.message);
