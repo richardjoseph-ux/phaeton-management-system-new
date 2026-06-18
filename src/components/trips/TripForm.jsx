@@ -600,14 +600,29 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
             const gross = getDirectRouteRate(matchedRoute, form.truck_type);
             if (!gross) return null;
             
+            // Calculate fees to show accurate breakdown
+            const breakdownFees = calculateTripFees({
+              grossRate: gross,
+              clientData: client,
+              pickupLocation: form.pickup_location,
+              truckType: form.truck_type,
+              insuranceCharge: 0,
+              otherCharges: 0,
+              fuelSubsidy: 0,
+            });
+            
+            const taxPercent = 2;
+            const hiddenPercent = breakdownFees.hidden_fee_percentage;
+            const netPercent = 100 - taxPercent - hiddenPercent - 6; // 100 - tax - hidden - admin
+            
             return (
               <div className="col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs font-semibold text-blue-800 mb-2">Rate Breakdown</p>
                 <div className="grid grid-cols-4 gap-2 text-xs text-blue-700">
                   <div><span className="text-blue-500">Gross Rate</span><br />₱{gross.toFixed(2)}</div>
-                  <div><span className="text-blue-500">Tax (2%)</span><br />-₱{(gross * 0.02).toFixed(2)}</div>
-                  <div><span className="text-blue-500">Hidden Fee (4%)</span><br />-₱{(gross * 0.04).toFixed(2)}</div>
-                  <div><span className="text-blue-800 font-semibold">Net Payroll (88%)</span><br /><span className="font-bold">₱{(gross * 0.88).toFixed(2)}</span></div>
+                  <div><span className="text-blue-500">Tax ({taxPercent}%)</span><br />-₱{breakdownFees.tax_deduction.toFixed(2)}</div>
+                  <div><span className="text-blue-500">Hidden Fee ({hiddenPercent}%)</span><br />-₱{breakdownFees.hidden_fee.toFixed(2)}</div>
+                  <div><span className="text-blue-800 font-semibold">Net Payroll ({netPercent.toFixed(0)}%)</span><br /><span className="font-bold">₱{breakdownFees.net_payroll.toFixed(2)}</span></div>
                 </div>
               </div>
             );
