@@ -224,7 +224,7 @@ export default function TripEncoding() {
     setSyncingData(false);
   };
 
-  const handleImportTrips = async (event) => {
+const handleImportTrips = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
@@ -232,23 +232,45 @@ export default function TripEncoding() {
       const workbook = XLSX.read(bytes, { type: 'array' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      
       if (jsonData.length === 0) {
         alert('Excel file is empty');
         return;
       }
-      const existing = await base44.entities.TripRecord.list();
+
+      // Fetch both existing records and client list simultaneously
+      const [existing, allClients] = await Promise.all([
+        base44.entities.TripRecord.list(),
+        base44.entities.ClientAccount.list('client_name', 100)
+      ]);
+
       const existingKeys = new Set(existing.map(t => `${t.plate_number?.toLowerCase() || ''}-${t.dr_number?.toLowerCase() || ''}-${t.delivery_date || ''}`));
-      const toImport = jsonData.filter(item => {
-        const key = `${item.plate_number?.toLowerCase() || ''}-${item.dr_number?.toLowerCase() || ''}-${item.delivery_date || ''}`;
-        return !existingKeys.has(key);
-      });
+
+      // Process records to add client_account_id and filter duplicates
+      const toImport = jsonData
+        .filter(item => {
+          const key = `${item.plate_number?.toLowerCase() || ''}-${item.dr_number?.toLowerCase() || ''}-${item.delivery_date || ''}`;
+          return !existingKeys.has(key);
+        })
+        .map(item => {
+          // Map the client_name from Excel to the system ID of the client
+          const client = allClients.find(c => c.client_name?.toLowerCase() === item.client_name?.toLowerCase());
+          return {
+            ...item,
+            client_account_id: client ? client.id : null
+          };
+        })
+        .filter(row => row.client_account_id !== null); // Remove rows where client wasn't found
+
       const skipped = jsonData.length - toImport.length;
+
       if (toImport.length === 0) {
-        alert('All records already exist (skipped ' + skipped + ' duplicates)');
+        alert(`No records imported. (Skipped ${skipped} duplicates or rows with missing/unknown clients)`);
         return;
       }
+
       await base44.entities.TripRecord.bulkCreate(toImport);
-      alert(`Successfully imported ${toImport.length} trip records (${skipped} duplicates skipped). Click "Sync Trip Data" to populate client, rates, and fees.`);
+      alert(`Successfully imported ${toImport.length} trip records (${skipped} duplicates/invalid client rows skipped). Click "Sync Trip Data" to populate client, rates, and fees.`);
       load();
     } catch (error) {
       alert('Import failed: ' + error.message);
