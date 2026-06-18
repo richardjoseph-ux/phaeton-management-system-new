@@ -68,6 +68,9 @@ export default function Reports() {
   const totalGross = filtered.reduce((s, t) => s + (t.gross_rate || 0), 0);
   const totalNet = filtered.reduce((s, t) => s + (t.net_payroll || 0), 0);
   const companyIncome = totalGross - totalNet;
+  
+  // Accurate calculation based on recorded data
+  const totalGrossTaxed = filtered.reduce((s, t) => s + ((t.gross_rate || 0) - (t.tax_deduction || 0)), 0);
 
   // Pagination Logic
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
@@ -187,7 +190,7 @@ export default function Reports() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Records Found</p>
           <p className="text-2xl font-bold mt-1">{filtered.length}</p>
@@ -195,6 +198,10 @@ export default function Reports() {
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Total Gross</p>
           <p className="text-2xl font-bold mt-1 text-blue-700">{formatCurrency(totalGross)}</p>
+        </div>
+        <div className="bg-card border rounded-lg p-4">
+          <p className="text-xs text-muted-foreground">Gross (Less 2% Tax)</p>
+          <p className="text-2xl font-bold mt-1 text-blue-500">{formatCurrency(totalGrossTaxed)}</p>
         </div>
         <div className="bg-card border rounded-lg p-4">
           <p className="text-xs text-muted-foreground">Total Net Payroll</p>
