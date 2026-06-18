@@ -197,10 +197,10 @@ export default function AdditionalServices() {
 
       const tripData = allTrips.map(trip => {
       const gross = trip.gross_rate || 0;
-      const tax = gross * 0.02;
-      const afterTax = gross - tax;
-      const hidden = afterTax * 0.04;
-      const admin = afterTax * 0.06;
+      // Use stored calculated values if available
+      const tax = trip.tax_deduction || (gross * 0.02);
+      const hidden = trip.hidden_fee || (gross * 0.02 > 0 ? (gross - gross * 0.02) * 0.04 : 0);
+      const admin = trip.admin_fee || (gross * 0.02 > 0 ? (gross - gross * 0.02) * 0.06 : 0);
       const fs = getFuelSubsidy(trip);
       const fuelSubsidy = fs ? gross * (fs.subsidy_percentage / 100) : 0;
       const net = gross - tax - hidden - admin + fuelSubsidy;

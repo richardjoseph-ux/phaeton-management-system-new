@@ -64,9 +64,15 @@ export const calculateFees = (
   taxPercentage = 2,
   adminFeePercentage = 6
 ) => {
+  // Tax is calculated on gross rate
   const tax = grossRate * (taxPercentage / 100);
-  const hiddenFee = grossRate * (hiddenFeePercentage / 100);
-  const adminFee = grossRate * (adminFeePercentage / 100);
+  
+  // After-tax amount = Gross - Tax
+  const afterTax = grossRate - tax;
+  
+  // Hidden fee and admin fee are calculated on after-tax amount
+  const hiddenFee = afterTax * (hiddenFeePercentage / 100);
+  const adminFee = afterTax * (adminFeePercentage / 100);
 
   return {
     tax,

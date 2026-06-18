@@ -75,10 +75,10 @@ export default function BillingCycles() {
 
   const calculateTotals = (trip) => {
     const gross = trip.gross_rate || 0;
-    const tax = gross * 0.02;
-    const afterTax = gross - tax;
-    const hidden = afterTax * 0.04;
-    const admin = afterTax * 0.06;
+    // Use stored calculated values if available
+    const tax = trip.tax_deduction || (gross * 0.02);
+    const hidden = trip.hidden_fee || (gross * 0.02 > 0 ? (gross - gross * 0.02) * 0.04 : 0);
+    const admin = trip.admin_fee || (gross * 0.02 > 0 ? (gross - gross * 0.02) * 0.06 : 0);
     const insurance = trip.insurance_charge || 0;
     const other = trip.other_charges || 0;
     const fuelSubsidy = getFuelSubsidy(trip);
@@ -693,7 +693,7 @@ const archivedSummaryGroups = (() => {
                 </div>
                 <div className="bg-card border rounded-lg p-4">
                   <p className="text-xs text-muted-foreground">Total Tax (2%)</p>
-                  <p className="text-xl font-bold mt-1 text-red-600">-₱{trips.reduce((s, t) => s + (t.gross_rate || 0) * 0.02, 0).toFixed(2)}</p>
+                  <p className="text-xl font-bold mt-1 text-red-600">-₱{trips.reduce((s, t) => s + (t.tax_deduction || (t.gross_rate || 0) * 0.02), 0).toFixed(2)}</p>
                 </div>
               </div>
 
@@ -711,7 +711,7 @@ const archivedSummaryGroups = (() => {
                   <tbody>
                     {trips.map(trip => {
                       const gross = trip.gross_rate || 0;
-                      const tax = gross * 0.02;
+                      const tax = trip.tax_deduction || (gross * 0.02);
                       return (
                         <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30">
                           <td className="px-3 py-3 font-mono font-semibold text-primary whitespace-nowrap">{trip.plate_number}</td>
