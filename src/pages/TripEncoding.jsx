@@ -251,7 +251,7 @@ const handleImportTrips = async (event) => {
 
       const toImport = jsonData
         .filter(item => {
-          const key = `${item.plate_number?.toLowerCase() || ''}-${item.dr_number?.toLowerCase() || ''}-${item.delivery_date || ''}`;
+          const key = `${item.plate_number?.toLowerCase() || ''}-${String(item.dr_number || '').toLowerCase()}-${item.delivery_date || ''}`;
           return !existingKeys.has(key);
         })
         .map(item => {
@@ -272,7 +272,10 @@ const handleImportTrips = async (event) => {
             ...item,
             delivery_date: formattedDate,
             client_account_id: client ? client.id : null,
-            billing_cycle_id: cycle ? cycle.id : null
+            billing_cycle_id: cycle ? cycle.id : null,
+            // Force these to be strings to satisfy database schema
+            waybill_number: item.waybill_number != null ? String(item.waybill_number) : null,
+            dr_number: item.dr_number != null ? String(item.dr_number) : null
           };
         })
         .filter(row => row.client_account_id !== null);
