@@ -129,11 +129,13 @@ export default function TripEncoding() {
     load();
   };
 
-  const handleExportTrips = async () => {
+const handleExportTrips = async () => {
     try {
       const data = filtered.map(t => ({
         plate_number: t.plate_number,
         owner_name: t.owner_name,
+        // Added truck_type here
+        truck_type: t.truck_type, 
         client_name: t.client_name,
         pickup_location: t.pickup_location,
         delivery_location: t.delivery_location,
