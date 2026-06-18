@@ -6,8 +6,8 @@ import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp, Trash2 } from 
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ClientForm from '@/components/clients/ClientForm';
-// Added the missing import below:
 import { useAuth } from '@/lib/AuthContext';
+import { getTruckTypeFeePercentage } from '@/lib/feeCalculator';
 
 export default function ClientAccounts() {
   const { user: currentUser } = useAuth();
@@ -170,7 +170,7 @@ export default function ClientAccounts() {
                                                                           <th className="text-left px-2 py-2 font-semibold text-muted-foreground">Code</th>
                                                                           <th className="text-right px-2 py-2 font-semibold text-muted-foreground">Gross</th>
                                                                           <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-red-600">Tax(2%)</th>
-                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-orange-600">Hidden(4%)</th>
+                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-orange-600">Hidden({getTruckTypeFeePercentage(client, expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0], expanded[`${client.id}_truck`] || 'AUV')}%)</th>
                                                                           <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-amber-600">Admin(6%)</th>
                                                                           <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-emerald-600">Net</th>
                                                                         </tr>
@@ -206,10 +206,15 @@ export default function ClientAccounts() {
                                                                           return (
                                                                             <>
                                                                               {data.map((route, idx) => {
-                                                                                const gross = Number(route.rates?.[expanded[`${client.id}_truck`] || 'AUV'] || 0);
+                                                                                const truckType = expanded[`${client.id}_truck`] || 'AUV';
+                                                                                const pickupLocation = expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0];
+                                                                                const gross = Number(route.rates?.[truckType] || 0);
                                                                                 const tax = gross * 0.02;
                                                                                 const afterTax = gross - tax;
-                                                                                const hidden = afterTax * 0.04;
+                                                                                
+                                                                                // Get the configured hidden fee percentage for this client/pickup/truck combo
+                                                                                const hiddenFeePercentage = getTruckTypeFeePercentage(client, pickupLocation, truckType);
+                                                                                const hidden = afterTax * (hiddenFeePercentage / 100);
                                                                                 const admin = afterTax * 0.06;
                                                                                 const net = gross - tax - hidden - admin;
 
