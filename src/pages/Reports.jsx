@@ -28,7 +28,7 @@ export default function Reports() {
     style: 'currency', currency: 'PHP', minimumFractionDigits: 2 
   }).format(val || 0);
 
-  const load = async () => {
+const load = async () => {
     setLoading(true);
     const [t, c, s, b] = await Promise.all([
       base44.entities.TripRecord.list('-delivery_date', 1000),
@@ -36,6 +36,10 @@ export default function Reports() {
       base44.entities.Subcontractor.list('owner_name', 200),
       base44.entities.BillingCycle.list('-created_date', 100),
     ]);
+
+    // Add this line to debug:
+    console.log("Check the data received from the API:", t); 
+
     setTrips(t);
     setClients(c);
     setSubcontractors(s);
