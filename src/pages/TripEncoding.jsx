@@ -174,12 +174,21 @@ const handleExportTrips = async () => {
   const handleSyncTripData = async () => {
     setSyncingData(true);
     try {
-      const tripsToUpdate = await base44.entities.TripRecord.list();
-      const allClients = await base44.entities.ClientAccount.list('client_name', 100);
+      // 1. Fetch all necessary data
+      const [tripsToUpdate, allClients, allSubcontractors] = await Promise.all([
+        base44.entities.TripRecord.list(),
+        base44.entities.ClientAccount.list('client_name', 100),
+        base44.entities.Subcontractor.list('plate_number', 200) // Added this fetch
+      ]);
+
       let updated = 0;
 
       for (const trip of tripsToUpdate) {
+        // Find the client
         const client = allClients.find(c => c.id === trip.client_account_id || c.client_name === trip.client_name);
+        
+        // Find the subcontractor matching the plate_number
+        const subcontractor = allSubcontractors.find(s => s.plate_number === trip.plate_number);
         
         if (client) {
           const route = client.routes?.find(r => 
@@ -191,7 +200,6 @@ const handleExportTrips = async () => {
           const newRate = route?.rates?.[trip.truck_type] || 0;
           const newGross = newRate || trip.gross_rate || 0;
 
-          // Use the new fee calculator which respects pickup_location_fees configuration
           const feeBreakdown = calculateTripFees({
             grossRate: newGross,
             clientData: client,
@@ -202,7 +210,10 @@ const handleExportTrips = async () => {
             fuelSubsidy: 0,
           });
 
-          const hasChanges = 
+          // Check if changes are needed for either fee data OR subcontractor ID
+          const needsSubcontractorUpdate = trip.subcontractor_id !== (subcontractor?.id || trip.subcontractor_id);
+          
+          const hasFeeChanges = 
             trip.gross_rate !== feeBreakdown.gross_rate ||
             trip.tax_deduction !== feeBreakdown.tax_deduction ||
             trip.hidden_fee !== feeBreakdown.hidden_fee ||
@@ -210,10 +221,11 @@ const handleExportTrips = async () => {
             trip.net_payroll !== feeBreakdown.net_payroll ||
             trip.trip_route_code !== (route?.trip_route_code || trip.trip_route_code);
 
-          if (hasChanges) {
+          if (hasFeeChanges || needsSubcontractorUpdate) {
             await base44.entities.TripRecord.update(trip.id, {
               client_account_id: client.id,
               client_name: client.client_name,
+              subcontractor_id: subcontractor?.id || trip.subcontractor_id, // Add this line
               gross_rate: feeBreakdown.gross_rate,
               tax_deduction: feeBreakdown.tax_deduction,
               hidden_fee: feeBreakdown.hidden_fee,
@@ -225,7 +237,7 @@ const handleExportTrips = async () => {
           }
         }
       }
-      alert(`Synced ${updated} trip records with updated route and rate data`);
+      alert(`Synced ${updated} trip records with updated route, rate, and subcontractor data.`);
       await load();
     } catch (error) {
       alert('Error syncing trip data: ' + error.message);
