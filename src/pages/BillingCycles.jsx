@@ -392,39 +392,49 @@ const archivedSummaryGroups = (() => {
   return (
     <div className="p-6">
       <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Billing Cycles</h1>
-          <p className="text-sm text-muted-foreground">Manage billing statements and received summaries</p>
-        </div>
-        {mainTab === 'statements' && (
-          <div className="flex gap-2 items-center">
-            <div className="flex gap-2 mr-4">
-              <Button onClick={handleExport} size="sm" variant="outline">
-                <Download className="w-4 h-4 mr-1.5" /> Export Excel
-              </Button>
-              {isAdmin && (
-                <>
-                  <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
-                    <Upload className="w-4 h-4 mr-1.5" /> Import Excel
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleImport}
-                    className="hidden"
-                  />
-                </>
-              )}
-            </div>
-            {isAdmin && (
-              <Button onClick={openAdd} size="sm">
-                <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
-              </Button>
-            )}
-          </div>
+  <div>
+    <h1 className="text-2xl font-bold text-foreground">Billing Cycles</h1>
+    <p className="text-sm text-muted-foreground">Manage billing statements and received summaries</p>
+  </div>
+  
+  {mainTab === 'statements' && (
+    <div className="flex items-center gap-2">
+      {/* Group Export, Sync, and Import together */}
+      <div className="flex items-center gap-2 mr-4 border-r pr-4">
+        <Button onClick={handleExport} size="sm" variant="outline">
+          <Download className="w-4 h-4 mr-1.5" /> Export
+        </Button>
+        
+        {isAdmin && (
+          <>
+            <Button onClick={syncClientIds} size="sm" variant="outline">
+              <RefreshCw className="w-4 h-4 mr-1.5" /> Sync
+            </Button>
+            
+            <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
+              <Upload className="w-4 h-4 mr-1.5" /> Import
+            </Button>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleImport}
+              className="hidden"
+            />
+          </>
         )}
       </div>
+
+      {/* Primary Action */}
+      {isAdmin && (
+        <Button onClick={openAdd} size="sm">
+          <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
+        </Button>
+      )}
+    </div>
+  )}
+</div>
 
       {/* Main tabs */}
       <div className="flex items-center gap-2 border-b mb-0">
