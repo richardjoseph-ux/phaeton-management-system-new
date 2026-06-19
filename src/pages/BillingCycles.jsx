@@ -404,11 +404,6 @@ const archivedSummaryGroups = (() => {
               </Button>
               {isAdmin && (
                 <>
-                  {/* NEW SYNC BUTTON */}
-                  <Button onClick={syncClientIds} size="sm" variant="outline">
-                    <RefreshCw className="w-4 h-4 mr-1.5" /> Sync Clients
-                  </Button>
-
                   <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
                     <Upload className="w-4 h-4 mr-1.5" /> Import Excel
                   </Button>
