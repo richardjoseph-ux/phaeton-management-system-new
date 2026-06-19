@@ -224,19 +224,20 @@ const syncClientIds = async () => {
     return `${year}-${month}-${day}`;
   };
 
-  // Group non-archived cycles by billing_received_date for summary tab
-  const billingReceivedGroups = (() => {
-    const groups = {};
-    cycles.filter(c => !c.is_archived).forEach(cycle => {
-      if (cycle.billing_received_date) {
-        if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
-        groups[cycle.billing_received_date].push(cycle);
-      }
-    });
-    return Object.entries(groups)
-      .map(([date, items]) => ({ date, cycles: items }))
-      .sort((a, b) => b.date.localeCompare(a.date));
-  })();
+  // Change this logic in your billingReceivedGroups definition
+const billingReceivedGroups = (() => {
+  const groups = {};
+  // REMOVED: .filter(c => !c.is_archived) so all cycles are processed
+  cycles.forEach(cycle => {
+    if (cycle.billing_received_date) {
+      if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
+      groups[cycle.billing_received_date].push(cycle);
+    }
+  });
+  return Object.entries(groups)
+    .map(([date, items]) => ({ date, cycles: items }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+})();
 
   // Get or create summary record for a date
   const getSummaryRecord = (date) => summaryRecords.find(r => r.billing_received_date === date);
