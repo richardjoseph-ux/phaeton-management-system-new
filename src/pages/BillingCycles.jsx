@@ -44,6 +44,35 @@ export default function BillingCycles() {
   const [allTrips, setAllTrips] = useState([]);
   const fileInputRef = useRef(null);
 
+const syncClientIds = async () => {
+    if (!confirm("This will match and update Client IDs for all cycles. Continue?")) return;
+    
+    setLoading(true);
+    try {
+      const cyclesToSync = cycles.filter(c => !c.client_account_id);
+      
+      const updates = cyclesToSync.map(async (cycle) => {
+        const matchedClient = clients.find(c => 
+          c.client_name?.toLowerCase() === cycle.client_name?.toLowerCase()
+        );
+        
+        if (matchedClient) {
+          return base44.entities.BillingCycle.update(cycle.id, { 
+            client_account_id: matchedClient.id 
+          });
+        }
+      });
+
+      await Promise.all(updates);
+      alert("Sync complete!");
+      load();
+    } catch (error) {
+      alert("Sync failed: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const load = async () => {
     setLoading(true);
     const [c, cl, s, sr, t, d] = await Promise.all([
