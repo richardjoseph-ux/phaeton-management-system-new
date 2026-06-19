@@ -92,13 +92,18 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
-  // Calculate grand totals from trip-based plates
-  const grandTotals = plateGroups.reduce((acc, row) => {
-    acc.afterTax += row.gross - row.tax;
-    acc.fuelSubsidy += row.fuelSubsidy;
-    acc.net += row.net;
-    return acc;
-  }, { afterTax: 0, fuelSubsidy: 0, net: 0 });
+// Calculate grand totals
+const grandTotals = plateGroups.reduce((acc, row) => {
+  acc.gross += row.gross;
+  acc.tax += row.tax;
+  acc.other += row.other; // Add this line
+  acc.fuelSubsidy += row.fuelSubsidy;
+  acc.net += row.net;
+  return acc;
+}, { gross: 0, tax: 0, other: 0, fuelSubsidy: 0, net: 0 });
+
+// Derive the Cheque Amount from these totals
+const chequeAmount = grandTotals.gross - grandTotals.tax - grandTotals.other;
 
   // Add reimbursements for plates without trips
   const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
@@ -202,10 +207,12 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
                 <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Grand Total</p>
                 <p className="text-2xl font-bold mt-2 text-blue-700">₱{plateGroups.reduce((sum, r) => sum + r.gross, 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
-                <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Cheque Amount</p>
-                <p className="text-2xl font-bold mt-2 text-amber-700">₱{grandTotals.afterTax.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </div>
+<div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
+  <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Cheque Amount</p>
+  <p className="text-2xl font-bold mt-2 text-amber-700">
+    ₱{chequeAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+  </p>
+</div>
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-5">
                 <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Subcon Payout</p>
                 <p className="text-2xl font-bold mt-2 text-emerald-700">₱{grandTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
