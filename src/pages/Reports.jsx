@@ -55,13 +55,14 @@ export default function Reports() {
     return Array.from(years).sort((a, b) => b - a);
   }, [trips]);
 
-  const filtered = trips.filter(t => {
+const filtered = trips.filter(t => {
     if (filters.client_id !== 'all' && t.client_account_id !== filters.client_id) return false;
     if (filters.sub_id !== 'all' && t.subcontractor_id !== filters.sub_id) return false;
     if (filters.cycle_id !== 'all' && t.billing_cycle_id !== filters.cycle_id) return false;
     if (filters.year !== 'all' && t.delivery_date?.substring(0, 4) !== filters.year) return false;
-    if (filters.date_from && t.delivery_date < filters.date_from) return false;
-    if (filters.date_to && t.delivery_date > filters.date_to) return false;
+    if (filters.date_from && (!t.first_cheque_date || t.first_cheque_date < filters.date_from)) return false;
+    if (filters.date_to && (!t.first_cheque_date || t.first_cheque_date > filters.date_to)) return false;
+    
     return true;
   });
 
