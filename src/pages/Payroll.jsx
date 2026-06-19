@@ -115,17 +115,20 @@ export default function Payroll() {
     ? dateTrips.filter(t => t.plate_number === selectedOwner)
     : dateTrips;
 
-  const tripTotals = displayedTrips.reduce((acc, trip) => {
-    const t = calculateTripNet(trip);
-    acc.gross += t.gross;
-    acc.tax += t.tax;
-    acc.afterTax += t.afterTax;
-    acc.hidden += t.hidden;
-    acc.admin += t.admin;
-    acc.fuelSubsidy += t.fuelSubsidy;
-    acc.net += t.net;
-    return acc;
-  }, { gross: 0, tax: 0, afterTax: 0, hidden: 0, admin: 0, fuelSubsidy: 0, net: 0 });
+const tripTotals = useMemo(() => {
+    return displayedTrips.reduce((acc, trip) => {
+      const t = calculateTripNet(trip);
+      acc.gross += t.gross;
+      acc.tax += t.tax;
+      // Change this specific line to perform the math instead of referencing a missing variable
+      acc.afterTax += (t.gross - t.tax); 
+      acc.hidden += t.hidden;
+      acc.admin += t.admin;
+      acc.fuelSubsidy += t.fuelSubsidy;
+      acc.net += t.net;
+      return acc;
+    }, { gross: 0, tax: 0, afterTax: 0, hidden: 0, admin: 0, fuelSubsidy: 0, net: 0 });
+  }, [displayedTrips]);
 
   const applicableDeductions = (() => {
     if (!selectedDate) return [];
