@@ -265,7 +265,6 @@ const handleImport = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Helper to convert Excel serial dates or Date objects to YYYY-MM-DD
     const formatDate = (val) => {
       if (!val) return "";
       const date = typeof val === 'number' ? new Date((val - 25569) * 86400 * 1000) : new Date(val);
@@ -278,31 +277,36 @@ const handleImport = async (event) => {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      if (jsonData.length === 0) {
-        alert('Excel file is empty');
-        return;
-      }
-
       const processedData = jsonData.map(item => {
+        // 1. Normalize keys: map "cycle name" to "cycle_name"
+        const normalizedItem = {
+          cycle_name: item["cycle name"] || item.cycle_name,
+          status: item.status,
+          billing_received_date: formatDate(item.billing_received_date),
+          cheque_date: formatDate(item.cheque_date),
+          paid_status: item.paid_status,
+          is_archived: item.is_archived === "TRUE" || item.is_archived === true,
+          notes: item.notes
+        };
+
+        // 2. Map client_name to client_account_id
         const client = clients.find(c => c.client_name === item.client_name);
         
-        // Remove old ID and format dates to YYYY-MM-DD strings
-        const { client_account_id, ...rest } = item;
         return {
-          ...rest,
-          client_account_id: client ? client.id : null,
-          billing_received_date: formatDate(item.billing_received_date),
-          cheque_date: formatDate(item.cheque_date)
+          ...normalizedItem,
+          client_account_id: client ? client.id : null 
         };
       });
 
       const existing = await base44.entities.BillingCycle.list();
       const existingNames = new Set(existing.map(c => c.cycle_name?.toLowerCase()));
       
-      const toImport = processedData.filter(item => !existingNames.has(item.cycle_name?.toLowerCase()));
+      const toImport = processedData.filter(item => 
+        item.cycle_name && !existingNames.has(item.cycle_name.toLowerCase())
+      );
       
       if (toImport.length === 0) {
-        alert('All records already exist.');
+        alert('No valid new records to import.');
         return;
       }
 
