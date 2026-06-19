@@ -72,7 +72,7 @@ const syncClientIds = async () => {
       setLoading(false);
     }
   };
-  
+
   const load = async () => {
     setLoading(true);
     const [c, cl, s, sr, t, d] = await Promise.all([
@@ -436,13 +436,16 @@ const archivedSummaryGroups = (() => {
         
         {isAdmin && (
           <>
+
+             <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
+              <Upload className="w-4 h-4 mr-1.5" /> Import
+            </Button>
+            
             <Button onClick={syncClientIds} size="sm" variant="outline">
               <RefreshCw className="w-4 h-4 mr-1.5" /> Sync
             </Button>
             
-            <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
-              <Upload className="w-4 h-4 mr-1.5" /> Import
-            </Button>
+
             
             <input
               ref={fileInputRef}
