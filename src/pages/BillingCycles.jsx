@@ -244,7 +244,6 @@ export default function BillingCycles() {
     try {
       const data = cycles.map(c => ({
         cycle_name: c.cycle_name,
-        client_account_id: c.client_account_id,
         client_name: getClientName(c.client_account_id),
         status: c.status,
         billing_received_date: c.billing_received_date,
@@ -262,26 +261,46 @@ export default function BillingCycles() {
     }
   };
 
-  const handleImport = async (event) => {
+const handleImport = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
     try {
       const bytes = await file.arrayBuffer();
       const workbook = XLSX.read(bytes, { type: 'array' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
       if (jsonData.length === 0) {
         alert('Excel file is empty');
         return;
       }
+
+      // 1. Process data: Map client_name back to client_account_id
+      const processedData = jsonData.map(item => {
+        // Find the client object where the name matches the Excel column 'client_name'
+        const client = clients.find(c => c.client_name === item.client_name);
+        
+        // Return object without client_account_id (or overriding it)
+        const { client_account_id, ...rest } = item;
+        return {
+          ...rest,
+          client_account_id: client ? client.id : null // Map ID if found, otherwise null
+        };
+      });
+
       const existing = await base44.entities.BillingCycle.list();
       const existingNames = new Set(existing.map(c => c.cycle_name?.toLowerCase()));
-      const toImport = jsonData.filter(item => !existingNames.has(item.cycle_name?.toLowerCase()));
+      
+      // 2. Filter using the processed data
+      const toImport = processedData.filter(item => !existingNames.has(item.cycle_name?.toLowerCase()));
       const skipped = jsonData.length - toImport.length;
+
       if (toImport.length === 0) {
         alert('All records already exist (skipped ' + skipped + ' duplicates)');
         return;
       }
+
       await base44.entities.BillingCycle.bulkCreate(toImport);
       alert(`Successfully imported ${toImport.length} billing cycle records (${skipped} duplicates skipped)`);
       load();
