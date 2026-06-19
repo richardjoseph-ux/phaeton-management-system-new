@@ -217,19 +217,20 @@ const filtered = trips.filter(t => {
         <div className="bg-card border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    {['Plate #', 'Owner', 'Truck', 'Client', 'Pickup → Delivery', 'Del. Date', 'DR #', 'Waybill', 'Particular', 'Billing Cycle', 'Cheque Date', 'Gross', 'Net'].map(h => (
-                      <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  {['Plate #', 'Owner', 'Truck', 'Client', 'Pickup → Delivery', 'Del. Date', 'DR #', 'Waybill', 'Particular', 'Billing Cycle', 'Cheque Date', 'Gross', 'Net'].map(h => (
+                    <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
               <tbody>
                 {paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="text-center py-16">
+                    {/* UPDATED: colSpan changed from 12 to 13 */}
+                    <td colSpan={13} className="text-center py-16">
                       <BarChart3 className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
                       <p className="text-muted-foreground text-sm">No records match the selected filters</p>
                     </td>
@@ -249,13 +250,22 @@ const filtered = trips.filter(t => {
                     <td className="px-3 py-2.5 font-mono text-xs">{trip.waybill_number}</td>
                     <td className="px-3 py-2.5 text-xs">{trip.particular}</td>
                     <td className="px-3 py-2.5 text-xs text-muted-foreground">{trip.billing_cycle_name}</td>
+                    
+                    {/* ADDED: Logic for Cheque Date */}
+                    <td className="px-3 py-2.5 text-xs">
+                      {trip.first_cheque_date 
+                        ? formatDateDisplay(trip.first_cheque_date) 
+                        : <span className="text-gray-400 italic">No Date</span>
+                      }
+                    </td>
+                    
                     <td className="px-3 py-2.5 text-right text-xs">{formatCurrency(trip.gross_rate)}</td>
                     <td className="px-3 py-2.5 text-right font-semibold text-xs text-emerald-700">{formatCurrency(trip.net_payroll)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+</div>
           <div className="flex items-center justify-between p-4 border-t">
             <span className="text-xs text-muted-foreground">Page {currentPage} of {totalPages || 1}</span>
             <div className="flex gap-2">
