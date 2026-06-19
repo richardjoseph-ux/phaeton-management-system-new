@@ -60,15 +60,13 @@ export default function Reports() {
     return Array.from(years).sort((a, b) => b - a);
   }, [trips]);
 
-  // Integrated Filtering and Sorting Logic
-  const filtered = useMemo(() => {
+ const filtered = useMemo(() => {
     let result = trips.filter(t => {
       if (filters.client_id !== 'all' && t.client_account_id !== filters.client_id) return false;
       if (filters.sub_id !== 'all' && t.subcontractor_id !== filters.sub_id) return false;
       if (filters.cycle_id !== 'all' && t.billing_cycle_id !== filters.cycle_id) return false;
       if (filters.year !== 'all' && t.delivery_date?.substring(0, 4) !== filters.year) return false;
       
-      // Dynamic Date Filter Logic
       const targetDate = filters.date_mode === 'cheque' ? t.first_cheque_date : t.delivery_date;
       if (filters.date_from && (!targetDate || targetDate < filters.date_from)) return false;
       if (filters.date_to && (!targetDate || targetDate > filters.date_to)) return false;
@@ -76,11 +74,18 @@ export default function Reports() {
       return true;
     });
 
-    // Sorting Logic
+    // UPDATED SORTING LOGIC:
     return result.sort((a, b) => {
-      const dateA = new Date(a.delivery_date || '1970-01-01');
-      const dateB = new Date(b.delivery_date || '1970-01-01');
-      return filters.sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+      // Determine which date field to use based on the active mode
+      const dateKey = filters.date_mode === 'cheque' ? 'first_cheque_date' : 'delivery_date';
+      
+      const dateA = new Date(a[dateKey] || '1900-01-01');
+      const dateB = new Date(b[dateKey] || '1900-01-01');
+      
+      // Perform chronological comparison
+      return filters.sortOrder === 'desc' 
+        ? dateB - dateA 
+        : dateA - dateB;
     });
   }, [trips, filters]);
 
