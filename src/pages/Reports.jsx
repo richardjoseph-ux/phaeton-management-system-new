@@ -213,13 +213,15 @@ const filtered = trips.filter(t => {
         <div className="bg-card border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  {['Plate #', 'Owner', 'Truck', 'Client', 'Pickup → Delivery', 'Del. Date', 'DR #', 'Waybill', 'Particular', 'Billing Cycle', 'Gross', 'Net'].map(h => (
-                    <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    {['Plate #', 'Owner', 'Truck', 'Client', 'Pickup → Delivery', 'Del. Date', 'DR #', 'Waybill', 'Particular', 'Billing Cycle', 'Cheque Date', 'Gross', 'Net'].map(h => (
+                      <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
               <tbody>
                 {paginatedData.length === 0 ? (
                   <tr>
