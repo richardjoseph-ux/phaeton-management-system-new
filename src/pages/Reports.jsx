@@ -265,7 +265,7 @@ const filtered = trips.filter(t => {
                 ))}
               </tbody>
             </table>
-</div>
+          </div>
           <div className="flex items-center justify-between p-4 border-t">
             <span className="text-xs text-muted-foreground">Page {currentPage} of {totalPages || 1}</span>
             <div className="flex gap-2">
