@@ -21,7 +21,8 @@ export default function Reports() {
   const [filters, setFilters] = useState({
     client_id: 'all', sub_id: 'all', cycle_id: 'all',
     year: 'all', date_from: '', date_to: '',
-    date_mode: 'delivery' // Added Date Mode state
+    date_mode: 'delivery',
+    sortOrder: 'desc' // Added sort order state
   });
 
   // Currency Formatter
@@ -59,19 +60,29 @@ export default function Reports() {
     return Array.from(years).sort((a, b) => b - a);
   }, [trips]);
 
-  const filtered = trips.filter(t => {
-    if (filters.client_id !== 'all' && t.client_account_id !== filters.client_id) return false;
-    if (filters.sub_id !== 'all' && t.subcontractor_id !== filters.sub_id) return false;
-    if (filters.cycle_id !== 'all' && t.billing_cycle_id !== filters.cycle_id) return false;
-    if (filters.year !== 'all' && t.delivery_date?.substring(0, 4) !== filters.year) return false;
-    
-    // Dynamic Date Filter Logic
-    const targetDate = filters.date_mode === 'cheque' ? t.first_cheque_date : t.delivery_date;
-    if (filters.date_from && (!targetDate || targetDate < filters.date_from)) return false;
-    if (filters.date_to && (!targetDate || targetDate > filters.date_to)) return false;
-    
-    return true;
-  });
+  // Integrated Filtering and Sorting Logic
+  const filtered = useMemo(() => {
+    let result = trips.filter(t => {
+      if (filters.client_id !== 'all' && t.client_account_id !== filters.client_id) return false;
+      if (filters.sub_id !== 'all' && t.subcontractor_id !== filters.sub_id) return false;
+      if (filters.cycle_id !== 'all' && t.billing_cycle_id !== filters.cycle_id) return false;
+      if (filters.year !== 'all' && t.delivery_date?.substring(0, 4) !== filters.year) return false;
+      
+      // Dynamic Date Filter Logic
+      const targetDate = filters.date_mode === 'cheque' ? t.first_cheque_date : t.delivery_date;
+      if (filters.date_from && (!targetDate || targetDate < filters.date_from)) return false;
+      if (filters.date_to && (!targetDate || targetDate > filters.date_to)) return false;
+      
+      return true;
+    });
+
+    // Sorting Logic
+    return result.sort((a, b) => {
+      const dateA = new Date(a.delivery_date || '1970-01-01');
+      const dateB = new Date(b.delivery_date || '1970-01-01');
+      return filters.sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+  }, [trips, filters]);
 
   const totalGross = filtered.reduce((s, t) => s + (t.gross_rate || 0), 0);
   const totalNet = filtered.reduce((s, t) => s + (t.net_payroll || 0), 0);
@@ -82,7 +93,6 @@ export default function Reports() {
   const paginatedData = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   const exportPDF = () => {
-    // ... [Export Logic remains as per your original code]
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(14);
     doc.text('PT Tracking - Trip Records Report', 14, 16);
@@ -108,7 +118,6 @@ export default function Reports() {
   };
 
   const exportCSV = () => {
-    // ... [Export Logic remains as per your original code]
     const headers = ['Plate No', 'Owner/Driver', 'Truck Type', 'Client', 'Pickup', 'Delivery', 'Delivery Code', 'Trip Route Code', 'Delivery Date', 'First Cheque Date', 'Billing Date', 'Particular', 'DR Number', 'Waybill', 'Billing Cycle', 'Gross Rate', 'Tax (2%)', 'Hidden Fee (4%)', 'Admin Fee (6%)', 'Net Payroll'];
     const rows = filtered.map(t => [t.plate_number, t.owner_name, t.truck_type, t.client_name, t.pickup_location, t.delivery_location, t.delivery_code, t.trip_route_code, t.delivery_date, t.first_cheque_date, t.billing_date, t.particular, t.dr_number, t.waybill_number, t.billing_cycle_name, t.gross_rate, t.tax_deduction, t.hidden_fee, t.admin_fee, t.net_payroll]);
     const csv = [headers, ...rows].map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n');
@@ -127,8 +136,15 @@ export default function Reports() {
 
       <div className="bg-card border rounded-lg p-4 mb-6">
         <div className="flex items-center gap-2 mb-3"><Filter className="w-4 h-4 text-muted-foreground" /><span className="text-sm font-medium">Filters</span></div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          {/* New Date Mode Select */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+          {/* Added Sort Select */}
+          <Select value={filters.sortOrder} onValueChange={v => setF('sortOrder', v)}>
+            <SelectTrigger><SelectValue placeholder="Sort" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desc">Newest First</SelectItem>
+              <SelectItem value="asc">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={filters.date_mode} onValueChange={v => setF('date_mode', v)}>
             <SelectTrigger><SelectValue placeholder="Date Mode" /></SelectTrigger>
             <SelectContent>
@@ -145,7 +161,6 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* ... Rest of your component follows ... */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-card border rounded-lg p-4"><p className="text-xs text-muted-foreground">Records Found</p><p className="text-2xl font-bold mt-1">{filtered.length}</p></div>
         <div className="bg-card border rounded-lg p-4"><p className="text-xs text-muted-foreground">Total Gross</p><p className="text-2xl font-bold mt-1 text-blue-700">{formatCurrency(totalGross)}</p></div>
