@@ -265,6 +265,13 @@ const handleImport = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Helper to convert Excel serial dates or Date objects to YYYY-MM-DD
+    const formatDate = (val) => {
+      if (!val) return "";
+      const date = typeof val === 'number' ? new Date((val - 25569) * 86400 * 1000) : new Date(val);
+      return isNaN(date.getTime()) ? "" : date.toISOString().split('T')[0];
+    };
+
     try {
       const bytes = await file.arrayBuffer();
       const workbook = XLSX.read(bytes, { type: 'array' });
@@ -276,33 +283,31 @@ const handleImport = async (event) => {
         return;
       }
 
-      // 1. Process data: Map client_name back to client_account_id
       const processedData = jsonData.map(item => {
-        // Find the client object where the name matches the Excel column 'client_name'
         const client = clients.find(c => c.client_name === item.client_name);
         
-        // Return object without client_account_id (or overriding it)
+        // Remove old ID and format dates to YYYY-MM-DD strings
         const { client_account_id, ...rest } = item;
         return {
           ...rest,
-          client_account_id: client ? client.id : null // Map ID if found, otherwise null
+          client_account_id: client ? client.id : null,
+          billing_received_date: formatDate(item.billing_received_date),
+          cheque_date: formatDate(item.cheque_date)
         };
       });
 
       const existing = await base44.entities.BillingCycle.list();
       const existingNames = new Set(existing.map(c => c.cycle_name?.toLowerCase()));
       
-      // 2. Filter using the processed data
       const toImport = processedData.filter(item => !existingNames.has(item.cycle_name?.toLowerCase()));
-      const skipped = jsonData.length - toImport.length;
-
+      
       if (toImport.length === 0) {
-        alert('All records already exist (skipped ' + skipped + ' duplicates)');
+        alert('All records already exist.');
         return;
       }
 
       await base44.entities.BillingCycle.bulkCreate(toImport);
-      alert(`Successfully imported ${toImport.length} billing cycle records (${skipped} duplicates skipped)`);
+      alert(`Successfully imported ${toImport.length} records.`);
       load();
     } catch (error) {
       alert('Import failed: ' + error.message);
