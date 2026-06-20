@@ -366,35 +366,28 @@ const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   
-  let totalGross = 0;
+  // 1. Get sum of all Gross Rates from relevant trips
+  const totalTripGross = allTrips
+    .filter(t => cycleIds.includes(t.billing_cycle_id))
+    .reduce((sum, t) => sum + (t.gross_rate || 0), 0);
 
-  // 1. Sum up Gross from all associated Trips
-  allTrips.forEach(trip => {
-    if (cycleIds.includes(trip.billing_cycle_id)) {
-      totalGross += (trip.gross_rate || 0);
-    }
-  });
+  // 2. Get sum of all OtherCharges adjustments
+  const totalAdjustments = allOtherCharges
+    .filter(oc => oc.billing_received_date === date)
+    .reduce((sum, oc) => sum + (oc.amount || 0), 0);
 
-  // 2. Add Gross from OtherCharges (Adjustments)
-  if (Array.isArray(allOtherCharges)) {
-    const adjustmentsForDate = allOtherCharges.filter(oc => oc.billing_received_date === date);
-    adjustmentsForDate.forEach(oc => {
-      totalGross += (oc.amount || 0);
-    });
-  }
+  const grandTotal = totalTripGross + totalAdjustments;
 
-  // 3. Apply 2% tax to the total combined gross
-  const totalTax = totalGross * 0.02;
-  const netAfterTax = totalGross - totalTax;
+  // 3. Apply the simple 2% tax rule
+  const tax = grandTotal * 0.02;
+  const net = grandTotal - tax;
 
-  // 4. Subtract manual deductions (Insurance/Other Charges)
-  let totalDeductions = 0;
-  const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
-  deductionsForDate.forEach(d => {
-    totalDeductions += (d.insurance_charge || 0) + (d.other_charges || 0);
-  });
+  // 4. Subtract any other specific deductions (insurance, etc)
+  const totalDeductions = deductions
+    .filter(d => d.billing_received_date === date)
+    .reduce((sum, d) => sum + (d.insurance_charge || 0) + (d.other_charges || 0), 0);
 
-  return netAfterTax - totalDeductions;
+  return net - totalDeductions;
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
