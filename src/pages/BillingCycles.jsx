@@ -358,30 +358,29 @@ const handleImport = async (event) => {
     setTripsOpen(true);
   };
 
-  const getChequeAmountForDate = (date) => {
+ const getChequeAmountForDate = (date) => {
     const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
     const cycleIds = cyclesForDate.map(c => c.id);
     
-    let totalGross = 0;
-    let totalOtherCharges = 0;
-    
-    cycleIds.forEach(cycleId => {
-      const cycleTrips = allTrips.filter(t => t.billing_cycle_id === cycleId);
-      cycleTrips.forEach(trip => {
-        totalGross += trip.gross_rate || 0;
-      });
+    let totalNet = 0;
+
+    // 1. Calculate the Net for every trip in these cycles
+    allTrips.forEach(trip => {
+      if (cycleIds.includes(trip.billing_cycle_id)) {
+        const totals = calculateTotals(trip); // This uses your complete logic
+        totalNet += totals.net;
+      }
     });
-    
-    // Get other charges deductions for this date (not insurance)
+
+    // 2. Subtract non-trip deductions linked to this date
     const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
     deductionsForDate.forEach(d => {
-      totalOtherCharges += d.other_charges || 0;
+      totalNet -= (d.insurance_charge || 0);
+      totalNet -= (d.other_charges || 0);
     });
-    
-    const tax = totalGross * 0.02;
-    return totalGross - tax - totalOtherCharges;
-  };
 
+    return totalNet;
+  };
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
   const filteredCycles = cycles
     .filter(cycle => {
