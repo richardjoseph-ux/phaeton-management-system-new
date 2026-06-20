@@ -368,34 +368,37 @@ const getChequeAmountForDate = (date) => {
   
   let totalNet = 0;
 
-  // 1. Calculate Net from Trips
+  // 1. Calculate Net from Trips (Gross - Taxes/Fees already in trip logic)
   allTrips.forEach(trip => {
     if (cycleIds.includes(trip.billing_cycle_id)) {
       totalNet += calculateTotals(trip).net;
     }
   });
 
-  // 2. Subtract Negative Deductions
+  // 2. Subtract Negative Deductions (These are pure subtractions)
   const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
   deductionsForDate.forEach(d => {
     totalNet -= (d.insurance_charge || 0);
     totalNet -= (d.other_charges || 0);
   });
 
-  // 3. Add Positive "Additional Billings"
-  // ADDED: Safety check for allOtherCharges
+  // 3. Add Revenue Adjustments (The "1,017" logic)
+  // Step A: Add the Gross amount of the adjustment
+  // Step B: Deduct 2% tax from that adjustment
   if (Array.isArray(allOtherCharges)) {
-    const additionalBillingsForDate = allOtherCharges.filter(oc => oc.billing_received_date === date);
-    additionalBillingsForDate.forEach(oc => {
-      const amount = oc.amount || 0;
-      const taxOnAmount = amount * 0.02;
-      totalNet += (amount - taxOnAmount); 
+    const adjustmentsForDate = allOtherCharges.filter(oc => oc.billing_received_date === date);
+    adjustmentsForDate.forEach(oc => {
+      const grossAdjustment = oc.amount || 0; // The 1,017
+      const taxOnAdjustment = grossAdjustment * 0.02; // 2% tax
+      
+      // Adding the full amount and subtracting the tax is the same as adding (gross * 0.98)
+      totalNet += (grossAdjustment - taxOnAdjustment);
     });
   }
 
   return totalNet;
 };
-  
+
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
   const filteredCycles = cycles
     .filter(cycle => {
