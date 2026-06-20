@@ -38,6 +38,7 @@ export default function BillingCycles() {
 
   const [fuelSubsidies, setFuelSubsidies] = useState([]);
   const [deductions, setDeductions] = useState([]);
+  const [otherCharges, setOtherCharges] = useState([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryDate, setSummaryDate] = useState('');
   const [summaryCycles, setSummaryCycles] = useState([]);
