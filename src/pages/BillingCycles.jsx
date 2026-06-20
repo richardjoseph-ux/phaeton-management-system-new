@@ -353,35 +353,23 @@ const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   
-  let totalNet = 0;
+  // 1. Calculate the TOTAL Gross from all trips
+  const totalTripGross = allTrips
+    .filter(t => cycleIds.includes(t.billing_cycle_id))
+    .reduce((sum, t) => sum + (t.gross_rate || 0), 0);
 
-  // 1. Calculate Net from Trips (Gross - 2% tax)
-  allTrips.forEach(trip => {
-    if (cycleIds.includes(trip.billing_cycle_id)) {
-      const gross = trip.gross_rate || 0;
-      const tax = gross * 0.02; // Simple 2% tax
-      totalNet += (gross - tax);
-    }
-  });
+  // 2. Apply 2% tax to the trip gross
+  const netFromTrips = totalTripGross * 0.98;
 
-  // 2. Subtract Negative Deductions (Insurance/Other Charges)
+  // 3. Subtract manual deductions
   const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
-  deductionsForDate.forEach(d => {
-    totalNet -= (d.insurance_charge || 0);
-    totalNet -= (d.other_charges || 0);
-  });
+  const totalDeductions = deductionsForDate.reduce((sum, d) => sum + (d.insurance_charge || 0) + (d.other_charges || 0), 0);
 
-  // 3. Add Revenue Adjustments (Apply 2% tax to these as well)
-  if (Array.isArray(allOtherCharges)) {
-    const adjustmentsForDate = allOtherCharges.filter(oc => oc.billing_received_date === date);
-    adjustmentsForDate.forEach(oc => {
-      const grossAdjustment = oc.amount || 0;
-      const taxOnAdjustment = grossAdjustment * 0.02; 
-      totalNet += (grossAdjustment - taxOnAdjustment);
-    });
-  }
+  // 4. Add Revenue Adjustments (Other Charges) minus 2% tax
+  const adjustmentsForDate = allOtherCharges.filter(oc => oc.billing_received_date === date);
+  const netAdjustments = adjustmentsForDate.reduce((sum, oc) => sum + ((oc.amount || 0) * 0.98), 0);
 
-  return totalNet;
+  return netFromTrips - totalDeductions + netAdjustments;
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
