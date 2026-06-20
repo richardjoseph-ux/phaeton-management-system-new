@@ -8,7 +8,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
   const [trips, setTrips] = useState([]);
   const [billingDeductions, setBillingDeductions] = useState([]);
   const [reimbursements, setReimbursements] = useState([]);
-  const [otherCharges, setOtherCharges] = useState([]); // New state
+  const [OtherCharges, setOtherCharges] = useState([]); // New state
   const [loading, setLoading] = useState(false);
 
   const cycleIds = cycles?.map(c => c.id) || [];
@@ -82,7 +82,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       groups[key].tripCount += 1;
     });
 
-    const totalOtherCharges = otherCharges.reduce((sum, oc) => sum + (oc.amount || 0), 0);
+    const totalOtherCharges = OtherCharges.reduce((sum, oc) => sum + (oc.amount || 0), 0);
 
     return Object.values(groups).map(row => {
       const ded = billingDeductions.find(d => d.plate_number === row.plate_number);
@@ -92,7 +92,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
         .filter(r => r.plate_number === row.plate_number)
         .reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
         
-      // Add otherCharges proportional to trips or as a lump sum
+      // Add OtherCharges proportional to trips or as a lump sum
       return { 
         ...row, 
         insurance, 
@@ -112,7 +112,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     return acc;
   }, { gross: 0, tax: 0, other: 0, fuelSubsidy: 0, net: 0 });
 
-  const totalOtherCharges = otherCharges.reduce((sum, oc) => sum + (oc.amount || 0), 0);
+  const totalOtherCharges = OtherCharges.reduce((sum, oc) => sum + (oc.amount || 0), 0);
   const chequeAmount = grandTotals.gross + totalOtherCharges - grandTotals.tax - grandTotals.other;
 
   const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
