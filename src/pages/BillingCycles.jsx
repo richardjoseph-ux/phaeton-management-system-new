@@ -353,12 +353,15 @@ const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   
-  // 1. Get totals from trips (must match Dialog logic)
+  // 1. Get total Gross and Tax from relevant trips
+  // We calculate tax manually as 2% of gross
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
-  const grandTotals = relevantTrips.reduce((acc, t) => {
-    const totals = calculateTotals(t); // Uses your internal logic
-    acc.gross += totals.gross;
-    acc.tax += totals.tax;
+  
+  const tripTotals = relevantTrips.reduce((acc, t) => {
+    const gross = t.gross_rate || 0;
+    const tax = gross * 0.02; // Manual 2% calculation
+    acc.gross += gross;
+    acc.tax += tax;
     return acc;
   }, { gross: 0, tax: 0 });
 
@@ -372,7 +375,7 @@ const getChequeAmountForDate = (date) => {
   const totalDeductions = dateDeductions.reduce((sum, d) => sum + (d.insurance_charge || 0) + (d.other_charges || 0), 0);
 
   // 4. Final Calculation
-  return (grandTotals.gross + totalOtherCharges) - (grandTotals.tax + taxOnOtherCharges) - totalDeductions;
+  return (tripTotals.gross + totalOtherCharges) - (tripTotals.tax + taxOnOtherCharges) - totalDeductions;
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
