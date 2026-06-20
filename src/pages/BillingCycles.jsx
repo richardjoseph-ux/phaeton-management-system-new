@@ -363,35 +363,38 @@ const handleImport = async (event) => {
   };
 
 const getChequeAmountForDate = (date) => {
-    const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
-    const cycleIds = cyclesForDate.map(c => c.id);
-    
-    // 1. Calculate Net from Trips (includes tax, hidden, admin, fuel, etc.)
-    let totalNet = 0;
-    allTrips.forEach(trip => {
-      if (cycleIds.includes(trip.billing_cycle_id)) {
-        totalNet += calculateTotals(trip).net;
-      }
-    });
+  const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
+  const cycleIds = cyclesForDate.map(c => c.id);
+  
+  let totalNet = 0;
 
-    // 2. Subtract Negative Deductions (BillingDeduction entity)
-    const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
-    deductionsForDate.forEach(d => {
-      totalNet -= (d.insurance_charge || 0);
-      totalNet -= (d.other_charges || 0);
-    });
+  // 1. Calculate Net from Trips
+  allTrips.forEach(trip => {
+    if (cycleIds.includes(trip.billing_cycle_id)) {
+      totalNet += calculateTotals(trip).net;
+    }
+  });
 
-    // 3. Add Positive "Additional Billings" (OtherCharges entity)
-    // We filter by date, sum the amounts, and subtract the 2% tax
+  // 2. Subtract Negative Deductions
+  const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
+  deductionsForDate.forEach(d => {
+    totalNet -= (d.insurance_charge || 0);
+    totalNet -= (d.other_charges || 0);
+  });
+
+  // 3. Add Positive "Additional Billings"
+  // ADDED: Safety check for allOtherCharges
+  if (Array.isArray(allOtherCharges)) {
     const additionalBillingsForDate = allOtherCharges.filter(oc => oc.billing_received_date === date);
     additionalBillingsForDate.forEach(oc => {
       const amount = oc.amount || 0;
       const taxOnAmount = amount * 0.02;
       totalNet += (amount - taxOnAmount); 
     });
+  }
 
-    return totalNet;
-  };
+  return totalNet;
+};
   
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
   const filteredCycles = cycles
