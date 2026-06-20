@@ -366,37 +366,35 @@ const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   
-  let totalNet = 0;
+  let totalGross = 0;
 
-  // 1. Calculate Net from Trips (Gross - Taxes/Fees already in trip logic)
+  // 1. Sum up Gross from all associated Trips
   allTrips.forEach(trip => {
     if (cycleIds.includes(trip.billing_cycle_id)) {
-      totalNet += calculateTotals(trip).net;
+      totalGross += (trip.gross_rate || 0);
     }
   });
 
-  // 2. Subtract Negative Deductions (These are pure subtractions)
-  const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
-  deductionsForDate.forEach(d => {
-    totalNet -= (d.insurance_charge || 0);
-    totalNet -= (d.other_charges || 0);
-  });
-
-  // 3. Add Revenue Adjustments (The "1,017" logic)
-  // Step A: Add the Gross amount of the adjustment
-  // Step B: Deduct 2% tax from that adjustment
+  // 2. Add Gross from OtherCharges (Adjustments)
   if (Array.isArray(allOtherCharges)) {
     const adjustmentsForDate = allOtherCharges.filter(oc => oc.billing_received_date === date);
     adjustmentsForDate.forEach(oc => {
-      const grossAdjustment = oc.amount || 0; // The 1,017
-      const taxOnAdjustment = grossAdjustment * 0.02; // 2% tax
-      
-      // Adding the full amount and subtracting the tax is the same as adding (gross * 0.98)
-      totalNet += (grossAdjustment - taxOnAdjustment);
+      totalGross += (oc.amount || 0);
     });
   }
 
-  return totalNet;
+  // 3. Apply 2% tax to the total combined gross
+  const totalTax = totalGross * 0.02;
+  const netAfterTax = totalGross - totalTax;
+
+  // 4. Subtract manual deductions (Insurance/Other Charges)
+  let totalDeductions = 0;
+  const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
+  deductionsForDate.forEach(d => {
+    totalDeductions += (d.insurance_charge || 0) + (d.other_charges || 0);
+  });
+
+  return netAfterTax - totalDeductions;
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
