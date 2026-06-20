@@ -106,19 +106,6 @@ const load = async () => {
     });
   };
 
-  const calculateTotals = (trip) => {
-    const gross = trip.gross_rate || 0;
-    // Use stored calculated values if available
-    const tax = trip.tax_deduction || (gross * 0.02);
-    const hidden = trip.hidden_fee || (gross * 0.02 > 0 ? (gross - gross * 0.02) * 0.04 : 0);
-    const admin = trip.admin_fee || (gross * 0.02 > 0 ? (gross - gross * 0.02) * 0.06 : 0);
-    const insurance = trip.insurance_charge || 0;
-    const other = trip.other_charges || 0;
-    const fuelSubsidy = getFuelSubsidy(trip);
-    const fuelSubsidyAmount = fuelSubsidy ? gross * (fuelSubsidy.subsidy_percentage / 100) : 0;
-    const net = gross - tax - hidden - admin - insurance - other + fuelSubsidyAmount;
-    return { gross, tax, hidden, admin, insurance, other, fuelSubsidy: fuelSubsidyAmount, net };
-  };
 
   const calculateNextSequence = async (clientId) => {
     if (!clientId) return '0001';
@@ -366,28 +353,35 @@ const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   
-  // 1. Sum up total gross from all related trips
-  const totalTripGross = allTrips
-    .filter(t => cycleIds.includes(t.billing_cycle_id))
-    .reduce((sum, t) => sum + (t.gross_rate || 0), 0);
+  let totalNet = 0;
 
-  // 2. Add total gross from OtherCharges for that date
-  const totalAdjustments = allOtherCharges
-    .filter(oc => oc.billing_received_date === date)
-    .reduce((sum, oc) => sum + (oc.amount || 0), 0);
+  // 1. Calculate Net from Trips (Gross - 2% tax)
+  allTrips.forEach(trip => {
+    if (cycleIds.includes(trip.billing_cycle_id)) {
+      const gross = trip.gross_rate || 0;
+      const tax = gross * 0.02; // Simple 2% tax
+      totalNet += (gross - tax);
+    }
+  });
 
-  const grandTotal = totalTripGross + totalAdjustments;
+  // 2. Subtract Negative Deductions (Insurance/Other Charges)
+  const deductionsForDate = deductions.filter(d => d.billing_received_date === date);
+  deductionsForDate.forEach(d => {
+    totalNet -= (d.insurance_charge || 0);
+    totalNet -= (d.other_charges || 0);
+  });
 
-  // 3. Apply a flat 2% tax to the entire Grand Total
-  const tax = grandTotal * 0.02;
-  const netAfterTax = grandTotal - tax;
+  // 3. Add Revenue Adjustments (Apply 2% tax to these as well)
+  if (Array.isArray(allOtherCharges)) {
+    const adjustmentsForDate = allOtherCharges.filter(oc => oc.billing_received_date === date);
+    adjustmentsForDate.forEach(oc => {
+      const grossAdjustment = oc.amount || 0;
+      const taxOnAdjustment = grossAdjustment * 0.02; 
+      totalNet += (grossAdjustment - taxOnAdjustment);
+    });
+  }
 
-  // 4. Subtract other manual deductions
-  const totalDeductions = deductions
-    .filter(d => d.billing_received_date === date)
-    .reduce((sum, d) => sum + (d.insurance_charge || 0) + (d.other_charges || 0), 0);
-
-  return netAfterTax - totalDeductions;
+  return totalNet;
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
