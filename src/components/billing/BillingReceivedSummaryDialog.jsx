@@ -162,7 +162,7 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
             {/* Other Charges & Reimbursements */}
             {otherCharges.length > 0 && (
               <div className="border rounded-lg overflow-x-auto mb-4">
-                <div className="px-4 py-3 border-b bg-muted/50"><h3 className="font-semibold text-sm">Other Charges</h3></div>
+                <div className="px-4 py-3 border-b bg-muted/50"><h3 className="font-semibold text-sm">Revenue Adjustments</h3></div>
                 <div className="p-4 space-y-2">
                   {otherCharges.map(oc => (
                     <div key={oc.id} className="flex justify-between text-sm">
