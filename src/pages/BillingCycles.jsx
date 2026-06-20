@@ -42,6 +42,7 @@ export default function BillingCycles() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryDate, setSummaryDate] = useState('');
   const [summaryCycles, setSummaryCycles] = useState([]);
+  const [allOtherCharges, setAllOtherCharges] = useState([]);
   const [allTrips, setAllTrips] = useState([]);
   const fileInputRef = useRef(null);
 
