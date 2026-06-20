@@ -1,0 +1,47 @@
+{
+  "name": "OtherCharges",
+  "type": "object",
+  "properties": {
+    "billing_received_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Billing received date this charge belongs to"
+    },
+    "charge_type": {
+      "type": "string",
+      "enum": ["Demurrage", "Other"],
+      "description": "Type of charge being added to gross rate"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Fixed amount in Philippine Peso (₱) to be added to gross rate"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description or notes about this charge"
+    }
+  },
+  "required": [
+    "billing_received_date",
+    "charge_type",
+    "amount"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": null,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

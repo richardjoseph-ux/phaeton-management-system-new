@@ -41,18 +41,30 @@ export default function Deductions() {
   const [editingReimbursementId, setEditingReimbursementId] = useState(null);
   const [savingReimbursement, setSavingReimbursement] = useState(false);
 
+  const [otherCharges, setOtherCharges] = useState([]);
+  const [otherChargesForm, setOtherChargesForm] = useState({
+    billing_received_date: '',
+    charge_type: '',
+    amount: '',
+    description: '',
+  });
+  const [editingOtherChargeId, setEditingOtherChargeId] = useState(null);
+  const [savingOtherCharge, setSavingOtherCharge] = useState(false);
+
   const load = async () => {
     setLoading(true);
-    const [b, d, summaries, r] = await Promise.all([
+    const [b, d, summaries, r, o] = await Promise.all([
       base44.entities.BillingCycle.list('-billing_received_date', 200),
       base44.entities.BillingDeduction.list('-billing_received_date', 500),
       base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
       base44.entities.Reimbursement.list('-billing_received_date', 500),
+      base44.entities.OtherCharges.list('-billing_received_date', 500),
     ]);
     setBillingCycles(b);
     setDeductions(d);
     setBillingReceivedSummaries(summaries);
     setReimbursements(r);
+    setOtherCharges(o);
     setLoading(false);
   };
 
@@ -172,6 +184,7 @@ export default function Deductions() {
               <TabsTrigger value="all">All Records</TabsTrigger>
               <TabsTrigger value="deductions">Deductions</TabsTrigger>
               <TabsTrigger value="reimbursements">Reimbursements</TabsTrigger>
+              <TabsTrigger value="others">Others</TabsTrigger>
             </TabsList>
 
             {/* Deductions Tab */}
@@ -569,6 +582,199 @@ export default function Deductions() {
                                         if (!confirm('Delete this reimbursement record?')) return;
                                         await base44.entities.Reimbursement.delete(r.id);
                                         setReimbursements(prev => prev.filter(x => x.id !== r.id));
+                                      }} className="p-1.5 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive">
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Others Tab - Gross Rate Adjustments */}
+            <TabsContent value="others" className="space-y-6">
+              {/* Date Selector for Others */}
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Received Date</p>
+                <Select 
+                  value={otherChargesForm.billing_received_date} 
+                  onValueChange={v => { 
+                    setOtherChargesForm(f => ({ ...f, billing_received_date: v }));
+                  }}
+                >
+                  <SelectTrigger className="w-56">
+                    <SelectValue placeholder="Select date..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dateOptions.map(d => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {otherChargesForm.billing_received_date && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Other Charges Form Panel */}
+                  <div className="lg:col-span-1">
+                    <div className="bg-card border rounded-lg p-5 space-y-4">
+                      <h3 className="font-semibold text-sm">
+                        {editingOtherChargeId ? 'Edit Adjustment' : 'Add Adjustment'}
+                      </h3>
+
+                      <div className="space-y-1.5">
+                        <Label>Charge Type</Label>
+                        <Select
+                          value={otherChargesForm.charge_type}
+                          onValueChange={v => setOtherChargesForm(f => ({ ...f, charge_type: v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Demurrage">Demurrage</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="other-amount">Amount (₱)</Label>
+                        <Input
+                          id="other-amount"
+                          type="number"
+                          placeholder="0.00"
+                          value={otherChargesForm.amount}
+                          onChange={e => setOtherChargesForm(f => ({ ...f, amount: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="other-description">Description (optional)</Label>
+                        <Input
+                          id="other-description"
+                          placeholder="e.g. Waiting charges at port"
+                          value={otherChargesForm.description}
+                          onChange={e => setOtherChargesForm(f => ({ ...f, description: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          onClick={async () => {
+                            if (!otherChargesForm.billing_received_date || !otherChargesForm.charge_type || !otherChargesForm.amount) return;
+                            setSavingOtherCharge(true);
+                            const data = {
+                              billing_received_date: otherChargesForm.billing_received_date,
+                              charge_type: otherChargesForm.charge_type,
+                              amount: parseFloat(otherChargesForm.amount) || 0,
+                              description: otherChargesForm.description,
+                            };
+                            if (editingOtherChargeId) {
+                              await base44.entities.OtherCharges.update(editingOtherChargeId, data);
+                            } else {
+                              await base44.entities.OtherCharges.create(data);
+                            }
+                            await load();
+                            setOtherChargesForm({
+                              billing_received_date: otherChargesForm.billing_received_date,
+                              charge_type: '',
+                              amount: '',
+                              description: '',
+                            });
+                            setEditingOtherChargeId(null);
+                            setSavingOtherCharge(false);
+                          }}
+                          disabled={savingOtherCharge || !otherChargesForm.charge_type || !otherChargesForm.amount}
+                          className="flex-1"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          {savingOtherCharge ? 'Saving...' : editingOtherChargeId ? 'Update' : 'Add'}
+                        </Button>
+                        {editingOtherChargeId && (
+                          <Button variant="outline" onClick={() => {
+                            setEditingOtherChargeId(null);
+                            setOtherChargesForm({
+                              billing_received_date: otherChargesForm.billing_received_date,
+                              charge_type: '',
+                              amount: '',
+                              description: '',
+                            });
+                          }}>Cancel</Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Other Charges Table */}
+                  <div className="lg:col-span-2">
+                    {(() => {
+                      const filteredOtherCharges = otherCharges.filter(o => o.billing_received_date === otherChargesForm.billing_received_date);
+                      const totalOtherChargesAmount = filteredOtherCharges.reduce((s, o) => s + (o.amount || 0), 0);
+                      
+                      if (filteredOtherCharges.length === 0) {
+                        return (
+                          <div className="text-center py-16 text-muted-foreground border rounded-lg bg-card">
+                            <DollarSign className="w-10 h-10 mx-auto mb-2 opacity-20" />
+                            <p className="text-sm">No adjustments added for this date yet.</p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="bg-card border rounded-lg overflow-hidden">
+                          {/* Summary */}
+                          <div className="grid grid-cols-2 divide-x border-b">
+                            <div className="p-4">
+                              <p className="text-xs text-muted-foreground">Adjustments</p>
+                              <p className="text-xl font-bold mt-1">{filteredOtherCharges.length}</p>
+                            </div>
+                            <div className="p-4">
+                              <p className="text-xs text-muted-foreground">Total Added to Gross Rate</p>
+                              <p className="text-xl font-bold mt-1 text-green-700">+₱{totalOtherChargesAmount.toFixed(2)}</p>
+                            </div>
+                          </div>
+
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b bg-muted/50">
+                                {['Type', 'Amount (₱)', 'Description', ''].map(h => (
+                                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredOtherCharges.map(o => (
+                                <tr key={o.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${editingOtherChargeId === o.id ? 'bg-primary/5' : ''}`}>
+                                  <td className="px-4 py-3">
+                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">{o.charge_type}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-semibold text-green-700">+₱{(o.amount || 0).toFixed(2)}</td>
+                                  <td className="px-4 py-3 text-muted-foreground text-xs">{o.description || '—'}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex gap-1">
+                                      <button onClick={() => {
+                                        setEditingOtherChargeId(o.id);
+                                        setOtherChargesForm({
+                                          billing_received_date: o.billing_received_date,
+                                          charge_type: o.charge_type,
+                                          amount: o.amount?.toString() || '',
+                                          description: o.description || '',
+                                        });
+                                      }} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button onClick={async () => {
+                                        if (!confirm('Delete this adjustment record?')) return;
+                                        await base44.entities.OtherCharges.delete(o.id);
+                                        setOtherCharges(prev => prev.filter(x => x.id !== o.id));
                                       }} className="p-1.5 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive">
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
