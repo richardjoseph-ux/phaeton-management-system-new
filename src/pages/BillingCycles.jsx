@@ -72,16 +72,17 @@ const syncClientIds = async () => {
       setLoading(false);
     }
   };
-
-  const load = async () => {
+const load = async () => {
     setLoading(true);
-    const [c, cl, s, sr, t, d] = await Promise.all([
+    // Added OtherCharges to the list
+    const [c, cl, s, sr, t, d, oc] = await Promise.all([
       base44.entities.BillingCycle.list('-created_date', 200),
       base44.entities.ClientAccount.list('client_name', 100),
       base44.entities.FuelSubsidy.list('-created_date', 100),
       base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
       base44.entities.TripRecord.list('-created_date', 500),
       base44.entities.BillingDeduction.list('-billing_received_date', 500),
+      base44.entities.OtherCharges.list('-billing_received_date', 200), 
     ]);
     setCycles(c);
     setClients(cl);
@@ -89,6 +90,7 @@ const syncClientIds = async () => {
     setSummaryRecords(sr);
     setAllTrips(t);
     setDeductions(d);
+    setOtherCharges(oc); // Save the data to state
     setLoading(false);
   };
 
