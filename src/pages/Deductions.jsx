@@ -352,31 +352,30 @@ export default function Deductions() {
                 <Select 
                   value={reimbursementForm.billing_received_date} 
                   onValueChange={v => { 
-                    setReimbursementForm(f => ({ ...f, billing_received_date: v }));
-                    // Load owners for this date
-                    const cycles = billingCycles.filter(c => c.billing_received_date === v);
-                    if (cycles.length > 0) {
-                      Promise.all(
-                        cycles.map(c => base44.entities.TripRecord.filter({ billing_cycle_id: c.id }, 'plate_number', 500))
-                      ).then(allTrips => {
-                        const seen = {};
-                        allTrips.flat().forEach(t => {
-                          if (t.plate_number && !seen[t.plate_number]) {
-                            seen[t.plate_number] = { plate_number: t.plate_number, owner_name: t.owner_name };
-                          }
-                        });
-                        // Also get all ACTIVE subcontractors for cases with no trip data
-                        base44.entities.Subcontractor.filter({ status: 'Active' }, 'plate_number', 500).then(subs => {
-                          subs.forEach(s => {
-                            if (!seen[s.plate_number]) {
-                              seen[s.plate_number] = { plate_number: s.plate_number, owner_name: s.owner_name };
-                            }
-                          });
-                          setDateOwners(Object.values(seen).sort((a, b) => a.plate_number.localeCompare(b.plate_number)));
-                        });
-                      });
-                    }
-                  }}
+  setReimbursementForm(f => ({ ...f, billing_received_date: v }));
+  
+  // 1. Find billing cycles for this date
+  const cycles = billingCycles.filter(c => c.billing_received_date === v);
+  
+  // 2. Fetch trips for these cycles to get relevant owners
+  if (cycles.length > 0) {
+    Promise.all(
+      cycles.map(c => base44.entities.TripRecord.filter({ billing_cycle_id: c.id }, 'plate_number', 500))
+    ).then(allTrips => {
+      const seen = {};
+      allTrips.flat().forEach(t => {
+        if (t.plate_number && !seen[t.plate_number]) {
+          seen[t.plate_number] = { plate_number: t.plate_number, owner_name: t.owner_name };
+        }
+      });
+      // Set ONLY the owners found in the trips for this date
+      setDateOwners(Object.values(seen).sort((a, b) => a.plate_number.localeCompare(b.plate_number)));
+    });
+  } else {
+    // If no cycles found for this date, clear the list
+    setDateOwners([]);
+  }
+}}
                 >
                   <SelectTrigger className="w-56">
                     <SelectValue placeholder="Select date..." />
