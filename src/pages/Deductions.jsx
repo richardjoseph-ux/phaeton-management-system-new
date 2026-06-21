@@ -197,10 +197,10 @@ export default function Deductions() {
                     <SelectValue placeholder="Select date..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {dateOptions.map(d => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
+  {dateOptions.map(d => (
+    <SelectItem key={d} value={d}>{formatDateDisplay(d)}</SelectItem>
+  ))}
+</SelectContent>
                 </Select>
               </div>
 
@@ -382,10 +382,10 @@ export default function Deductions() {
                     <SelectValue placeholder="Select date..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {dateOptions.map(d => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
+  {dateOptions.map(d => (
+    <SelectItem key={d} value={d}>{formatDateDisplay(d)}</SelectItem>
+  ))}
+</SelectContent>
                 </Select>
               </div>
 
@@ -614,10 +614,10 @@ export default function Deductions() {
                     <SelectValue placeholder="Select date..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {dateOptions.map(d => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
+  {dateOptions.map(d => (
+    <SelectItem key={d} value={d}>{formatDateDisplay(d)}</SelectItem>
+  ))}
+</SelectContent>
                 </Select>
               </div>
 
