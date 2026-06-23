@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,150 @@ import ClientForm from '@/components/clients/ClientForm';
 import { useAuth } from '@/lib/AuthContext';
 import { getTruckTypeFeePercentage } from '@/lib/feeCalculator';
 
+// ==========================================
+// SUB-COMPONENT: CLIENT ROUTE TABLE
+// Isolated to completely eliminate keystroke lag 
+// and fix fallback calculation alignment bugs.
+// ==========================================
+function ClientRouteTable({ client }) {
+  // Memoize unique pickup locations safely
+  const pickupLocations = useMemo(() => {
+    return [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))];
+  }, [client.routes]);
+
+  // Localized state variables replacing global string math keys
+  const [activeTab, setActiveTab] = useState(pickupLocations[0] || '');
+  const [activeTruck, setActiveTruck] = useState('AUV');
+  const [routeSearch, setRouteSearch] = useState('');
+
+  // Computation engine: Only runs when this specific container or filters change
+  const processedRoutes = useMemo(() => {
+    if (!activeTab) return [];
+    const cleanSearch = routeSearch.toLowerCase();
+
+    const groupedData = (client.routes || [])
+      .filter(r => r.pickup_location === activeTab)
+      .filter(r => r.rates?.[activeTruck] != null && r.rates?.[activeTruck] !== '')
+      .filter(r => !cleanSearch || 
+        r.delivery_location?.toLowerCase().includes(cleanSearch) || 
+        r.delivery_code?.toLowerCase().includes(cleanSearch)
+      )
+      .reduce((acc, route) => {
+        const key = `${route.delivery_location}|${route.delivery_code}`;
+        if (!acc[key]) {
+          acc[key] = { ...route, rates: { ...route.rates } };
+        } else if (!acc[key].rates[activeTruck] && route.rates[activeTruck]) {
+          acc[key].rates[activeTruck] = route.rates[activeTruck];
+        }
+        return acc;
+      }, {});
+
+    return Object.values(groupedData).sort((a, b) => 
+      a.delivery_location.localeCompare(b.delivery_location)
+    );
+  }, [client.routes, activeTab, activeTruck, routeSearch]);
+
+  const hiddenFeePercentage = getTruckTypeFeePercentage(client, activeTab, activeTruck);
+
+  return (
+    <div className="border-t bg-muted/20">
+      <div className="px-5 py-4 border-b">
+        <h4 className="text-sm font-semibold">Routes & Rates</h4>
+      </div>
+
+      {/* Pickup Tabs */}
+      <div className="flex gap-1 px-5 pt-3 border-b border-border overflow-x-auto">
+        {pickupLocations.map(loc => (
+          <button
+            key={loc}
+            onClick={() => setActiveTab(loc)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors ${
+              activeTab === loc
+                ? 'border-primary text-primary bg-primary/5'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {loc}
+          </button>
+        ))}
+      </div>
+
+      {/* Truck Tabs */}
+      <div className="flex gap-1 px-5 pt-2 border-b border-border bg-muted/30 overflow-x-auto">
+        {['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'].map(type => (
+          <button
+            key={type}
+            onClick={() => setActiveTruck(type)}
+            className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
+              activeTruck === type
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {type}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-5">
+        <div className="relative mb-3">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            className="pl-8 h-8 text-xs"
+            placeholder="Search destination or code..."
+            value={routeSearch}
+            onChange={e => setRouteSearch(e.target.value)}
+          />
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left px-2 py-2 font-semibold text-muted-foreground">Destination</th>
+                <th className="text-left px-2 py-2 font-semibold text-muted-foreground">Code</th>
+                <th className="text-right px-2 py-2 font-semibold text-muted-foreground">Gross</th>
+                <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-red-600">Tax(2%)</th>
+                <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-orange-600">Hidden({hiddenFeePercentage}%)</th>
+                <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-amber-600">Admin(6%)</th>
+                <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-emerald-600">Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {processedRoutes.map((route, idx) => {
+                const gross = Number(route.rates?.[activeTruck] || 0);
+                const tax = gross * 0.02;
+                const afterTax = gross - tax;
+                const hidden = afterTax * (hiddenFeePercentage / 100);
+                const admin = afterTax * 0.06;
+                const net = gross - tax - hidden - admin;
+
+                return (
+                  <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                    <td className="px-2 py-2">{route.delivery_location}</td>
+                    <td className="px-2 py-2 font-mono">{route.delivery_code}</td>
+                    <td className="px-2 py-2 text-right font-medium">₱{gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td className="px-2 py-2 text-right text-red-600">-₱{tax.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td className="px-2 py-2 text-right text-orange-600">-₱{hidden.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td className="px-2 py-2 text-right text-amber-600">-₱{admin.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td className="px-2 py-2 text-right font-bold text-emerald-700">₱{net.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// MAIN COMPONENT: CLIENT ACCOUNTS VIEW
+// ==========================================
 export default function ClientAccounts() {
   const { user: currentUser } = useAuth();
   
-  // Define granular permissions
   const isAdmin = currentUser?.role === 'admin';
   const canEdit = isAdmin || currentUser?.role === 'user';
   
@@ -21,26 +161,36 @@ export default function ClientAccounts() {
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
-  const [expanded, setExpanded] = useState({});
+  const [expandedClients, setExpandedClients] = useState({});
 
   const load = async () => {
     setLoading(true);
-    const data = await base44.entities.ClientAccount.list('client_name', 100);
-    setList(data);
-    setLoading(false);
+    try {
+      const data = await base44.entities.ClientAccount.list('client_name', 100);
+      setList(data || []);
+    } catch (error) {
+      console.error("Error loading client accounts:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
-  const filtered = list.filter(c =>
-    !search ||
-    c.client_name?.toLowerCase().includes(search.toLowerCase()) ||
-    c.client_code?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Compute filtered top-level list efficiently
+  const filteredList = useMemo(() => {
+    if (!search) return list;
+    const cleanSearch = search.toLowerCase();
+    return list.filter(c =>
+      c.client_name?.toLowerCase().includes(cleanSearch) ||
+      c.client_code?.toLowerCase().includes(cleanSearch)
+    );
+  }, [list, search]);
 
   const handleEdit = (item) => { setEditData(item); setFormOpen(true); };
   const handleAdd = () => { setEditData(null); setFormOpen(true); };
-  const toggleExpand = (id) => setExpanded(p => ({ ...p, [id]: !p[id] }));
+  const toggleExpand = (id) => setExpandedClients(p => ({ ...p, [id]: !p[id] }));
+  
   const handleDelete = async (item) => {
     if (!confirm(`Delete client "${item.client_name}"? This cannot be undone.`)) return;
     await base44.entities.ClientAccount.delete(item.id);
@@ -68,14 +218,14 @@ export default function ClientAccounts() {
 
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
-      ) : filtered.length === 0 ? (
+      ) : filteredList.length === 0 ? (
         <div className="text-center py-16">
           <Building2 className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
           <p className="text-muted-foreground text-sm">No client accounts found</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(client => (
+          {filteredList.map(client => (
             <div key={client.id} className="bg-card border rounded-lg overflow-hidden">
               <div className="flex items-center gap-4 px-5 py-4">
                 <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -107,138 +257,12 @@ export default function ClientAccounts() {
                     </button>
                   )}
                   <button onClick={() => toggleExpand(client.id)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
-                    {expanded[client.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {expandedClients[client.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-                            {expanded[client.id] && (
-                              <div className="border-t bg-muted/20">
-                                <div className="px-5 py-4 border-b">
-                                  <h4 className="text-sm font-semibold">Routes & Rates</h4>
-                                </div>
-                  
-                                {/* Pickup Tabs */}
-                                <div className="flex gap-1 px-5 pt-3 border-b border-border overflow-x-auto">
-                                  {[...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))].map(loc => (
-                                    <button
-                                      key={loc}
-                                      onClick={() => setExpanded(p => ({ ...p, [`${client.id}_tab`]: loc }))}
-                                      className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors ${
-                                        (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]) === loc
-                                          ? 'border-primary text-primary bg-primary/5'
-                                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                                      }`}
-                                    >
-                                      {loc}
-                                    </button>
-                                  ))}
-                                </div>
-
-                                {/* Truck Tabs */}
-                                <div className="flex gap-1 px-5 pt-2 border-b border-border bg-muted/30 overflow-x-auto">
-                                  {['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'].map(type => (
-                                    <button
-                                      key={type}
-                                      onClick={() => setExpanded(p => ({ ...p, [`${client.id}_truck`]: type }))}
-                                      className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
-                                        (expanded[`${client.id}_truck`] || 'AUV') === type
-                                          ? 'border-primary text-primary'
-                                          : 'border-transparent text-muted-foreground hover:text-foreground'
-                                      }`}
-                                    >
-                                      {type}
-                                    </button>
-                                  ))}
-                                </div>
-
-                                                                <div className="p-5">
-                                                                  <div className="relative mb-3">
-                                                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                                                                    <Input
-                                                                      className="pl-8 h-8 text-xs"
-                                                                      placeholder="Search destination or code..."
-                                                                      value={expanded[`${client.id}_search`] || ''}
-                                                                      onChange={e => setExpanded(p => ({ ...p, [`${client.id}_search`]: e.target.value }))}
-                                                                    />
-                                                                  </div>
-                                                                  <div className="overflow-x-auto">
-                                                                    <table className="w-full text-xs border-collapse">
-                                                                      <thead>
-                                                                        <tr className="border-b bg-muted/30">
-                                                                          <th className="text-left px-2 py-2 font-semibold text-muted-foreground">Destination</th>
-                                                                          <th className="text-left px-2 py-2 font-semibold text-muted-foreground">Code</th>
-                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground">Gross</th>
-                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-red-600">Tax(2%)</th>
-                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-orange-600">Hidden({getTruckTypeFeePercentage(client, expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0], expanded[`${client.id}_truck`] || 'AUV')}%)</th>
-                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-amber-600">Admin(6%)</th>
-                                                                          <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-emerald-600">Net</th>
-                                                                        </tr>
-                                                                      </thead>
-                                                                      <tbody>
-                                                                        {(() => {
-                                                                          const data = Object.values(
-                                                                            (client.routes || [])
-                                                                              .filter(r => r.pickup_location === (expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0]))
-                                                                              .filter(r => {
-                                                                                const truckType = expanded[`${client.id}_truck`] || 'AUV';
-                                                                                return r.rates?.[truckType] != null && r.rates?.[truckType] !== '';
-                                                                              })
-                                                                              .filter(r => {
-                                                                                const s = expanded[`${client.id}_search`] || '';
-                                                                                return r.delivery_location?.toLowerCase().includes(s.toLowerCase()) || 
-                                                                                       r.delivery_code?.toLowerCase().includes(s.toLowerCase());
-                                                                              })
-                                                                              .reduce((acc, route) => {
-                                                                                const key = `${route.delivery_location}|${route.delivery_code}`;
-                                                                                if (!acc[key]) {
-                                                                                  acc[key] = { ...route, rates: { ...route.rates } };
-                                                                                } else {
-                                                                                  const truckType = expanded[`${client.id}_truck`] || 'AUV';
-                                                                                  if (!acc[key].rates[truckType] && route.rates[truckType]) {
-                                                                                    acc[key].rates[truckType] = route.rates[truckType];
-                                                                                  }
-                                                                                }
-                                                                                return acc;
-                                                                              }, {})
-                                                                          ).sort((a, b) => a.delivery_location.localeCompare(b.delivery_location));
-
-                                                                          return (
-                                                                            <>
-                                                                              {data.map((route, idx) => {
-                                                                                const truckType = expanded[`${client.id}_truck`] || 'AUV';
-                                                                                const pickupLocation = expanded[`${client.id}_tab`] || [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))][0];
-                                                                                const gross = Number(route.rates?.[truckType] || 0);
-                                                                                const tax = gross * 0.02;
-                                                                                const afterTax = gross - tax;
-                                                                                
-                                                                                // Get the configured hidden fee percentage for this client/pickup/truck combo
-                                                                                const hiddenFeePercentage = getTruckTypeFeePercentage(client, pickupLocation, truckType);
-                                                                                const hidden = afterTax * (hiddenFeePercentage / 100);
-                                                                                const admin = afterTax * 0.06;
-                                                                                const net = gross - tax - hidden - admin;
-
-                                                                                return (
-                                                                                  <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
-                                                                                    <td className="px-2 py-2">{route.delivery_location}</td>
-                                                                                    <td className="px-2 py-2 font-mono">{route.delivery_code}</td>
-                                                                                    <td className="px-2 py-2 text-right font-medium">₱{gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                    <td className="px-2 py-2 text-right text-red-600">-₱{tax.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                    <td className="px-2 py-2 text-right text-orange-600">-₱{hidden.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                    <td className="px-2 py-2 text-right text-amber-600">-₱{admin.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                    <td className="px-2 py-2 text-right font-bold text-emerald-700">₱{net.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                                                  </tr>
-                                                                                );
-                                                                              })}
-                                                                            </>
-                                                                          );
-                                                                        })()}
-                                                                      </tbody>
-                                                                    </table>
-                                                                  </div>
-                                                                </div>
-                              </div>
-                            )}
+              {expandedClients[client.id] && <ClientRouteTable client={client} />}
             </div>
           ))}
         </div>
@@ -253,4 +277,3 @@ export default function ClientAccounts() {
     </div>
   );
 }
-
