@@ -2,30 +2,26 @@ import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp, Trash2, Download } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ClientForm from '@/components/clients/ClientForm';
 import { useAuth } from '@/lib/AuthContext';
 import { getTruckTypeFeePercentage } from '@/lib/feeCalculator';
+import * as XLSX from 'xlsx'; // Import the Excel library
 
 // ==========================================
 // SUB-COMPONENT: CLIENT ROUTE TABLE
-// Isolated to completely eliminate keystroke lag 
-// and fix fallback calculation alignment bugs.
 // ==========================================
 function ClientRouteTable({ client }) {
-  // Memoize unique pickup locations safely
   const pickupLocations = useMemo(() => {
     return [...new Set(client.routes?.map(r => r.pickup_location).filter(Boolean))];
   }, [client.routes]);
 
-  // Localized state variables replacing global string math keys
   const [activeTab, setActiveTab] = useState(pickupLocations[0] || '');
   const [activeTruck, setActiveTruck] = useState('AUV');
   const [routeSearch, setRouteSearch] = useState('');
 
-  // Computation engine: Only runs when this specific container or filters change
   const processedRoutes = useMemo(() => {
     if (!activeTab) return [];
     const cleanSearch = routeSearch.toLowerCase();
@@ -53,6 +49,47 @@ function ClientRouteTable({ client }) {
   }, [client.routes, activeTab, activeTruck, routeSearch]);
 
   const hiddenFeePercentage = getTruckTypeFeePercentage(client, activeTab, activeTruck);
+
+  // ==========================================
+  // EXCEL EXPORT ENGINE
+  // Extracts only the currently mapped dataset
+  // ==========================================
+  const handleExportExcel = () => {
+    if (processedRoutes.length === 0) return;
+
+    // Map your visible table data into rows for the spreadsheet
+    const excelRows = processedRoutes.map(route => {
+      const gross = Number(route.rates?.[activeTruck] || 0);
+      const tax = gross * 0.02;
+      const afterTax = gross - tax;
+      const hidden = afterTax * (hiddenFeePercentage / 100);
+      const admin = afterTax * 0.06;
+      const net = gross - tax - hidden - admin;
+
+      return {
+        'Destination': route.delivery_location,
+        'Code': route.delivery_code,
+        'Gross (₱)': gross,
+        'Tax (2%) (₱)': -tax,
+        [`Hidden (${hiddenFeePercentage}%) (₱)`]: -hidden,
+        'Admin (6%) (₱)': -admin,
+        'Net (₱)': net
+      };
+    });
+
+    // Create worksheet and workbook structure
+    const worksheet = XLSX.utils.json_to_sheet(excelRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `${activeTruck} Rates`);
+
+    // Dynamic filename: e.g., "FILO_LOGISTICS_JYSCS_AUV_Rates.xlsx"
+    const sanitizedClientName = client.client_name?.replace(/[^a-z0-9]/gi, '_');
+    const sanitizedTabName = activeTab.replace(/[^a-z0-9]/gi, '_');
+    const filename = `${sanitizedClientName}_${sanitizedTabName}_${activeTruck}_Rates.xlsx`;
+
+    // Trigger local browser download
+    XLSX.writeFile(workbook, filename);
+  };
 
   return (
     <div className="border-t bg-muted/20">
@@ -95,14 +132,26 @@ function ClientRouteTable({ client }) {
       </div>
 
       <div className="p-5">
-        <div className="relative mb-3">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <Input
-            className="pl-8 h-8 text-xs"
-            placeholder="Search destination or code..."
-            value={routeSearch}
-            onChange={e => setRouteSearch(e.target.value)}
-          />
+        <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center mb-3">
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              className="pl-8 h-8 text-xs"
+              placeholder="Search destination or code..."
+              value={routeSearch}
+              onChange={e => setRouteSearch(e.target.value)}
+            />
+          </div>
+          
+          <Button 
+            onClick={handleExportExcel} 
+            variant="outline" 
+            size="sm" 
+            className="h-8 text-xs w-full sm:w-auto"
+            disabled={processedRoutes.length === 0}
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" /> Export {activeTab} ({activeTruck})
+          </Button>
         </div>
         
         <div className="overflow-x-auto">
@@ -177,7 +226,6 @@ export default function ClientAccounts() {
 
   useEffect(() => { load(); }, []);
 
-  // Compute filtered top-level list efficiently
   const filteredList = useMemo(() => {
     if (!search) return list;
     const cleanSearch = search.toLowerCase();
