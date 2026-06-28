@@ -79,7 +79,15 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
       const insurance = ded?.insurance_charge || 0;
       const other = ded?.other_charges || 0;
       const totalReimbursement = reimbursements.filter(r => r.plate_number === row.plate_number).reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
-      return { ...row, insurance, other, reimbursement: totalReimbursement, net: row.tripNet - insurance - other + totalReimbursement };
+      
+      // Fixed net formula below: explicitly added "+ row.fuelSubsidy" to the end
+      return { 
+        ...row, 
+        insurance, 
+        other, 
+        reimbursement: totalReimbursement, 
+        net: row.tripNet - insurance - other + totalReimbursement + row.fuelSubsidy 
+      };
     }).sort((a, b) => a.plate_number.localeCompare(b.plate_number));
   })();
 
