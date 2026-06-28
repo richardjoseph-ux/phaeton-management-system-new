@@ -100,11 +100,33 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     return acc;
   }, { gross: 0, tax: 0, other: 0, fuelSubsidy: 0, net: 0 });
 
-  const totalOtherCharges = otherCharges.reduce((sum, oc) => sum + (oc.amount || 0), 0);
-  const taxOnOtherCharges = totalOtherCharges * 0.02;
+// 1. Separate the charges during the reduce loop using 'charge_type'
+const chargeTotals = otherCharges.reduce((acc, oc) => {
+  const amount = oc.amount || 0;
   
-  const finalGrandTotalGross = grandTotals.gross + totalOtherCharges;
-  const chequeAmount = (grandTotals.gross + totalOtherCharges) - (grandTotals.tax + taxOnOtherCharges) - grandTotals.other;
+  // Normalize charge_type to lowercase to safely match 'demurrage'
+  const type = (oc.charge_type || '').toLowerCase();
+
+  if (type === 'demurrage') {
+    acc.demurrage += amount;
+  } else {
+    acc.others += amount;
+  }
+  
+  return acc;
+}, { demurrage: 0, others: 0 });
+
+// 2. Total gross addition stays the sum of both types
+const totalOtherCharges = chargeTotals.demurrage + chargeTotals.others;
+
+// 3. Tax is ONLY calculated if charge_type is 'Demurrage'
+const taxOnOtherCharges = chargeTotals.demurrage * 0.02;
+
+// 4. Final totals and Cheque calculation
+const finalGrandTotalGross = (grandTotals.gross || 0) + totalOtherCharges;
+const totalTax = (grandTotals.tax || 0) + taxOnOtherCharges;
+
+const chequeAmount = finalGrandTotalGross - totalTax - (grandTotals.other || 0);
 
   const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
   const orphanReimbursements = reimbursements.filter(r => !platesWithTrips.has(r.plate_number)).reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
