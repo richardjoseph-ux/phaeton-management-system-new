@@ -100,12 +100,12 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     return acc;
   }, { gross: 0, tax: 0, other: 0, fuelSubsidy: 0, net: 0 });
 
-const totalOtherCharges = otherCharges.reduce((sum, oc) => sum + (oc.amount || 0), 0);
-const taxOnOtherCharges = totalOtherCharges * 0.02;
+  const totalOtherCharges = otherCharges.reduce((sum, oc) => sum + (oc.amount || 0), 0);
+  const taxOnOtherCharges = totalOtherCharges * 0.02;
+  
+  const finalGrandTotalGross = grandTotals.gross + totalOtherCharges;
+  const chequeAmount = (grandTotals.gross + totalOtherCharges) - (grandTotals.tax + taxOnOtherCharges) - grandTotals.other;
 
-const finalGrandTotalGross = grandTotals.gross + totalOtherCharges;
-//  UPDATED FORMULA: Total Net Payroll (Subcon Payout) + Revenue Adjustments (Other Charges)
-const chequeAmount = grandTotals.net + totalOtherCharges;
   const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
   const orphanReimbursements = reimbursements.filter(r => !platesWithTrips.has(r.plate_number)).reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
   grandTotals.net += orphanReimbursements;
