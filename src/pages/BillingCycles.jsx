@@ -356,12 +356,11 @@ const getChequeAmountForDate = (date) => {
   // 1. Get relevant trips belonging ONLY to these cycles
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
   const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
-  const baseTripTaxTotal = relevantTrips.reduce((sum, t) => sum + (t.tax_deduction || 0), 0);
 
-  // 2. Pull from the active 'otherCharges' array
+  // 2. Pull revenue adjustments from the active 'otherCharges' array
   const relevantOtherCharges = otherCharges.filter(oc => cycleIds.includes(oc.billing_cycle_id));
 
-  // 3. Match the exact database strings: 'demurrage' vs everything else ('other')
+  // 3. Separate adjustments explicitly by type: 'demurrage' vs everything else ('others')
   const chargeTotals = relevantOtherCharges.reduce((acc, oc) => {
     const amount = oc.amount || 0;
     const type = (oc.charge_type || '').toLowerCase();
@@ -372,20 +371,19 @@ const getChequeAmountForDate = (date) => {
       acc.others += amount; // 0% tax tier for "Other"
     }
     
-    return acc; // FIXED: Brought up to the same line to prevent the ASI bug
+    return acc;
   }, { demurrage: 0, others: 0 });
 
-  // 4. Combined adjustments gross addition
-  const totalOtherCharges = chargeTotals.demurrage + chargeTotals.others;
+  // 4. Calculate 2% tax ONLY on the Base Gross and Demurrage
+  const baseTripTaxTotal = baseTripGrossTotal * 0.02;
+  const taxOnDemurrage = chargeTotals.demurrage * 0.02;
+  const totalTaxDeduction = baseTripTaxTotal + taxOnDemurrage;
 
-  // 5. Calculate tax only on what is strictly flagged as 'demurrage' in the database
-  const taxOnOtherCharges = chargeTotals.demurrage * 0.02;
+  // 5. Total gross additions
+  const totalGrossAmount = baseTripGrossTotal + chargeTotals.demurrage + chargeTotals.others;
 
   // 6. Final Cheque amount calculation
-  const finalGrandTotalGross = baseTripGrossTotal + totalOtherCharges;
-  const totalTax = baseTripTaxTotal + taxOnOtherCharges;
-
-  return finalGrandTotalGross - totalTax;
+  return totalGrossAmount - totalTaxDeduction;
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
