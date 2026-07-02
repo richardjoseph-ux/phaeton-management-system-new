@@ -640,6 +640,7 @@ export default function Deductions() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Demurrage">Demurrage</SelectItem>
+                            <SelectItem value="Fuel Subsidy">Fuel Subsidy</SelectItem>
                             <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
