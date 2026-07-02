@@ -353,35 +353,44 @@ const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   
-  // 1. Get total Gross from relevant trips belonging to these cycles
+  // 1. Get relevant trips belonging ONLY to these cycles (matching lines 23-24 of the Dialog)
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
-  const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
-
-  // 2. FIXED: Filter other charges by the explicit billing statement IDs instead of a raw date string
-  const relevantOtherCharges = otherCharges.filter(oc => cycleIds.includes(oc.billing_cycle_id));
   
+  // Base Trip totals matching your row reduction loop
+  const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
+  const baseTripTaxTotal = relevantTrips.reduce((sum, t) => sum + (t.tax_deduction || 0), 0);
+
+  // 2. Filter other charges that belong to these specific cycles
+  const relevantOtherCharges = allOtherCharges.filter(oc => cycleIds.includes(oc.billing_cycle_id));
+
+  // Replicated Step 1: Separate the charges during the reduce loop using 'charge_type'
   const chargeTotals = relevantOtherCharges.reduce((acc, oc) => {
     const amount = oc.amount || 0;
-    const type = oc.charge_type || '';
+    const type = (oc.charge_type || '').toLowerCase();
 
-    if (type === 'Demurrage') {
+    if (type === 'demurrage') {
       acc.demurrage += amount;
-    } else if (type === 'Fuel Subsidy') {
+    } else if (type === 'fuel subsidy') {
       acc.fuelSubsidy += amount;
     } else {
-      acc.others += amount; // 0% tax tier for "Others"
+      acc.others += amount;
     }
+    
     return acc;
   }, { demurrage: 0, fuelSubsidy: 0, others: 0 });
 
-  // 3. Compute combined taxable subtotal (Base Gross + Demurrage + Fuel Subsidy)
-  const taxableSubtotal = baseTripGrossTotal + chargeTotals.demurrage + chargeTotals.fuelSubsidy;
-  
-  // 4. Calculate 2% tax component solely on the taxable segments
-  const totalTax = taxableSubtotal * 0.02;
+  // Replicated Step 2: Total adjustments
+  const totalOtherCharges = chargeTotals.demurrage + chargeTotals.fuelSubsidy + chargeTotals.others;
 
-  // 5. Final Calculation: (Taxable Base - 2% Tax) + Untaxed Others
-  return (taxableSubtotal - totalTax) + chargeTotals.others;
+  // Replicated Step 3: Tax is ONLY calculated if type is 'Demurrage' or 'Fuel Subsidy'
+  const taxOnOtherCharges = (chargeTotals.demurrage * 0.02) + (chargeTotals.fuelSubsidy * 0.02);
+
+  // Replicated Step 4: Final totals and Cheque calculation
+  const finalGrandTotalGross = baseTripGrossTotal + totalOtherCharges;
+  const totalTax = baseTripTaxTotal + taxOnOtherCharges;
+
+  // Returns exactly the matched layout total: Gross - Tax (Excluding subcon structural deductions)
+  return finalGrandTotalGross - totalTax;
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
