@@ -116,21 +116,17 @@ const chargeTotals = dateOtherCharges.reduce((acc, oc) => {
   return acc;
 }, { demurrage: 0, fuelSubsidy: 0, others: 0 });
 
-// 2. Add all additions to total adjustments
-const totalOtherCharges = chargeTotals.demurrage + chargeTotals.fuelSubsidy + chargeTotals.others;
+// 2. Calculate the combined subtotal subject to the 2% Withholding Tax
+// (Total Gross Rate + Demurrage + Fuel Subsidy)
+const taxableSubtotal = tripTotals.gross + chargeTotals.demurrage + chargeTotals.fuelSubsidy;
 
-// 3. Tax is ONLY calculated for Demurrage and Fuel Subsidy
-const taxOnOtherCharges = (chargeTotals.demurrage * 0.02) + (chargeTotals.fuelSubsidy * 0.02);
+// 3. Apply the 2% withholding tax directly onto that combined sum total
+const totalTax = taxableSubtotal * 0.02;
 
-// 4. Extract actual penalties/deductions (Insurance & Other Charges)
-const dateDeductions = deductions.filter(d => d.billing_received_date === date);
-const totalDeductions = dateDeductions.reduce((sum, d) => sum + (d.insurance_charge || 0) + (d.other_charges || 0), 0);
-
-// 5. Final Cheque Calculation
-const finalGrandTotalGross = tripTotals.gross + totalOtherCharges;
-const totalTax = tripTotals.tax + taxOnOtherCharges;
-
-const chequeAmount = finalGrandTotalGross - totalTax - totalDeductions;
+// 4. Final Cheque Calculation:
+// Subtract the 2% tax from the taxable subtotal, then add the untaxed "Others" revenue additions.
+// (Deductions are excluded as they apply to driver subcon payroll payouts, not client billing cheques)
+const chequeAmount = (taxableSubtotal - totalTax) + chargeTotals.others;
 
   const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
   const orphanReimbursements = reimbursements.filter(r => !platesWithTrips.has(r.plate_number)).reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
