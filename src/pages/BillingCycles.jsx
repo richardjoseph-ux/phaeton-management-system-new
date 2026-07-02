@@ -355,7 +355,6 @@ const getChequeAmountForDate = (date) => {
   
   // 1. Get relevant trips belonging ONLY to these cycles
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
-  
   const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
   const baseTripTaxTotal = relevantTrips.reduce((sum, t) => sum + (t.tax_deduction || 0), 0);
 
@@ -367,14 +366,13 @@ const getChequeAmountForDate = (date) => {
     const amount = oc.amount || 0;
     const type = (oc.charge_type || '').toLowerCase();
 
-    // Since database uses "Demurrage" for these adjustments, catch them here
     if (type === 'demurrage') {
       acc.demurrage += amount;
     } else {
       acc.others += amount; // 0% tax tier for "Other"
     }
     
-    return acc;
+    return acc; // FIXED: Brought up to the same line to prevent the ASI bug
   }, { demurrage: 0, others: 0 });
 
   // 4. Combined adjustments gross addition
