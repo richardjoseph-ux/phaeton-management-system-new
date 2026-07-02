@@ -353,29 +353,34 @@ const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   
-  // 1. Get total Gross and Tax from relevant trips
-  // We calculate tax manually as 2% of gross
+  // 1. Sum up the base trip gross rate safely
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
-  
-  const tripTotals = relevantTrips.reduce((acc, t) => {
-    const gross = t.gross_rate || 0;
-    const tax = gross * 0.02; // Manual 2% calculation
-    acc.gross += gross;
-    acc.tax += tax;
-    return acc;
-  }, { gross: 0, tax: 0 });
+  const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
 
-  // 2. Get Other Charges for this date
+  // 2. Separate other charges into their respective tax treatment categories
   const dateOtherCharges = allOtherCharges.filter(oc => oc.billing_received_date === date);
-  const totalOtherCharges = dateOtherCharges.reduce((sum, oc) => sum + (oc.amount || 0), 0);
-  const taxOnOtherCharges = totalOtherCharges * 0.02;
+  const chargeTotals = dateOtherCharges.reduce((acc, oc) => {
+    const amount = oc.amount || 0;
+    const type = oc.charge_type || '';
 
-  // 3. Get Deductions for this date
-  const dateDeductions = deductions.filter(d => d.billing_received_date === date);
-  const totalDeductions = dateDeductions.reduce((sum, d) => sum + (d.insurance_charge || 0) + (d.other_charges || 0), 0);
+    if (type === 'Demurrage') {
+      acc.demurrage += amount;
+    } else if (type === 'Fuel Subsidy') {
+      acc.fuelSubsidy += amount;
+    } else {
+      acc.others += amount; // 0% tax tier
+    }
+    return acc;
+  }, { demurrage: 0, fuelSubsidy: 0, others: 0 });
 
-  // 4. Final Calculation
-  return (tripTotals.gross + totalOtherCharges) - (tripTotals.tax + taxOnOtherCharges) - totalDeductions;
+  // 3. Compute combined taxable subtotal (Base Gross + Demurrage + Fuel Subsidy)
+  const taxableSubtotal = baseTripGrossTotal + chargeTotals.demurrage + chargeTotals.fuelSubsidy;
+  
+  // 4. Calculate 2% tax component solely on the taxable segments
+  const totalTax = taxableSubtotal * 0.02;
+
+  // 5. Final Calculation: Subtract tax from taxable base, then append completely untaxed 'Others'
+  return (taxableSubtotal - totalTax) + chargeTotals.others;
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
