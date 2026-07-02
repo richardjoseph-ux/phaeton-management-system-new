@@ -359,32 +359,31 @@ const getChequeAmountForDate = (date) => {
   const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
   const baseTripTaxTotal = relevantTrips.reduce((sum, t) => sum + (t.tax_deduction || 0), 0);
 
-  // 2. FIXED: Pull from 'otherCharges' (which contains the loaded data) and filter by cycleIds
+  // 2. Pull from the active 'otherCharges' array
   const relevantOtherCharges = otherCharges.filter(oc => cycleIds.includes(oc.billing_cycle_id));
 
-  // 3. Separate the charges during the reduce loop using 'charge_type' (replicated from Summary Dialog)
+  // 3. Match the exact database strings: 'demurrage' vs everything else ('other')
   const chargeTotals = relevantOtherCharges.reduce((acc, oc) => {
     const amount = oc.amount || 0;
     const type = (oc.charge_type || '').toLowerCase();
 
+    // Since database uses "Demurrage" for these adjustments, catch them here
     if (type === 'demurrage') {
       acc.demurrage += amount;
-    } else if (type === 'fuel subsidy') {
-      acc.fuelSubsidy += amount;
     } else {
-      acc.others += amount;
+      acc.others += amount; // 0% tax tier for "Other"
     }
     
     return acc;
-  }, { demurrage: 0, fuelSubsidy: 0, others: 0 });
+  }, { demurrage: 0, others: 0 });
 
-  // 4. Total adjustments gross addition
-  const totalOtherCharges = chargeTotals.demurrage + chargeTotals.fuelSubsidy + chargeTotals.others;
+  // 4. Combined adjustments gross addition
+  const totalOtherCharges = chargeTotals.demurrage + chargeTotals.others;
 
-  // 5. Tax is ONLY calculated if type is 'demurrage' or 'fuel subsidy'
-  const taxOnOtherCharges = (chargeTotals.demurrage * 0.02) + (chargeTotals.fuelSubsidy * 0.02);
+  // 5. Calculate tax only on what is strictly flagged as 'demurrage' in the database
+  const taxOnOtherCharges = chargeTotals.demurrage * 0.02;
 
-  // 6. Final totals and Cheque calculation matching your Dialog workflow
+  // 6. Final Cheque amount calculation
   const finalGrandTotalGross = baseTripGrossTotal + totalOtherCharges;
   const totalTax = baseTripTaxTotal + taxOnOtherCharges;
 
