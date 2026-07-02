@@ -353,13 +353,14 @@ const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   
-  // 1. Sum up the base trip gross rate safely
+  // 1. Get total Gross from relevant trips belonging to these cycles
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
   const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
 
-  // 2. Separate other charges into their respective tax treatment categories
-  const dateOtherCharges = allOtherCharges.filter(oc => oc.billing_received_date === date);
-  const chargeTotals = dateOtherCharges.reduce((acc, oc) => {
+  // 2. FIXED: Filter other charges by the explicit billing statement IDs instead of a raw date string
+  const relevantOtherCharges = otherCharges.filter(oc => cycleIds.includes(oc.billing_cycle_id));
+  
+  const chargeTotals = relevantOtherCharges.reduce((acc, oc) => {
     const amount = oc.amount || 0;
     const type = oc.charge_type || '';
 
@@ -368,7 +369,7 @@ const getChequeAmountForDate = (date) => {
     } else if (type === 'Fuel Subsidy') {
       acc.fuelSubsidy += amount;
     } else {
-      acc.others += amount; // 0% tax tier
+      acc.others += amount; // 0% tax tier for "Others"
     }
     return acc;
   }, { demurrage: 0, fuelSubsidy: 0, others: 0 });
@@ -379,7 +380,7 @@ const getChequeAmountForDate = (date) => {
   // 4. Calculate 2% tax component solely on the taxable segments
   const totalTax = taxableSubtotal * 0.02;
 
-  // 5. Final Calculation: Subtract tax from taxable base, then append completely untaxed 'Others'
+  // 5. Final Calculation: (Taxable Base - 2% Tax) + Untaxed Others
   return (taxableSubtotal - totalTax) + chargeTotals.others;
 };
 
