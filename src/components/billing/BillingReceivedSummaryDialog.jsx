@@ -100,37 +100,27 @@ export default function BillingReceivedSummaryDialog({ open, onClose, billingDat
     return acc;
   }, { gross: 0, tax: 0, other: 0, fuelSubsidy: 0, net: 0 });
 
-// 1. Separate the revenue charges during the reduce loop
-const chargeTotals = dateOtherCharges.reduce((acc, oc) => {
-  const amount = oc.amount || 0;
-  const type = oc.charge_type || '';
+  // Revenue adjustments (Other Charges loaded for this billing date)
+  const chargeTotals = otherCharges.reduce((acc, oc) => {
+    const amount = oc.amount || 0;
+    const type = oc.charge_type || '';
+    if (type === 'Demurrage') {
+      acc.demurrage += amount;
+    } else {
+      acc.others += amount;
+    }
+    return acc;
+  }, { demurrage: 0, others: 0 });
 
-  if (type === 'Demurrage') {
-    acc.demurrage += amount;
-  } else if (type === 'Fuel Subsidy') {
-    acc.fuelSubsidy += amount;
-  } else {
-    acc.others += amount; // This is the "Other" dropdown option (0% tax)
-  }
-  
-  return acc;
-}, { demurrage: 0, fuelSubsidy: 0, others: 0 });
+  const totalOtherCharges = chargeTotals.demurrage + chargeTotals.others;
+  const taxOnOtherCharges = chargeTotals.demurrage * 0.02;
 
-// 2. Add all additions to total adjustments
-const totalOtherCharges = chargeTotals.demurrage + chargeTotals.fuelSubsidy + chargeTotals.others;
+  const totalDeductions = billingDeductions.reduce((sum, d) => sum + (d.insurance_charge || 0) + (d.other_charges || 0), 0);
 
-// 3. Tax is ONLY calculated for Demurrage and Fuel Subsidy
-const taxOnOtherCharges = (chargeTotals.demurrage * 0.02) + (chargeTotals.fuelSubsidy * 0.02);
+  const finalGrandTotalGross = grandTotals.gross + totalOtherCharges;
+  const totalTax = grandTotals.tax + taxOnOtherCharges;
 
-// 4. Extract actual penalties/deductions (Insurance & Other Charges)
-const dateDeductions = deductions.filter(d => d.billing_received_date === date);
-const totalDeductions = dateDeductions.reduce((sum, d) => sum + (d.insurance_charge || 0) + (d.other_charges || 0), 0);
-
-// 5. Final Cheque Calculation
-const finalGrandTotalGross = tripTotals.gross + totalOtherCharges;
-const totalTax = tripTotals.tax + taxOnOtherCharges;
-
-const chequeAmount = finalGrandTotalGross - totalTax - totalDeductions;
+  const chequeAmount = finalGrandTotalGross - totalTax - totalDeductions;
 
   const platesWithTrips = new Set(plateGroups.map(p => p.plate_number));
   const orphanReimbursements = reimbursements.filter(r => !platesWithTrips.has(r.plate_number)).reduce((sum, r) => sum + (r.reimbursement_amount || 0), 0);
