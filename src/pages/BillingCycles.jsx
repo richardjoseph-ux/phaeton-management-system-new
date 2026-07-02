@@ -353,17 +353,16 @@ const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   
-  // 1. Get relevant trips belonging ONLY to these cycles (matching lines 23-24 of the Dialog)
+  // 1. Get relevant trips belonging ONLY to these cycles
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
   
-  // Base Trip totals matching your row reduction loop
   const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
   const baseTripTaxTotal = relevantTrips.reduce((sum, t) => sum + (t.tax_deduction || 0), 0);
 
-  // 2. Filter other charges that belong to these specific cycles
-  const relevantOtherCharges = allOtherCharges.filter(oc => cycleIds.includes(oc.billing_cycle_id));
+  // 2. FIXED: Pull from 'otherCharges' (which contains the loaded data) and filter by cycleIds
+  const relevantOtherCharges = otherCharges.filter(oc => cycleIds.includes(oc.billing_cycle_id));
 
-  // Replicated Step 1: Separate the charges during the reduce loop using 'charge_type'
+  // 3. Separate the charges during the reduce loop using 'charge_type' (replicated from Summary Dialog)
   const chargeTotals = relevantOtherCharges.reduce((acc, oc) => {
     const amount = oc.amount || 0;
     const type = (oc.charge_type || '').toLowerCase();
@@ -379,17 +378,16 @@ const getChequeAmountForDate = (date) => {
     return acc;
   }, { demurrage: 0, fuelSubsidy: 0, others: 0 });
 
-  // Replicated Step 2: Total adjustments
+  // 4. Total adjustments gross addition
   const totalOtherCharges = chargeTotals.demurrage + chargeTotals.fuelSubsidy + chargeTotals.others;
 
-  // Replicated Step 3: Tax is ONLY calculated if type is 'Demurrage' or 'Fuel Subsidy'
+  // 5. Tax is ONLY calculated if type is 'demurrage' or 'fuel subsidy'
   const taxOnOtherCharges = (chargeTotals.demurrage * 0.02) + (chargeTotals.fuelSubsidy * 0.02);
 
-  // Replicated Step 4: Final totals and Cheque calculation
+  // 6. Final totals and Cheque calculation matching your Dialog workflow
   const finalGrandTotalGross = baseTripGrossTotal + totalOtherCharges;
   const totalTax = baseTripTaxTotal + taxOnOtherCharges;
 
-  // Returns exactly the matched layout total: Gross - Tax (Excluding subcon structural deductions)
   return finalGrandTotalGross - totalTax;
 };
 
