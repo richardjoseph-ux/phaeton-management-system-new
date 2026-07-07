@@ -27,6 +27,7 @@ export default function Deductions() {
   });
   const [saving, setSaving] = useState(false);
   const [allRecordsPage, setAllRecordsPage] = useState(1);
+  const [allRecordsTypeFilter, setAllRecordsTypeFilter] = useState('all');
   const rowsPerPage = 10;
 
   const [billingReceivedSummaries, setBillingReceivedSummaries] = useState([]);
@@ -799,6 +800,21 @@ export default function Deductions() {
 
             {/* All Records Tab */}
             <TabsContent value="all" className="space-y-6">
+              {/* Type Filter */}
+              <div className="flex items-center gap-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide shrink-0">Filter by Type</p>
+                <Select value={allRecordsTypeFilter} onValueChange={v => { setAllRecordsTypeFilter(v); setAllRecordsPage(1); }}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="deduction">Deductions</SelectItem>
+                    <SelectItem value="reimbursement">Reimbursements</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="bg-card border rounded-lg overflow-hidden">
                 {/* Combined Summary */}
                 <div className="grid grid-cols-4 divide-x border-b">
@@ -835,8 +851,8 @@ export default function Deductions() {
                   <tbody>
                     {(() => {
                       const allRows = [
-                        ...deductions.map(d => ({ ...d, _type: 'deduction' })),
-                        ...reimbursements.map(r => ({ ...r, _type: 'reimbursement' }))
+                        ...(allRecordsTypeFilter !== 'reimbursement' ? deductions.map(d => ({ ...d, _type: 'deduction' })) : []),
+                        ...(allRecordsTypeFilter !== 'deduction' ? reimbursements.map(r => ({ ...r, _type: 'reimbursement' })) : []),
                       ].sort((a, b) => (b.billing_received_date || '').localeCompare(a.billing_received_date || ''));
                       const totalAllPages = Math.ceil(allRows.length / rowsPerPage);
                       const pageRows = allRows.slice((allRecordsPage - 1) * rowsPerPage, allRecordsPage * rowsPerPage);
