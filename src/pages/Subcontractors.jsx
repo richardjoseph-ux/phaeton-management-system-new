@@ -63,19 +63,16 @@ export default function Subcontractors() {
 const processedList = list.map(sub => {
   const insStatus = getInsuranceStatus(sub);
 
-  // Find which quarter is currently due (next upcoming from start date)
+  // Derive quarter label from the same dueDate used in getInsuranceStatus
   let quarter = null;
-  if (sub.insurance_start_date) {
-    const startDate = moment(sub.insurance_start_date);
-    const today = moment().startOf('day');
-    for (let q = 1; q <= 4; q++) {
-      const due = startDate.clone().add(q * 3, 'months');
-      if (due.isSameOrAfter(today)) {
-        quarter = q;
-        break;
-      }
-    }
-    if (!quarter) quarter = 4; // All expired
+  if (sub.insurance_start_date && insStatus.dueDate) {
+    const start = moment(sub.insurance_start_date);
+    const due = moment(insStatus.dueDate);
+    // How many 3-month increments from start to dueDate?
+    const monthsDiff = due.diff(start, 'months');
+    quarter = Math.round(monthsDiff / 3); // e.g. 3mo=Q1, 6mo=Q2, 9mo=Q3, 12mo=Q4
+    // Normalize into 1–4 range
+    quarter = ((((quarter - 1) % 4) + 4) % 4) + 1;
   }
 
   if (statusTab === 'active') {
