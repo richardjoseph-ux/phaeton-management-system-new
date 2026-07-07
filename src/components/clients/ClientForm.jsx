@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Plus, Trash2, Upload, Download, Search, X } from 'lucide-react';
 import PickupLocationFeesManager from './PickupLocationFeesManager';
+import AddPickupLocationDialog from './AddPickupLocationDialog';
 
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
@@ -50,6 +51,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const [activeTruck, setActiveTruck] = useState('__all__');
   const [routeSearch, setRouteSearch] = useState('');
   const [newRowIndices, setNewRowIndices] = useState(new Set());
+  const [showAddPickup, setShowAddPickup] = useState(false);
   const fileInputRef = useRef(null);
 
   // Unique pickup locations
@@ -345,8 +347,16 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   // Columns to show: in "All Trucks" view show all 4 rate cols; in specific truck view show only that one
   const rateColumns = activeTruck === '__all__' ? TRUCK_TYPES : [activeTruck];
 
+  const onPickupAdded = (loc, newRoutes) => {
+    setForm(p => ({ ...p, routes: [...p.routes, ...newRoutes] }));
+    setActivePickup(loc);
+    setActiveTruck(TRUCK_TYPES[0]);
+    setShowAddPickup(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
+      <AddPickupLocationDialog open={showAddPickup} onClose={() => setShowAddPickup(false)} onAdd={onPickupAdded} />
       <DialogContent className="max-w-5xl max-h-[92vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>{editData ? 'Edit Client Account' : 'Create Client Account'}</DialogTitle>
@@ -437,16 +447,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                 <Button type="button" variant="outline" size="sm" onClick={handleExport}>
                   <Download className="w-3.5 h-3.5 mr-1" /> Export Excel
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => {
-                  const name = prompt('Enter pickup location name (e.g. DSV_MAKATI):');
-                  if (!name?.trim()) return;
-                  const loc = name.trim().toUpperCase();
-                  const newRoute = emptyRoute();
-                  newRoute.pickup_location = loc;
-                  setForm(p => ({ ...p, routes: [...p.routes, newRoute] }));
-                  setActivePickup(loc);
-                  setActiveTruck(TRUCK_TYPES[0]);
-                }}>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowAddPickup(true)}>
                   <Plus className="w-3.5 h-3.5 mr-1" /> Add Pickup Location
                 </Button>
               </div>
