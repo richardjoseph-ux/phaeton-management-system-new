@@ -62,69 +62,28 @@ export default function Subcontractors() {
 
 const processedList = list.map(sub => {
   const insStatus = getInsuranceStatus(sub);
-
-  // Derive quarter label from the same dueDate used in getInsuranceStatus
   let quarter = null;
   if (sub.insurance_start_date && insStatus.dueDate) {
     const start = moment(sub.insurance_start_date);
     const due = moment(insStatus.dueDate);
-    // How many 3-month increments from start to dueDate?
     const monthsDiff = due.diff(start, 'months');
-    quarter = Math.round(monthsDiff / 3); // e.g. 3mo=Q1, 6mo=Q2, 9mo=Q3, 12mo=Q4
-    // Normalize into 1–4 range
+    quarter = Math.round(monthsDiff / 3);
     quarter = ((((quarter - 1) % 4) + 4) % 4) + 1;
   }
-
-  if (statusTab === 'active') {
-    return {
-      ...sub,
-      insStatus: {
-        status: 'Insured',
-        dateDisplay: sub.insurance_start_date ? formatDateDisplay(sub.insurance_start_date) : '—',
-        days: null 
-      },
-    };
-  } else {
-    return { ...sub, insStatus, quarter };
-  }
+  return { ...sub, insStatus, quarter };
 });
 
-const seenPlatesForFilter = new Set();
-const filtered = processedList
-  .filter(s => {
-    // 1. Search Logic
-    const matchesSearch = !search ||
-      s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
-      s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
-      s.sub_id?.toLowerCase().includes(search.toLowerCase());
+const filtered = processedList.filter(s => {
+  const matchesSearch = !search ||
+    s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
+    s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
+    s.sub_id?.toLowerCase().includes(search.toLowerCase());
 
-    // 2. Tab-Specific Logic
-    let matchesStatus = true;
-    
-    if (statusTab === 'active') {
-      matchesStatus = s.status === 'Active';
-    } 
-    else if (statusTab === 'inactive') {
-      matchesStatus = s.status === 'Inactive';
-    } 
-    else if (statusTab === 'insurance') {
-      // EXCLUDE Uninsured and Inactive ONLY on this tab
-      if (s.insStatus.status === 'Uninsured' || s.status === 'Inactive') return false;
-      // Deduplicate by plate_number — same plate = same insurance
-      if (seenPlatesForFilter.has(s.plate_number)) return false;
-      seenPlatesForFilter.add(s.plate_number);
-      matchesStatus = true;
-    }
-    
-    return matchesSearch && matchesStatus;
-  })
-.sort((a, b) => {
-  if (statusTab === 'insurance') {
-    const daysA = a.insStatus.days ?? 999;
-    const daysB = b.insStatus.days ?? 999;
-    return daysA - daysB;
-  }
-  return 0;
+  let matchesStatus = true;
+  if (statusTab === 'active') matchesStatus = s.status === 'Active';
+  else if (statusTab === 'inactive') matchesStatus = s.status === 'Inactive';
+
+  return matchesSearch && matchesStatus;
 });
 
   const activeCount = list.filter(s => s.status === 'Active').length;
@@ -279,14 +238,7 @@ const filtered = processedList
         >
           Inactive ({inactiveCount})
         </button>
-        <button
-          onClick={() => setStatusTab('insurance')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            statusTab === 'insurance' ? 'border-amber-600 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Insurance Due ({insuranceCount})
-        </button>
+
       </div>
 
       <div className="relative mb-4 max-w-sm">
@@ -332,21 +284,13 @@ const filtered = processedList
                         {/* Badge remains the same */}
                         <StatusBadge status={insStatus.status} type="insurance" />
                         
-                        {/* Dynamic display based on tab */}
-                        {(insStatus.dateDisplay || insStatus.dueDate) && (
-                        <p className={`text-xs text-muted-foreground mt-0.5 ${
-                          (statusTab === 'insurance' && insStatus.days <= 5) ? 'text-red-600 font-bold' : ''
-                        }`}>
-                          {statusTab === 'active' 
-                            ? `Started: ${insStatus.dateDisplay}` 
-                            : `Due: ${formatDateDisplay(insStatus.dueDate)}`
-                          }
-                        </p>
+                        {insStatus.dueDate && (
+                          <p className={`text-xs text-muted-foreground mt-0.5 ${insStatus.days !== undefined && insStatus.days <= 5 ? 'text-red-600 font-bold' : ''}`}>
+                            Due: {formatDateDisplay(insStatus.dueDate)}
+                          </p>
                         )}
                       </div>
-                      
-                      {/* Quarter info + link button */}
-                      {statusTab === 'insurance' && sub.quarter && (
+                      {sub.quarter && sub.is_insured && (
                         <p className="text-[10px] text-muted-foreground font-mono mt-1 uppercase">
                           Q{sub.quarter} Renewal
                         </p>
