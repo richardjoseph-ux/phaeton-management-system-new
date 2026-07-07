@@ -137,10 +137,11 @@ export default function InsuranceLinkDialog({ open, onClose, subcontractor }) {
             return (
               <button
                 key={q.label}
-                onClick={() => handleSelectQuarter(q)}
+                onClick={() => !paid && handleSelectQuarter(q)}
+                disabled={paid}
                 className={`rounded-lg border p-3 text-center transition-all ${
                   paid
-                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700 cursor-not-allowed opacity-80'
                     : isSelected
                     ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary'
                     : 'border-border hover:border-primary/50 hover:bg-muted/30'
