@@ -8,22 +8,19 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import TripForm from '@/components/trips/TripForm';
 import ExcelImportExport from '@/components/ui/ExcelImportExport';
 import { useAuth } from '@/lib/AuthContext';
+import { useAppData } from '@/lib/AppDataContext';
 import { formatDateDisplay } from '@/lib/dateUtils';
 import { calculateTripFees } from '@/lib/feeCalculator';
 import * as XLSX from 'xlsx';
 
 export default function TripEncoding() {
   const { user: currentUser } = useAuth();
+  const { clients, subcontractors, billingCycles } = useAppData();
   
-  // Define permissions clearly
   const isAdmin = currentUser?.role === 'admin';
   const canAddTrip = currentUser?.role === 'admin' || currentUser?.role === 'user';
   
-  // State definitions
   const [trips, setTrips] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [subcontractors, setSubcontractors] = useState([]);
-  const [billingCycles, setBillingCycles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortOrder, setSortOrder] = useState('latest');
@@ -35,22 +32,14 @@ export default function TripEncoding() {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
   
-  const load = async () => {
+  const loadTrips = async () => {
     setLoading(true);
-    const [t, c, s, b] = await Promise.all([
-      base44.entities.TripRecord.list('-created_date', 200),
-      base44.entities.ClientAccount.list('client_name', 50),
-      base44.entities.Subcontractor.list('plate_number', 100),
-      base44.entities.BillingCycle.list('-created_date', 50),
-    ]);
+    const t = await base44.entities.TripRecord.list('-created_date', 200);
     setTrips(t);
-    setClients(c);
-    setSubcontractors(s);
-    setBillingCycles(b);
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { loadTrips(); }, []);
 
   const filtered = useMemo(() => {
     return [...trips].filter(t => {
@@ -78,7 +67,6 @@ export default function TripEncoding() {
     });
   }, [trips, search, filterBilling, sortOrder]);
 
-  // Reset to page 1 whenever filters change
   useEffect(() => { setCurrentPage(1); }, [search, filterBilling, sortOrder]);
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
@@ -89,7 +77,6 @@ export default function TripEncoding() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
-    // Initialize structure: [Jan...Jun] and [Jul...Dec]
     const stats = filtered.reduce((acc, trip) => {
       const d = new Date(trip.delivery_date);
       if (isNaN(d.getTime())) return acc;
@@ -102,7 +89,6 @@ export default function TripEncoding() {
         acc.yearCount++;
         acc.quarters[qIndex]++;
         
-        // Track specific month: 1st half (0-5), 2nd half (6-11)
         if (month < 6) acc.half1[month]++;
         else acc.half2[month - 6]++;
         
@@ -138,12 +124,11 @@ export default function TripEncoding() {
     setTrips(prev => prev.filter(t => t.id !== id));
   };
 
-const handleExportTrips = async () => {
+  const handleExportTrips = async () => {
     try {
       const data = filtered.map(t => ({
         plate_number: t.plate_number,
         owner_name: t.owner_name,
-        // Added truck_type here
         truck_type: t.truck_type, 
         client_name: t.client_name,
         pickup_location: t.pickup_location,
@@ -171,7 +156,6 @@ const handleExportTrips = async () => {
       const response = await base44.functions.invoke('syncBillingDates', {});
       if (response.data.success) {
         alert(response.data.message);
-        // Reload trips only (billing dates changed on trip records)
         const updated = await base44.entities.TripRecord.list('-created_date', 200);
         setTrips(updated);
       }
@@ -184,20 +168,16 @@ const handleExportTrips = async () => {
   const handleSyncTripData = async () => {
     setSyncingData(true);
     try {
-      // 1. Fetch all necessary data
       const [tripsToUpdate, allClients, allSubcontractors] = await Promise.all([
         base44.entities.TripRecord.list(),
         base44.entities.ClientAccount.list('client_name', 100),
-        base44.entities.Subcontractor.list('plate_number', 200) // Added this fetch
+        base44.entities.Subcontractor.list('plate_number', 200)
       ]);
 
       let updated = 0;
 
       for (const trip of tripsToUpdate) {
-        // Find the client
         const client = allClients.find(c => c.id === trip.client_account_id || c.client_name === trip.client_name);
-        
-        // Find the subcontractor matching the plate_number
         const subcontractor = allSubcontractors.find(s => s.plate_number === trip.plate_number);
         
         if (client) {
@@ -220,7 +200,6 @@ const handleExportTrips = async () => {
             fuelSubsidy: 0,
           });
 
-          // Check if changes are needed for either fee data OR subcontractor ID
           const needsSubcontractorUpdate = trip.subcontractor_id !== (subcontractor?.id || trip.subcontractor_id);
           
           const hasFeeChanges = 
@@ -235,7 +214,7 @@ const handleExportTrips = async () => {
             await base44.entities.TripRecord.update(trip.id, {
               client_account_id: client.id,
               client_name: client.client_name,
-              subcontractor_id: subcontractor?.id || trip.subcontractor_id, // Add this line
+              subcontractor_id: subcontractor?.id || trip.subcontractor_id,
               gross_rate: feeBreakdown.gross_rate,
               tax_deduction: feeBreakdown.tax_deduction,
               hidden_fee: feeBreakdown.hidden_fee,
@@ -248,14 +227,14 @@ const handleExportTrips = async () => {
         }
       }
       alert(`Synced ${updated} trip records with updated route, rate, and subcontractor data.`);
-      await load();
+      await loadTrips();
     } catch (error) {
       alert('Error syncing trip data: ' + error.message);
     }
     setSyncingData(false);
   };
 
-const handleImportTrips = async (event) => {
+  const handleImportTrips = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
@@ -269,7 +248,6 @@ const handleImportTrips = async (event) => {
         return;
       }
 
-      // Fetch existing records, clients, and billing cycles simultaneously
       const [existing, allClients, allBillingCycles] = await Promise.all([
         base44.entities.TripRecord.list(),
         base44.entities.ClientAccount.list('client_name', 100),
@@ -284,7 +262,6 @@ const handleImportTrips = async (event) => {
           return !existingKeys.has(key);
         })
         .map(item => {
-          // Helper to force YYYY-MM-DD string format
           let formattedDate = item.delivery_date;
           if (formattedDate instanceof Date) {
             formattedDate = formattedDate.toISOString().split('T')[0];
@@ -293,7 +270,6 @@ const handleImportTrips = async (event) => {
             formattedDate = date.toISOString().split('T')[0];
           }
 
-          // Find IDs for linking
           const client = allClients.find(c => c.client_name?.toLowerCase() === item.client_name?.toLowerCase());
           const cycle = allBillingCycles.find(b => b.cycle_name === item.billing_cycle_name);
           
@@ -302,7 +278,6 @@ const handleImportTrips = async (event) => {
             delivery_date: formattedDate,
             client_account_id: client ? client.id : null,
             billing_cycle_id: cycle ? cycle.id : null,
-            // Force these to be strings to satisfy database schema
             waybill_number: item.waybill_number != null ? String(item.waybill_number) : null,
             dr_number: item.dr_number != null ? String(item.dr_number) : null
           };
@@ -318,7 +293,7 @@ const handleImportTrips = async (event) => {
 
       await base44.entities.TripRecord.bulkCreate(toImport);
       alert(`Successfully imported ${toImport.length} trip records. Click "Sync Trip Data" to populate rates.`);
-      load();
+      loadTrips();
     } catch (error) {
       alert('Import failed: ' + error.message);
     }
@@ -361,32 +336,26 @@ const handleImportTrips = async (event) => {
           </div>
         }
       />
-{/* Dashboard Summary Cards */}
+      {/* Dashboard Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        
-        {/* Combined Monthly & Yearly Box */}
         <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
           <p className="text-sm text-muted-foreground mb-4">Trip Totals</p>
           <div className="flex justify-around items-center">
             <div className="text-center">
               <p className="text-[10px] uppercase font-bold text-muted-foreground">{dashboardStats.currentMonthName}</p>
-              {/* Font size increased to 5xl */}
               <p className="text-5xl font-bold text-emerald-600">{dashboardStats.monthCount}</p>
             </div>
             <div className="border-l h-12"></div>
             <div className="text-center">
               <p className="text-[10px] uppercase font-bold text-muted-foreground">{new Date().getFullYear()}</p>
-              {/* Font size increased to 5xl */}
               <p className="text-5xl font-bold">{dashboardStats.yearCount}</p>
             </div>
           </div>
         </div>
 
-        {/* Combined Half-Year Breakdown Box */}
         <div className="bg-card border rounded-lg p-4 shadow-sm text-center md:col-span-2">
           <p className="text-sm text-muted-foreground mb-4">Half-Year Breakdown</p>
           <div className="flex flex-col gap-4">
-            {/* 1st Half */}
             <div className="flex justify-between items-center">
               <p className="text-[10px] font-bold text-muted-foreground w-16 text-left">1ST HALF</p>
               <div className="flex flex-1 justify-between gap-2">
@@ -398,9 +367,7 @@ const handleImportTrips = async (event) => {
                 ))}
               </div>
             </div>
-            {/* Divider */}
             <div className="border-t"></div>
-            {/* 2nd Half */}
             <div className="flex justify-between items-center">
               <p className="text-[10px] font-bold text-muted-foreground w-16 text-left">2ND HALF</p>
               <div className="flex flex-1 justify-between gap-2">
@@ -493,36 +460,36 @@ const handleImportTrips = async (event) => {
                   <td className="px-4 py-3 text-sm font-medium">{formatDateDisplay(trip.delivery_date)}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{trip.billing_cycle_name || '—'}</td>
                   <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    {currentUser && (
-                      <>
+                    <div className="flex items-center gap-1">
+                      {currentUser && (
+                        <>
+                          <button 
+                            onClick={() => handleDuplicate(trip)} 
+                            className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" 
+                            title="Duplicate"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            onClick={() => handleEdit(trip)} 
+                            className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" 
+                            title="Edit"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                      {isAdmin && (
                         <button 
-                          onClick={() => handleDuplicate(trip)} 
-                          className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" 
-                          title="Duplicate"
+                          onClick={() => handleDelete(trip.id)} 
+                          className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600" 
+                          title="Delete"
                         >
-                          <Copy className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                        <button 
-                          onClick={() => handleEdit(trip)} 
-                          className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" 
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    )}
-                    {isAdmin && (
-                      <button 
-                        onClick={() => handleDelete(trip.id)} 
-                        className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600" 
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </td>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -530,7 +497,6 @@ const handleImportTrips = async (event) => {
         </div>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-3">
           <span className="text-xs text-muted-foreground">
@@ -549,7 +515,7 @@ const handleImportTrips = async (event) => {
       <TripForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSaved={load}
+        onSaved={loadTrips}
         editData={editData}
         isDuplicate={editData && !editData.id}
         clients={clients}

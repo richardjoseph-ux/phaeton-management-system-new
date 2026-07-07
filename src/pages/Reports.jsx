@@ -6,59 +6,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Download, BarChart3, Filter } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { formatDateDisplay } from '@/lib/dateUtils';
+import { useAppData } from '@/lib/AppDataContext';
 import { jsPDF } from 'jspdf';
 
 export default function Reports() {
-  const [trips, setTrips] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [subcontractors, setSubcontractors] = useState([]);
-  const [billingCycles, setBillingCycles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [tripsLoaded, setTripsLoaded] = useState(false);
+  const { clients, subcontractors, billingCycles, isLoading } = useAppData();
 
-  // Pagination & Filter States
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
   const [filters, setFilters] = useState({
     client_id: 'all', sub_id: 'all', cycle_id: 'all',
     year: 'all', date_from: '', date_to: '',
     date_mode: 'delivery',
-    sortOrder: 'desc' // Added sort order state
+    sortOrder: 'desc'
   });
 
-  // Currency Formatter
   const formatCurrency = (val) => new Intl.NumberFormat('en-PH', { 
     style: 'currency', currency: 'PHP', minimumFractionDigits: 2 
   }).format(val || 0);
 
-  const load = async () => {
-    setLoading(true);
-    const [c, s, b] = await Promise.all([
-      base44.entities.ClientAccount.list('client_name', 50),
-      base44.entities.Subcontractor.list('owner_name', 100),
-      base44.entities.BillingCycle.list('-created_date', 50),
-    ]);
-    setClients(c);
-    setSubcontractors(s);
-    setBillingCycles(b);
-    setLoading(false);
-  };
-
-  const loadTrips = async () => {
-    if (tripsLoaded) return;
-    const t = await base44.entities.TripRecord.list('-delivery_date', 300);
-    setTrips(t);
-    setTripsLoaded(true);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  // Load trips once filters/table are first interacted with or page finishes loading
   useEffect(() => {
-    if (!loading) loadTrips();
-  }, [loading]);
+    base44.entities.TripRecord.list('-delivery_date', 300).then(t => {
+      setTrips(t);
+      setLoading(false);
+    });
+  }, []);
 
-  // Reset to page 1 on filter change
   useEffect(() => { setCurrentPage(1); }, [filters]);
 
   const setF = (k, v) => setFilters(p => ({ ...p, [k]: v }));
@@ -68,7 +44,7 @@ export default function Reports() {
     return Array.from(years).sort((a, b) => b - a);
   }, [trips]);
 
- const filtered = useMemo(() => {
+  const filtered = useMemo(() => {
     let result = trips.filter(t => {
       if (filters.client_id !== 'all' && t.client_account_id !== filters.client_id) return false;
       if (filters.sub_id !== 'all' && t.subcontractor_id !== filters.sub_id) return false;
@@ -82,18 +58,11 @@ export default function Reports() {
       return true;
     });
 
-    // UPDATED SORTING LOGIC:
     return result.sort((a, b) => {
-      // Determine which date field to use based on the active mode
       const dateKey = filters.date_mode === 'cheque' ? 'first_cheque_date' : 'delivery_date';
-      
       const dateA = new Date(a[dateKey] || '1900-01-01');
       const dateB = new Date(b[dateKey] || '1900-01-01');
-      
-      // Perform chronological comparison
-      return filters.sortOrder === 'desc' 
-        ? dateB - dateA 
-        : dateA - dateB;
+      return filters.sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
     });
   }, [trips, filters]);
 
@@ -101,7 +70,6 @@ export default function Reports() {
   const totalNet = filtered.reduce((s, t) => s + (t.net_payroll || 0), 0);
   const companyIncome = totalGross - totalNet;
 
-  // Pagination Logic
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const paginatedData = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
@@ -143,6 +111,8 @@ export default function Reports() {
     URL.revokeObjectURL(url);
   };
 
+  const pageLoading = loading || isLoading.clients || isLoading.subcontractors || isLoading.billingCycles;
+
   return (
     <div className="p-6">
       <PageHeader title="Reports" subtitle="Filter and export trip records" actions={<div className="flex gap-2"><Button onClick={exportCSV} size="sm" variant="outline"><Download className="w-4 h-4 mr-1.5" /> Export CSV</Button><Button onClick={exportPDF} size="sm" variant="outline"><Download className="w-4 h-4 mr-1.5" /> Export PDF</Button></div>} />
@@ -150,7 +120,6 @@ export default function Reports() {
       <div className="bg-card border rounded-lg p-4 mb-6">
         <div className="flex items-center gap-2 mb-3"><Filter className="w-4 h-4 text-muted-foreground" /><span className="text-sm font-medium">Filters</span></div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-          {/* Added Sort Select */}
           <Select value={filters.sortOrder} onValueChange={v => setF('sortOrder', v)}>
             <SelectTrigger><SelectValue placeholder="Sort" /></SelectTrigger>
             <SelectContent>
@@ -181,7 +150,7 @@ export default function Reports() {
         <div className="bg-card border rounded-lg p-4 border-l-4 border-l-amber-500"><p className="text-xs text-muted-foreground">Company Income</p><p className="text-2xl font-bold mt-1 text-amber-700">{formatCurrency(companyIncome)}</p></div>
       </div>
 
-      {loading ? (
+      {pageLoading ? (
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
       ) : (
         <div className="bg-card border rounded-lg overflow-hidden">

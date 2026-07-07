@@ -9,8 +9,9 @@ import SubcontractorForm from '@/components/subcontractors/SubcontractorForm';
 import InsuranceLinkDialog from '@/components/subcontractors/InsuranceLinkDialog';
 import { formatDateDisplay } from '@/lib/dateUtils';
 import { useAuth } from '@/lib/AuthContext';
+import { useAppData } from '@/lib/AppDataContext';
 import * as XLSX from 'xlsx';
-import moment from 'moment'; // Assuming you use Moment.js for date manipulation
+import moment from 'moment';
 
 const getInsuranceStatus = (sub) => {
   if (!sub.is_insured || !sub.insurance_start_date) return { status: 'Uninsured', dueDate: null };
@@ -18,8 +19,6 @@ const getInsuranceStatus = (sub) => {
   const today = moment().startOf('day');
   const start = moment(sub.insurance_start_date);
 
-  // Find the next upcoming quarter due date from the start date
-  // Q1 = start+3mo, Q2 = start+6mo, Q3 = start+9mo, Q4 = start+12mo, then repeats
   let nextDueDate = null;
   for (let q = 1; q <= 4; q++) {
     const due = start.clone().add(q * 3, 'months');
@@ -28,7 +27,6 @@ const getInsuranceStatus = (sub) => {
       break;
     }
   }
-  // If all 4 quarters are in the past, use Q4 (insurance has fully expired)
   if (!nextDueDate) nextDueDate = start.clone().add(12, 'months');
 
   const daysRemaining = nextDueDate.diff(today, 'days');
@@ -42,8 +40,8 @@ const getInsuranceStatus = (sub) => {
 export default function Subcontractors() {
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { subcontractors: list, isLoading, invalidate, addCacheItem, updateCacheItem, removeCacheItem } = useAppData();
+  const loading = isLoading.subcontractors;
   const [search, setSearch] = useState('');
   const [statusTab, setStatusTab] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
@@ -53,47 +51,34 @@ export default function Subcontractors() {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
-  const load = async () => {
-    setLoading(true);
-    const data = await base44.entities.Subcontractor.list('-created_date', 100);
-    setList(data);
-    setLoading(false);
-  };
+  const processedList = list.map(sub => {
+    const insStatus = getInsuranceStatus(sub);
+    let quarter = null;
+    if (sub.insurance_start_date && insStatus.dueDate) {
+      const originalStart = sub.insurance_end_date
+        ? moment(sub.insurance_end_date).subtract(12, 'months')
+        : moment(sub.insurance_start_date);
+      const due = moment(insStatus.dueDate);
+      const monthsDiff = due.diff(originalStart, 'months');
+      const qIndex = Math.round(monthsDiff / 3);
+      quarter = ((((qIndex - 1) % 4) + 4) % 4) + 1;
+    }
+    return { ...sub, insStatus, quarter };
+  });
 
-  useEffect(() => { load(); }, []);
+  const filtered = processedList.filter(s => {
+    const matchesSearch = !search ||
+      s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
+      s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.sub_id?.toLowerCase().includes(search.toLowerCase());
 
-const processedList = list.map(sub => {
-  const insStatus = getInsuranceStatus(sub);
-  let quarter = null;
-  if (sub.insurance_start_date && insStatus.dueDate) {
-    // Use insurance_end_date to derive the original start (end - 12 months),
-    // then count how many 3-month steps from original start to the due date → Q label.
-    // If no end_date, fall back to current insurance_start_date as anchor.
-    const originalStart = sub.insurance_end_date
-      ? moment(sub.insurance_end_date).subtract(12, 'months')
-      : moment(sub.insurance_start_date);
-    const due = moment(insStatus.dueDate);
-    const monthsDiff = due.diff(originalStart, 'months');
-    const qIndex = Math.round(monthsDiff / 3); // 1=Q1, 2=Q2, 3=Q3, 4=Q4
-    quarter = ((((qIndex - 1) % 4) + 4) % 4) + 1;
-  }
-  return { ...sub, insStatus, quarter };
-});
+    let matchesStatus = true;
+    if (statusTab === 'active') matchesStatus = s.status === 'Active';
+    else if (statusTab === 'inactive') matchesStatus = s.status === 'Inactive';
 
-const filtered = processedList.filter(s => {
-  const matchesSearch = !search ||
-    s.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
-    s.owner_name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.sub_id?.toLowerCase().includes(search.toLowerCase());
+    return matchesSearch && matchesStatus;
+  });
 
-  let matchesStatus = true;
-  if (statusTab === 'active') matchesStatus = s.status === 'Active';
-  else if (statusTab === 'inactive') matchesStatus = s.status === 'Inactive';
-
-  return matchesSearch && matchesStatus;
-});
-
-  // Reset page when tab or search changes
   useEffect(() => { setCurrentPage(1); }, [statusTab, search]);
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
@@ -101,7 +86,6 @@ const filtered = processedList.filter(s => {
 
   const activeCount = list.filter(s => s.status === 'Active').length;
   const inactiveCount = list.filter(s => s.status === 'Inactive').length;
-  // Deduplicate by plate_number for insurance count (same plate = same insurance regardless of truck type)
   const seenPlatesForCount = new Set();
   const insuranceCount = list.filter(sub => {
     if (seenPlatesForCount.has(sub.plate_number)) return false;
@@ -119,7 +103,7 @@ const filtered = processedList.filter(s => {
   const handleDelete = async (item) => {
     if (!confirm(`Delete subcontractor "${item.plate_number} — ${item.owner_name}"? This cannot be undone.`)) return;
     await base44.entities.Subcontractor.delete(item.id);
-    load();
+    removeCacheItem('subcontractors', item.id);
   };
 
   const handleExport = async () => {
@@ -168,7 +152,7 @@ const filtered = processedList.filter(s => {
       }
       await base44.entities.Subcontractor.bulkCreate(toImport);
       alert(`Successfully imported ${toImport.length} subcontractor records (${skipped} duplicates skipped)`);
-      load();
+      invalidate('subcontractors');
     } catch (error) {
       alert('Import failed: ' + error.message);
     }
@@ -210,10 +194,9 @@ const filtered = processedList.filter(s => {
         }
       />
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
-                    { label: 'Total', value: list.length, color: 'text-foreground' },
+          { label: 'Total', value: list.length, color: 'text-foreground' },
           { label: 'Active', value: list.filter(s => s.status === 'Active').length, color: 'text-emerald-600' },
           { label: 'Insurance Due', value: insuranceCount, color: 'text-amber-600' },
           { label: 'Inactive', value: list.filter(s => s.status === 'Inactive').length, color: 'text-red-500' },
@@ -225,7 +208,6 @@ const filtered = processedList.filter(s => {
         ))}
       </div>
 
-      {/* Status tabs */}
       <div className="flex items-center gap-2 mb-4 border-b">
         <button
           onClick={() => setStatusTab('all')}
@@ -243,7 +225,7 @@ const filtered = processedList.filter(s => {
         >
           Active ({activeCount})
         </button>
-                <button
+        <button
           onClick={() => setStatusTab('inactive')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
             statusTab === 'inactive' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -251,7 +233,6 @@ const filtered = processedList.filter(s => {
         >
           Inactive ({inactiveCount})
         </button>
-
       </div>
 
       <div className="relative mb-4 max-w-sm">
@@ -270,7 +251,7 @@ const filtered = processedList.filter(s => {
               </tr>
             </thead>
             <tbody>
-                            {loading ? (
+              {loading ? (
                 <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">Loading...</td></tr>
               ) : filtered.length === 0 ? (
                 <tr>
@@ -282,7 +263,7 @@ const filtered = processedList.filter(s => {
               ) : paginated.map(sub => {
                 const insStatus = sub.insStatus;
                 return (
-                 <tr key={sub.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                  <tr key={sub.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-primary font-semibold">{sub.sub_id}</td>
                     <td className="px-4 py-3 font-semibold">{sub.plate_number}</td>
                     <td className="px-4 py-3">{sub.owner_name}</td>
@@ -294,9 +275,7 @@ const filtered = processedList.filter(s => {
                     <td className="px-4 py-3 text-muted-foreground text-xs">{sub.garage_location || '—'}</td>
                     <td className="px-4 py-3">
                       <div>
-                        {/* Badge remains the same */}
                         <StatusBadge status={insStatus.status} type="insurance" />
-                        
                         {insStatus.dueDate && insStatus.status !== 'Insured' && (
                           <p className={`text-xs text-muted-foreground mt-0.5 ${insStatus.days !== undefined && insStatus.days <= 5 ? 'text-red-600 font-bold' : ''}`}>
                             Due: {formatDateDisplay(insStatus.dueDate)}
@@ -356,7 +335,7 @@ const filtered = processedList.filter(s => {
       <SubcontractorForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSaved={load}
+        onSaved={() => invalidate('subcontractors')}
         editData={editData}
       />
       <InsuranceLinkDialog

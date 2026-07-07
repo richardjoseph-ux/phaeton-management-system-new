@@ -9,16 +9,40 @@ import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, Archiv
 import PageHeader from '@/components/ui/PageHeader';
 import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
 import { useAuth } from '@/lib/AuthContext';
+import { useAppData } from '@/lib/AppDataContext';
 import { formatDateDisplay } from '@/lib/dateUtils';
 import * as XLSX from 'xlsx';
 
 export default function BillingCycles() {
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
-  const [cycles, setCycles] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [summaryRecords, setSummaryRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    billingCycles: cycles,
+    clients,
+    fuelSubsidies,
+    billingDeductions: deductions,
+    otherCharges,
+    billingReceivedSummaries: summaryRecords,
+    isLoading,
+    invalidate,
+    addCacheItem,
+    updateCacheItem,
+    removeCacheItem,
+  } = useAppData();
+
+  const loading = isLoading.billingCycles || isLoading.clients || isLoading.fuelSubsidies || isLoading.billingDeductions || isLoading.otherCharges || isLoading.billingReceivedSummaries;
+
+  // Local state for mutable copies that can be updated without invalidating the whole cache
+  const [localCycles, setLocalCycles] = useState(null); // null = use cache
+  const [localSummaryRecords, setLocalSummaryRecords] = useState(null); // null = use cache
+
+  const displayCycles = localCycles !== null ? localCycles : cycles;
+  const displaySummaryRecords = localSummaryRecords !== null ? localSummaryRecords : summaryRecords;
+
+  // Sync local copies when cache changes (initial load)
+  useEffect(() => { setLocalCycles(null); }, [cycles]);
+  useEffect(() => { setLocalSummaryRecords(null); }, [summaryRecords]);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [form, setForm] = useState({ cycle_name: '', client_account_id: '', notes: '', billing_received_date: '', cheque_date: '' });
@@ -29,20 +53,13 @@ export default function BillingCycles() {
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
 
-  // Tabs: statements section vs summary section
-  const [mainTab, setMainTab] = useState('statements'); // 'statements' | 'summary'
-  // Sub-tabs for statements
-  const [stmtTab, setStmtTab] = useState('active'); // 'active' | 'archived'
-  // Sub-tabs for summary
-  const [summaryTab, setSummaryTab] = useState('active'); // 'active' | 'archived'
+  const [mainTab, setMainTab] = useState('statements');
+  const [stmtTab, setStmtTab] = useState('active');
+  const [summaryTab, setSummaryTab] = useState('active');
 
-  const [fuelSubsidies, setFuelSubsidies] = useState([]);
-  const [deductions, setDeductions] = useState([]);
-  const [otherCharges, setOtherCharges] = useState([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryDate, setSummaryDate] = useState('');
   const [summaryCycles, setSummaryCycles] = useState([]);
-  const [allOtherCharges, setAllOtherCharges] = useState([]);
   const [allTrips, setAllTrips] = useState([]);
   const [tripsLoaded, setTripsLoaded] = useState(false);
   const fileInputRef = useRef(null);
@@ -52,50 +69,24 @@ export default function BillingCycles() {
 
 const syncClientIds = async () => {
     if (!confirm("This will match and update Client IDs for all cycles. Continue?")) return;
-    
-    setLoading(true);
     try {
-      const cyclesToSync = cycles.filter(c => !c.client_account_id);
-      
+      const cyclesToSync = displayCycles.filter(c => !c.client_account_id);
       const updates = cyclesToSync.map(async (cycle) => {
         const matchedClient = clients.find(c => 
           c.client_name?.toLowerCase() === cycle.client_name?.toLowerCase()
         );
-        
         if (matchedClient) {
           return base44.entities.BillingCycle.update(cycle.id, { 
             client_account_id: matchedClient.id 
           });
         }
       });
-
       await Promise.all(updates);
       alert("Sync complete!");
-      load();
+      invalidate('billingCycles');
     } catch (error) {
       alert("Sync failed: " + error.message);
-    } finally {
-      setLoading(false);
     }
-  };
-const load = async () => {
-    setLoading(true);
-    // TripRecord is NOT loaded here — fetched on-demand when opening a cycle's trips view
-    const [c, cl, s, sr, d, oc] = await Promise.all([
-      base44.entities.BillingCycle.list('-created_date', 100),
-      base44.entities.ClientAccount.list('client_name', 50),
-      base44.entities.FuelSubsidy.list('-created_date', 50),
-      base44.entities.BillingReceivedSummary.list('-billing_received_date', 100),
-      base44.entities.BillingDeduction.list('-billing_received_date', 200),
-      base44.entities.OtherCharges.list('-billing_received_date', 100),
-    ]);
-    setCycles(c);
-    setClients(cl);
-    setFuelSubsidies(s);
-    setSummaryRecords(sr);
-    setDeductions(d);
-    setOtherCharges(oc);
-    setLoading(false);
   };
 
   const getFuelSubsidy = (trip) => {
@@ -125,7 +116,7 @@ const load = async () => {
     return seq;
   };
 
-  useEffect(() => { load(); }, []);
+  // Data comes from shared cache — no manual load needed
 
   // Lazy-load trips only when the summary tab is first opened
   useEffect(() => {
@@ -168,10 +159,10 @@ const load = async () => {
         await Promise.all(tripsToUpdate.map(trip => base44.entities.TripRecord.update(trip.id, { billing_date: form.billing_received_date })));
       }
       await base44.entities.BillingCycle.update(editData.id, form);
-      setCycles(prev => prev.map(c => c.id === editData.id ? { ...c, ...form } : c));
+      updateCacheItem('billingCycles', editData.id, form);
     } else {
       const created = await base44.entities.BillingCycle.create({ ...form, status: 'Open' });
-      setCycles(prev => [created, ...prev]);
+      addCacheItem('billingCycles', created);
     }
     setSaving(false);
     setFormOpen(false);
@@ -180,13 +171,13 @@ const load = async () => {
   const toggleArchiveCycle = async (cycle) => {
     const newVal = !cycle.is_archived;
     await base44.entities.BillingCycle.update(cycle.id, { is_archived: newVal });
-    setCycles(prev => prev.map(c => c.id === cycle.id ? { ...c, is_archived: newVal } : c));
+    updateCacheItem('billingCycles', cycle.id, { is_archived: newVal });
   };
 
   const handleDeleteCycle = async (cycle) => {
     if (!confirm(`Delete billing statement "${cycle.cycle_name}"? This cannot be undone.`)) return;
     await base44.entities.BillingCycle.delete(cycle.id);
-    setCycles(prev => prev.filter(c => c.id !== cycle.id));
+    removeCacheItem('billingCycles', cycle.id);
   };
 
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
@@ -232,8 +223,7 @@ const load = async () => {
   // Change this logic in your billingReceivedGroups definition
 const billingReceivedGroups = (() => {
   const groups = {};
-  // REMOVED: .filter(c => !c.is_archived) so all cycles are processed
-  cycles.forEach(cycle => {
+  displayCycles.forEach(cycle => {
     if (cycle.billing_received_date) {
       if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
       groups[cycle.billing_received_date].push(cycle);
@@ -245,13 +235,13 @@ const billingReceivedGroups = (() => {
 })();
 
   // Get or create summary record for a date
-  const getSummaryRecord = (date) => summaryRecords.find(r => r.billing_received_date === date);
+  const getSummaryRecord = (date) => displaySummaryRecords.find(r => r.billing_received_date === date);
 
   const ensureSummaryRecord = async (date) => {
     let record = getSummaryRecord(date);
     if (!record) {
       record = await base44.entities.BillingReceivedSummary.create({ billing_received_date: date, is_paid: false, payroll_processed: false, is_archived: false });
-      setSummaryRecords(prev => [...prev, record]);
+      addCacheItem('billingReceivedSummaries', record, false);
     }
     return record;
   };
@@ -260,7 +250,7 @@ const billingReceivedGroups = (() => {
     const record = await ensureSummaryRecord(date);
     const newValue = !record[field];
     await base44.entities.BillingReceivedSummary.update(record.id, { [field]: newValue });
-    setSummaryRecords(prev => prev.map(r => r.id === record.id ? { ...r, [field]: newValue } : r));
+    updateCacheItem('billingReceivedSummaries', record.id, { [field]: newValue });
     if (field === 'payroll_processed' && newValue === true) {
       await base44.functions.invoke('processInsuranceAfterPayroll', { billing_received_date: date });
     }
@@ -270,7 +260,7 @@ const billingReceivedGroups = (() => {
     const record = await ensureSummaryRecord(date);
     const newVal = !record.is_archived;
     await base44.entities.BillingReceivedSummary.update(record.id, { is_archived: newVal });
-    setSummaryRecords(prev => prev.map(r => r.id === record.id ? { ...r, is_archived: newVal } : r));
+    updateCacheItem('billingReceivedSummaries', record.id, { is_archived: newVal });
   };
 
   const openSummary = (group) => {
@@ -282,7 +272,7 @@ const billingReceivedGroups = (() => {
 
   const handleExport = async () => {
     try {
-      const data = cycles.map(c => ({
+      const data = displayCycles.map(c => ({
         cycle_name: c.cycle_name,
         client_name: getClientName(c.client_account_id),
         status: c.status,
@@ -352,7 +342,7 @@ const handleImport = async (event) => {
 
       await base44.entities.BillingCycle.bulkCreate(toImport);
       alert(`Successfully imported ${toImport.length} records.`);
-      load();
+      invalidate('billingCycles');
     } catch (error) {
       alert('Import failed: ' + error.message);
     }
@@ -409,7 +399,7 @@ const getChequeAmountForDate = (date) => {
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
-  const filteredCycles = cycles
+  const filteredCycles = displayCycles
     .filter(cycle => {
       if (stmtTab === 'archived') return !!cycle.is_archived;
       return !cycle.is_archived;
@@ -424,13 +414,12 @@ const getChequeAmountForDate = (date) => {
 const activeSummaryGroups = billingReceivedGroups
   .filter(g => !getSummaryRecord(g.date)?.is_archived)
   .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
-  // Change the sort below:
   .sort((a, b) => b.date.localeCompare(a.date)); 
 
 const archivedSummaryGroups = (() => {
-  const archivedDates = summaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
+  const archivedDates = displaySummaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
   const groups = {};
-  cycles.filter(c => c.is_archived || archivedDates.includes(c.billing_received_date)).forEach(cycle => {
+  displayCycles.filter(c => c.is_archived || archivedDates.includes(c.billing_received_date)).forEach(cycle => {
     if (cycle.billing_received_date && archivedDates.includes(cycle.billing_received_date)) {
       if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
       groups[cycle.billing_received_date].push(cycle);
@@ -515,8 +504,8 @@ const archivedSummaryGroups = (() => {
           {/* Statement sub-tabs */}
           <div className="flex items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
             {[
-              { key: 'active', label: `Billing Statements (${cycles.filter(c => !c.is_archived).length})` },
-              { key: 'archived', label: `Archived (${cycles.filter(c => !!c.is_archived).length})` },
+              { key: 'active', label: `Billing Statements (${displayCycles.filter(c => !c.is_archived).length})` },
+              { key: 'archived', label: `Archived (${displayCycles.filter(c => !!c.is_archived).length})` },
             ].map(t => (
               <button key={t.key} onClick={() => setStmtTab(t.key)} className={tabClass(stmtTab === t.key)}>
                 {t.label}

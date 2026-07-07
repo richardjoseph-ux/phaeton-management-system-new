@@ -7,14 +7,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Trash2, Plus, Pencil, Receipt, DollarSign } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { formatDateDisplay } from '@/lib/dateUtils';
+import { useAppData } from '@/lib/AppDataContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Deductions() {
-  const [billingCycles, setBillingCycles] = useState([]);
-  const [deductions, setDeductions] = useState([]);
-  const [dateOwners, setDateOwners] = useState([]); // owners with trips for selected date
+  const {
+    billingCycles,
+    billingDeductions: cachedDeductions,
+    billingReceivedSummaries,
+    reimbursements: cachedReimbursements,
+    otherCharges: cachedOtherCharges,
+    isLoading,
+    invalidate,
+    addCacheItem,
+    updateCacheItem,
+    removeCacheItem,
+  } = useAppData();
+
+  const loading = isLoading.billingCycles || isLoading.billingDeductions || isLoading.billingReceivedSummaries || isLoading.reimbursements || isLoading.otherCharges;
+
+  const displayDeductions = cachedDeductions ?? [];
+  const displayReimbursements = cachedReimbursements ?? [];
+  const displayOtherCharges = cachedOtherCharges ?? [];
+
+  const [dateOwners, setDateOwners] = useState([]);
   const [loadingOwners, setLoadingOwners] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   const [selectedDate, setSelectedDate] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -30,9 +47,7 @@ export default function Deductions() {
   const [allRecordsTypeFilter, setAllRecordsTypeFilter] = useState('all');
   const rowsPerPage = 10;
 
-  const [billingReceivedSummaries, setBillingReceivedSummaries] = useState([]);
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'deductions' | 'reimbursements'
-  const [reimbursements, setReimbursements] = useState([]);
+  const [activeTab, setActiveTab] = useState('all');
   const [reimbursementForm, setReimbursementForm] = useState({
     billing_received_date: '',
     plate_number: '',
@@ -44,7 +59,6 @@ export default function Deductions() {
   const [editingReimbursementId, setEditingReimbursementId] = useState(null);
   const [savingReimbursement, setSavingReimbursement] = useState(false);
 
-  const [otherCharges, setOtherCharges] = useState([]);
   const [otherChargesForm, setOtherChargesForm] = useState({
     billing_received_date: '',
     charge_type: '',
@@ -53,23 +67,6 @@ export default function Deductions() {
   });
   const [editingOtherChargeId, setEditingOtherChargeId] = useState(null);
   const [savingOtherCharge, setSavingOtherCharge] = useState(false);
-
-  const load = async () => {
-    setLoading(true);
-    const [b, d, summaries, r, o] = await Promise.all([
-      base44.entities.BillingCycle.list('-billing_received_date', 100),
-      base44.entities.BillingDeduction.list('-billing_received_date', 200),
-      base44.entities.BillingReceivedSummary.list('-billing_received_date', 100),
-      base44.entities.Reimbursement.list('-billing_received_date', 200),
-      base44.entities.OtherCharges.list('-billing_received_date', 200),
-    ]);
-    setBillingCycles(b);
-    setDeductions(d);
-    setBillingReceivedSummaries(summaries);
-    setReimbursements(r);
-    setOtherCharges(o);
-    setLoading(false);
-  };
 
   const loadOwnersForDate = async (date) => {
     setLoadingOwners(true);
@@ -92,8 +89,6 @@ export default function Deductions() {
     setLoadingOwners(false);
   };
 
-  useEffect(() => { load(); }, []);
-
   // Unique billing received dates — show if no summary record exists OR payroll_processed is false
   const dateOptions = (() => {
     const seen = new Set();
@@ -112,7 +107,7 @@ export default function Deductions() {
   })();
 
   // Deductions for the selected date
-  const filteredDeductions = deductions.filter(d => d.billing_received_date === selectedDate);
+  const filteredDeductions = displayDeductions.filter(d => d.billing_received_date === selectedDate);
 
   // Plate numbers already assigned for this date (for validation)
   const assignedPlates = filteredDeductions
@@ -153,10 +148,10 @@ export default function Deductions() {
     };
     if (editingId) {
       await base44.entities.BillingDeduction.update(editingId, data);
-      setDeductions(prev => prev.map(d => d.id === editingId ? { ...d, ...data } : d));
+      updateCacheItem('billingDeductions', editingId, data);
     } else {
       const created = await base44.entities.BillingDeduction.create(data);
-      setDeductions(prev => [...prev, created]);
+      addCacheItem('billingDeductions', created, false);
     }
     handleCancel();
     setSaving(false);
@@ -165,7 +160,7 @@ export default function Deductions() {
   const handleDelete = async (id) => {
     if (!confirm('Delete this deduction record?')) return;
     await base44.entities.BillingDeduction.delete(id);
-    setDeductions(d => d.filter(x => x.id !== id));
+    removeCacheItem('billingDeductions', id);
   };
 
   const totalInsurance = filteredDeductions.reduce((s, d) => s + (d.insurance_charge || 0), 0);
@@ -478,10 +473,10 @@ export default function Deductions() {
                             };
                             if (editingReimbursementId) {
                               await base44.entities.Reimbursement.update(editingReimbursementId, data);
-                              setReimbursements(prev => prev.map(r => r.id === editingReimbursementId ? { ...r, ...data } : r));
+                              updateCacheItem('reimbursements', editingReimbursementId, data);
                             } else {
                               const created = await base44.entities.Reimbursement.create(data);
-                              setReimbursements(prev => [...prev, created]);
+                              addCacheItem('reimbursements', created, false);
                             }
                             setReimbursementForm({
                               billing_received_date: reimbursementForm.billing_received_date,
@@ -520,7 +515,7 @@ export default function Deductions() {
                   {/* Reimbursements Table */}
                   <div className="lg:col-span-2">
                     {(() => {
-                      const filteredReimbursements = reimbursements.filter(r => r.billing_received_date === reimbursementForm.billing_received_date);
+                      const filteredReimbursements = displayReimbursements.filter(r => r.billing_received_date === reimbursementForm.billing_received_date);
                       const totalAmount = filteredReimbursements.reduce((s, r) => s + (r.reimbursement_amount || 0), 0);
                       
                       if (filteredReimbursements.length === 0) {
@@ -585,7 +580,7 @@ export default function Deductions() {
                                       <button onClick={async () => {
                                         if (!confirm('Delete this reimbursement record?')) return;
                                         await base44.entities.Reimbursement.delete(r.id);
-                                        setReimbursements(prev => prev.filter(x => x.id !== r.id));
+                                         removeCacheItem('reimbursements', r.id);
                                       }} className="p-1.5 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive">
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -685,10 +680,10 @@ export default function Deductions() {
                             };
                             if (editingOtherChargeId) {
                               await base44.entities.OtherCharges.update(editingOtherChargeId, data);
-                              setOtherCharges(prev => prev.map(o => o.id === editingOtherChargeId ? { ...o, ...data } : o));
+                              updateCacheItem('otherCharges', editingOtherChargeId, data);
                             } else {
                               const created = await base44.entities.OtherCharges.create(data);
-                              setOtherCharges(prev => [...prev, created]);
+                              addCacheItem('otherCharges', created, false);
                             }
                             setOtherChargesForm({
                               billing_received_date: otherChargesForm.billing_received_date,
@@ -723,7 +718,7 @@ export default function Deductions() {
                   {/* Other Charges Table */}
                   <div className="lg:col-span-2">
                     {(() => {
-                      const filteredOtherCharges = otherCharges.filter(o => o.billing_received_date === otherChargesForm.billing_received_date);
+                      const filteredOtherCharges = displayOtherCharges.filter(o => o.billing_received_date === otherChargesForm.billing_received_date);
                       const totalOtherChargesAmount = filteredOtherCharges.reduce((s, o) => s + (o.amount || 0), 0);
                       
                       if (filteredOtherCharges.length === 0) {
@@ -780,7 +775,7 @@ export default function Deductions() {
                                       <button onClick={async () => {
                                         if (!confirm('Delete this adjustment record?')) return;
                                         await base44.entities.OtherCharges.delete(o.id);
-                                        setOtherCharges(prev => prev.filter(x => x.id !== o.id));
+                                         removeCacheItem('otherCharges', o.id);
                                       }} className="p-1.5 hover:bg-destructive/10 rounded text-muted-foreground hover:text-destructive">
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -820,19 +815,19 @@ export default function Deductions() {
                 <div className="grid grid-cols-4 divide-x border-b">
                   <div className="p-4">
                     <p className="text-xs text-muted-foreground">Total Deductions</p>
-                    <p className="text-xl font-bold mt-1">{deductions.length}</p>
+                    <p className="text-xl font-bold mt-1">{displayDeductions.length}</p>
                   </div>
                   <div className="p-4">
                     <p className="text-xs text-muted-foreground">Total Deduction Amount</p>
-                    <p className="text-xl font-bold mt-1 text-red-700">₱{deductions.reduce((s, d) => s + (d.insurance_charge || 0) + (d.other_charges || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-xl font-bold mt-1 text-red-700">₱{displayDeductions.reduce((s, d) => s + (d.insurance_charge || 0) + (d.other_charges || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="p-4">
                     <p className="text-xs text-muted-foreground">Total Reimbursements</p>
-                    <p className="text-xl font-bold mt-1">{reimbursements.length}</p>
+                    <p className="text-xl font-bold mt-1">{displayReimbursements.length}</p>
                   </div>
                   <div className="p-4">
                     <p className="text-xs text-muted-foreground">Total Reimbursement Amount</p>
-                    <p className="text-xl font-bold mt-1 text-green-700">₱{reimbursements.reduce((s, r) => s + (r.reimbursement_amount || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-xl font-bold mt-1 text-green-700">₱{displayReimbursements.reduce((s, r) => s + (r.reimbursement_amount || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                 </div>
 
@@ -851,8 +846,8 @@ export default function Deductions() {
                   <tbody>
                     {(() => {
                       const allRows = [
-                        ...(allRecordsTypeFilter !== 'reimbursement' ? deductions.map(d => ({ ...d, _type: 'deduction' })) : []),
-                        ...(allRecordsTypeFilter !== 'deduction' ? reimbursements.map(r => ({ ...r, _type: 'reimbursement' })) : []),
+                        ...(allRecordsTypeFilter !== 'reimbursement' ? displayDeductions.map(d => ({ ...d, _type: 'deduction' })) : []),
+                        ...(allRecordsTypeFilter !== 'deduction' ? displayReimbursements.map(r => ({ ...r, _type: 'reimbursement' })) : []),
                       ].sort((a, b) => (b.billing_received_date || '').localeCompare(a.billing_received_date || ''));
                       const totalAllPages = Math.ceil(allRows.length / rowsPerPage);
                       const pageRows = allRows.slice((allRecordsPage - 1) * rowsPerPage, allRecordsPage * rowsPerPage);

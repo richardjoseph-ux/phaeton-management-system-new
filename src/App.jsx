@@ -6,6 +6,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from '@/components/Layout';
+import { AppDataProvider } from '@/lib/AppDataContext';
 import Login from '@/pages/Login';
 
 // Page imports
@@ -69,7 +70,9 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <AuthenticatedApp />
+          <AppDataProvider>
+            <AuthenticatedApp />
+          </AppDataProvider>
         </Router>
         <Toaster />
       </QueryClientProvider>

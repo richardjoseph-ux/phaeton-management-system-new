@@ -2,18 +2,23 @@ import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Sheet, ShieldCheck, PackageMinus, PlusCircle, Info } from 'lucide-react'; // Added Info icon
+import { FileText, Sheet, ShieldCheck, PackageMinus, PlusCircle, Info } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import { formatDateDisplay } from '@/lib/dateUtils';
+import { useAppData } from '@/lib/AppDataContext';
 import { jsPDF } from 'jspdf';
 
 export default function Payroll() {
-  const [billingCycles, setBillingCycles] = useState([]);
-  const [fuelSubsidies, setFuelSubsidies] = useState([]);
-  const [billingDeductions, setBillingDeductions] = useState([]);
-  const [reimbursements, setReimbursements] = useState([]);
-  const [summaryRecords, setSummaryRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    billingCycles,
+    fuelSubsidies,
+    billingDeductions,
+    reimbursements,
+    billingReceivedSummaries: summaryRecords,
+    isLoading,
+  } = useAppData();
+
+  const loading = isLoading.billingCycles || isLoading.fuelSubsidies || isLoading.billingDeductions || isLoading.reimbursements || isLoading.billingReceivedSummaries;
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedOwner, setSelectedOwner] = useState(null);
@@ -26,32 +31,17 @@ export default function Payroll() {
   const [tripsPage, setTripsPage] = useState(1);
   const rowsPerPage = 10;
 
-  // Helper to get active cycles for the banner
+  // Pre-fill google sheet URL from fuelSubsidies
+  useEffect(() => {
+    if (fuelSubsidies.length > 0 && fuelSubsidies[0].google_sheet_url) {
+      setGoogleSheetUrl(fuelSubsidies[0].google_sheet_url);
+    }
+  }, [fuelSubsidies]);
+
   const activeCycles = useMemo(() => {
     if (!selectedDate) return [];
     return billingCycles.filter(c => c.billing_received_date === selectedDate);
   }, [selectedDate, billingCycles]);
-
-  const load = async () => {
-    setLoading(true);
-    // Fetch lighter entities first, then heavier ones to avoid 502 timeouts
-    const [b, s, sr, d, r] = await Promise.all([
-      base44.entities.BillingCycle.list('-billing_received_date', 100),
-      base44.entities.FuelSubsidy.list('-created_date', 50),
-      base44.entities.BillingReceivedSummary.list('-billing_received_date', 100),
-      base44.entities.BillingDeduction.list('-billing_received_date', 200),
-      base44.entities.Reimbursement.list('-billing_received_date', 200),
-    ]);
-    setBillingCycles(b);
-    setFuelSubsidies(s);
-    setBillingDeductions(d);
-    setSummaryRecords(sr);
-    setReimbursements(r);
-    if (s.length > 0 && s[0].google_sheet_url) setGoogleSheetUrl(s[0].google_sheet_url);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
 
   const dateGroups = (() => {
     const groups = {};
@@ -103,19 +93,16 @@ export default function Payroll() {
     );
   };
 
-const calculateTripNet = (trip) => {
-  const gross = trip.gross_rate || 0;
-  const tax = trip.tax_deduction || 0;
-  const hidden = trip.hidden_fee || 0;
-  const admin = trip.admin_fee || 0;
-  const fs = getFuelSubsidy(trip);
-  const fuelSubsidy = fs ? gross * (fs.subsidy_percentage / 100) : 0;
-  
-  // FORCE THE MATH ON THE FRONTEND:
-  const net = gross - tax - hidden - admin + fuelSubsidy; 
-  
-  return { gross, tax, hidden, admin, fuelSubsidy, net };
-};
+  const calculateTripNet = (trip) => {
+    const gross = trip.gross_rate || 0;
+    const tax = trip.tax_deduction || 0;
+    const hidden = trip.hidden_fee || 0;
+    const admin = trip.admin_fee || 0;
+    const fs = getFuelSubsidy(trip);
+    const fuelSubsidy = fs ? gross * (fs.subsidy_percentage / 100) : 0;
+    const net = gross - tax - hidden - admin + fuelSubsidy; 
+    return { gross, tax, hidden, admin, fuelSubsidy, net };
+  };
 
   const displayedTrips = selectedOwner
     ? dateTrips.filter(t => t.plate_number === selectedOwner)
@@ -124,15 +111,13 @@ const calculateTripNet = (trip) => {
   const tripsTotalPages = Math.ceil(displayedTrips.length / rowsPerPage);
   const paginatedTrips = displayedTrips.slice((tripsPage - 1) * rowsPerPage, tripsPage * rowsPerPage);
 
-  // Reset page on filter change
   useEffect(() => { setTripsPage(1); }, [selectedDate, selectedOwner]);
 
-const tripTotals = useMemo(() => {
+  const tripTotals = useMemo(() => {
     return displayedTrips.reduce((acc, trip) => {
       const t = calculateTripNet(trip);
       acc.gross += t.gross;
       acc.tax += t.tax;
-      // Change this specific line to perform the math instead of referencing a missing variable
       acc.afterTax += (t.gross - t.tax); 
       acc.hidden += t.hidden;
       acc.admin += t.admin;
@@ -323,7 +308,6 @@ const tripTotals = useMemo(() => {
               </div>
             ) : (
               <>
-                {/* Billing Cycle Info Banner */}
                 {activeCycles.length > 0 && (
                   <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-center gap-3">
                     <Info className="w-5 h-5 text-blue-600 shrink-0" />
@@ -393,7 +377,7 @@ const tripTotals = useMemo(() => {
                     </table>
                   </div>
                   {tripsTotalPages > 1 && (
-                    <div className="flex items-center justify-between mt-3 mb-1">
+                    <div className="flex items-center justify-between mt-3 mb-1 px-3">
                       <span className="text-xs text-muted-foreground">Showing {(tripsPage - 1) * rowsPerPage + 1}–{Math.min(tripsPage * rowsPerPage, displayedTrips.length)} of {displayedTrips.length} trips</span>
                       <div className="flex items-center gap-1">
                         <Button variant="outline" size="sm" disabled={tripsPage === 1} onClick={() => setTripsPage(1)} className="px-2.5">«</Button>
