@@ -65,13 +65,16 @@ export default function InsuranceLinkDialog({ open, onClose, subcontractor }) {
 
   const quarters = getQuarterDates(subcontractor.insurance_start_date);
 
-  // Check which quarters already have a deduction with insurance_charge > 0
-  // Match deductions whose billing_received_date falls within the quarter's window
+  // Check which quarters already have a deduction linked
+  // Match by quarter label in notes OR by billing_received_date within the quarter window
   const isPaid = (quarter) => {
     return deductions.some(d =>
-      d.insurance_charge > 0 &&
-      d.billing_received_date >= quarter.startDate &&
-      d.billing_received_date <= quarter.dueDate
+      d.insurance_charge > 0 && (
+        // Explicit label match (set when saving via this dialog)
+        (d.notes && d.notes.includes(`${quarter.label} insurance renewal linked`)) ||
+        // Fallback: billing date within the quarter window
+        (d.billing_received_date >= quarter.startDate && d.billing_received_date <= quarter.dueDate)
+      )
     );
   };
 
