@@ -138,12 +138,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   });
 
   const addRoute = () => {
-    const newRoute = emptyRoute();
-    setForm(p => {
-      const newRoutes = [newRoute, ...p.routes];
-      setNewRowIndices(prev => new Set([...prev].map(i => i + 1).concat([0])));
-      return { ...p, routes: newRoutes };
-    });
+    setNewRowIndices(prev => new Set([...prev].map(i => i + 1).concat([0])));
+    setForm(p => ({ ...p, routes: [emptyRoute(), ...p.routes] }));
   };
 
   const removeRoute = (idx) => setForm(p => ({ ...p, routes: p.routes.filter((_, i) => i !== idx) }));
