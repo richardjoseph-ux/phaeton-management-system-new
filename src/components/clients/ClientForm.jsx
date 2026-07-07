@@ -58,12 +58,13 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   // Indices visible after all filters (pickup, truck, search)
   const searchLower = routeSearch.trim().toLowerCase();
   const visibleIndices = form.routes.reduce((acc, r, i) => {
-    const pickupMatch = activePickup === '__all__' || r.pickup_location === activePickup;
-    const truckMatch = activeTruck === '__all__' || (r.rates?.[activeTruck] !== '' && r.rates?.[activeTruck] != null) || newRowIndices.has(i);
+    const isNewRow = newRowIndices.has(i);
+    const pickupMatch = isNewRow || activePickup === '__all__' || r.pickup_location === activePickup;
+    const truckMatch = isNewRow || activeTruck === '__all__' || (r.rates?.[activeTruck] !== '' && r.rates?.[activeTruck] != null);
     const searchMatch = !searchLower ||
-      r.delivery_location.toLowerCase().includes(searchLower) ||
-      r.delivery_code.toLowerCase().includes(searchLower) ||
-      r.trip_route_code.toLowerCase().includes(searchLower);
+      (r.delivery_location || '').toLowerCase().includes(searchLower) ||
+      (r.delivery_code || '').toLowerCase().includes(searchLower) ||
+      (r.trip_route_code || '').toLowerCase().includes(searchLower);
     if (pickupMatch && truckMatch && searchMatch) acc.push(i);
     return acc;
   }, []);
