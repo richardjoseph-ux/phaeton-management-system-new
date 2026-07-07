@@ -23,6 +23,8 @@ export default function Payroll() {
 
   const [googleSheetUrl, setGoogleSheetUrl] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [tripsPage, setTripsPage] = useState(1);
+  const rowsPerPage = 10;
 
   // Helper to get active cycles for the banner
   const activeCycles = useMemo(() => {
@@ -120,6 +122,12 @@ const calculateTripNet = (trip) => {
   const displayedTrips = selectedOwner
     ? dateTrips.filter(t => t.plate_number === selectedOwner)
     : dateTrips;
+
+  const tripsTotalPages = Math.ceil(displayedTrips.length / rowsPerPage);
+  const paginatedTrips = displayedTrips.slice((tripsPage - 1) * rowsPerPage, tripsPage * rowsPerPage);
+
+  // Reset page on filter change
+  useEffect(() => { setTripsPage(1); }, [selectedDate, selectedOwner]);
 
 const tripTotals = useMemo(() => {
     return displayedTrips.reduce((acc, trip) => {
@@ -358,7 +366,7 @@ const tripTotals = useMemo(() => {
                         </tr>
                       </thead>
                       <tbody>
-                        {displayedTrips.map(trip => {
+                        {paginatedTrips.map(trip => {
                           const t = calculateTripNet(trip);
                           return (
                             <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -386,6 +394,18 @@ const tripTotals = useMemo(() => {
                       </tbody>
                     </table>
                   </div>
+                  {tripsTotalPages > 1 && (
+                    <div className="flex items-center justify-between mt-3 mb-1">
+                      <span className="text-xs text-muted-foreground">Showing {(tripsPage - 1) * rowsPerPage + 1}–{Math.min(tripsPage * rowsPerPage, displayedTrips.length)} of {displayedTrips.length} trips</span>
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" disabled={tripsPage === 1} onClick={() => setTripsPage(p => p - 1)}>Previous</Button>
+                        {Array.from({ length: tripsTotalPages }, (_, i) => i + 1).map(page => (
+                          <Button key={page} variant={page === tripsPage ? 'default' : 'outline'} size="sm" onClick={() => setTripsPage(page)} className="w-9">{page}</Button>
+                        ))}
+                        <Button variant="outline" size="sm" disabled={tripsPage === tripsTotalPages} onClick={() => setTripsPage(p => p + 1)}>Next</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-card border rounded-lg overflow-hidden mb-4">

@@ -211,6 +211,8 @@ export default function ClientAccounts() {
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [expandedClients, setExpandedClients] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   const load = async () => {
     setLoading(true);
@@ -226,6 +228,8 @@ export default function ClientAccounts() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => { setCurrentPage(1); }, [search]);
 
   const filteredList = useMemo(() => {
     if (!search) return list;
@@ -274,7 +278,7 @@ export default function ClientAccounts() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredList.map(client => (
+          {filteredList.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage).map(client => (
             <div key={client.id} className="bg-card border rounded-lg overflow-hidden">
               <div className="flex items-center gap-4 px-5 py-4">
                 <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -314,6 +318,20 @@ export default function ClientAccounts() {
               {expandedClients[client.id] && <ClientRouteTable client={client} />}
             </div>
           ))}
+          {Math.ceil(filteredList.length / rowsPerPage) > 1 && (
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-xs text-muted-foreground">
+                Showing {(currentPage - 1) * rowsPerPage + 1}–{Math.min(currentPage * rowsPerPage, filteredList.length)} of {filteredList.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
+                {Array.from({ length: Math.ceil(filteredList.length / rowsPerPage) }, (_, i) => i + 1).map(page => (
+                  <Button key={page} variant={page === currentPage ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(page)} className="w-9">{page}</Button>
+                ))}
+                <Button variant="outline" size="sm" disabled={currentPage === Math.ceil(filteredList.length / rowsPerPage)} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -26,6 +26,8 @@ export default function Deductions() {
     notes: '',
   });
   const [saving, setSaving] = useState(false);
+  const [allRecordsPage, setAllRecordsPage] = useState(1);
+  const rowsPerPage = 10;
 
   const [billingReceivedSummaries, setBillingReceivedSummaries] = useState([]);
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'deductions' | 'reimbursements'
@@ -831,46 +833,61 @@ export default function Deductions() {
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Deductions */}
-                    {deductions.map(d => (
-                      <tr key={d.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-medium">Deduction</span>
-                        </td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(d.billing_received_date)}</td>
-                        <td className="px-4 py-3 font-mono font-semibold text-primary">{d.plate_number}</td>
-                        <td className="px-4 py-3">{d.owner_name}</td>
-                        <td className="px-4 py-3 text-xs">
-                          <div className="text-blue-700">Insurance: ₱{(d.insurance_charge || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                          <div className="text-orange-700">Other: ₱{(d.other_charges || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-red-700">-₱{((d.insurance_charge || 0) + (d.other_charges || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{d.notes || '—'}</td>
-                      </tr>
-                    ))}
-                    {/* Reimbursements */}
-                    {reimbursements.map(r => (
-                      <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">Reimbursement</span>
-                        </td>
-                        <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(r.billing_received_date)}</td>
-                        <td className="px-4 py-3 font-mono font-semibold text-primary">{r.plate_number}</td>
-                        <td className="px-4 py-3">{r.owner_name}</td>
-                        <td className="px-4 py-3 text-xs">
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium capitalize">{r.reimbursement_type}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700">+₱{(r.reimbursement_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{r.notes || '—'}</td>
-                      </tr>
-                    ))}
-                    {deductions.length === 0 && reimbursements.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="px-4 py-16 text-center text-muted-foreground text-sm">
-                          No records found
-                        </td>
-                      </tr>
-                    )}
+                    {(() => {
+                      const allRows = [
+                        ...deductions.map(d => ({ ...d, _type: 'deduction' })),
+                        ...reimbursements.map(r => ({ ...r, _type: 'reimbursement' }))
+                      ].sort((a, b) => (b.billing_received_date || '').localeCompare(a.billing_received_date || ''));
+                      const totalAllPages = Math.ceil(allRows.length / rowsPerPage);
+                      const pageRows = allRows.slice((allRecordsPage - 1) * rowsPerPage, allRecordsPage * rowsPerPage);
+                      return (
+                        <>
+                          {pageRows.length === 0 && (
+                            <tr><td colSpan={7} className="px-4 py-16 text-center text-muted-foreground text-sm">No records found</td></tr>
+                          )}
+                          {pageRows.map(item => item._type === 'deduction' ? (
+                            <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                              <td className="px-4 py-3"><span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-medium">Deduction</span></td>
+                              <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(item.billing_received_date)}</td>
+                              <td className="px-4 py-3 font-mono font-semibold text-primary">{item.plate_number}</td>
+                              <td className="px-4 py-3">{item.owner_name}</td>
+                              <td className="px-4 py-3 text-xs">
+                                <div className="text-blue-700">Insurance: ₱{(item.insurance_charge || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                <div className="text-orange-700">Other: ₱{(item.other_charges || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-red-700">-₱{((item.insurance_charge || 0) + (item.other_charges || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-4 py-3 text-muted-foreground text-xs">{item.notes || '—'}</td>
+                            </tr>
+                          ) : (
+                            <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                              <td className="px-4 py-3"><span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">Reimbursement</span></td>
+                              <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(item.billing_received_date)}</td>
+                              <td className="px-4 py-3 font-mono font-semibold text-primary">{item.plate_number}</td>
+                              <td className="px-4 py-3">{item.owner_name}</td>
+                              <td className="px-4 py-3 text-xs"><span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium capitalize">{item.reimbursement_type}</span></td>
+                              <td className="px-4 py-3 text-right font-bold text-green-700">+₱{(item.reimbursement_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-4 py-3 text-muted-foreground text-xs">{item.notes || '—'}</td>
+                            </tr>
+                          ))}
+                          {totalAllPages > 1 && (
+                            <tr>
+                              <td colSpan={7} className="px-4 py-3 border-t">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground">Showing {(allRecordsPage - 1) * rowsPerPage + 1}–{Math.min(allRecordsPage * rowsPerPage, allRows.length)} of {allRows.length}</span>
+                                  <div className="flex items-center gap-1">
+                                    <Button variant="outline" size="sm" disabled={allRecordsPage === 1} onClick={() => setAllRecordsPage(p => p - 1)}>Previous</Button>
+                                    {Array.from({ length: totalAllPages }, (_, i) => i + 1).map(page => (
+                                      <Button key={page} variant={page === allRecordsPage ? 'default' : 'outline'} size="sm" onClick={() => setAllRecordsPage(page)} className="w-9">{page}</Button>
+                                    ))}
+                                    <Button variant="outline" size="sm" disabled={allRecordsPage === totalAllPages} onClick={() => setAllRecordsPage(p => p + 1)}>Next</Button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>

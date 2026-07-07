@@ -50,6 +50,8 @@ export default function Subcontractors() {
   const [editData, setEditData] = useState(null);
   const [insuranceLinkSub, setInsuranceLinkSub] = useState(null);
   const fileInputRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   const load = async () => {
     setLoading(true);
@@ -90,6 +92,12 @@ const filtered = processedList.filter(s => {
 
   return matchesSearch && matchesStatus;
 });
+
+  // Reset page when tab or search changes
+  useEffect(() => { setCurrentPage(1); }, [statusTab, search]);
+
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const paginated = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   const activeCount = list.filter(s => s.status === 'Active').length;
   const inactiveCount = list.filter(s => s.status === 'Inactive').length;
@@ -271,7 +279,7 @@ const filtered = processedList.filter(s => {
                     <p className="text-muted-foreground text-sm">No subcontractors found</p>
                   </td>
                 </tr>
-              ) : filtered.map(sub => {
+              ) : paginated.map(sub => {
                 const insStatus = sub.insStatus;
                 return (
                  <tr key={sub.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -327,8 +335,23 @@ const filtered = processedList.filter(s => {
               })}
             </tbody>
           </table>
+        </div>
       </div>
-    </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-3">
+          <span className="text-xs text-muted-foreground">
+            Showing {(currentPage - 1) * rowsPerPage + 1}–{Math.min(currentPage * rowsPerPage, filtered.length)} of {filtered.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <Button key={page} variant={page === currentPage ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(page)} className="w-9">{page}</Button>
+            ))}
+            <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
+          </div>
+        </div>
+      )}
 
       <SubcontractorForm
         open={formOpen}
