@@ -244,7 +244,12 @@ const billingReceivedGroups = (() => {
 
   const toggleSummaryField = async (date, field) => {
     const record = await ensureSummaryRecord(date);
-    await base44.entities.BillingReceivedSummary.update(record.id, { [field]: !record[field] });
+    const newValue = !record[field];
+    await base44.entities.BillingReceivedSummary.update(record.id, { [field]: newValue });
+    // When marking payroll as processed, advance insurance quarters for subcontractors
+    if (field === 'payroll_processed' && newValue === true) {
+      await base44.functions.invoke('processInsuranceAfterPayroll', { billing_received_date: date });
+    }
     load();
   };
 

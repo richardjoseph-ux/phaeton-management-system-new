@@ -13,36 +13,71 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'billing_received_date is required' }, { status: 400 });
     }
 
-    // Find all deductions for this billing date that have an insurance_charge linked
-    const deductions = await base44.asServiceRole.entities.BillingDeduction.filter({
-      billing_received_date,
-    });
+    // Find ALL insurance deductions (any billing date) with insurance_charge > 0
+    // We do this because insurance may have been linked on a different billing date
+    // than the payroll being processed (e.g. linked on May 25, payroll processed on May 29)
+    const allDeductions = await base44.asServiceRole.entities.BillingDeduction.list('-billing_received_date', 500);
+    const insuranceDeductions = allDeductions.filter(d => (d.insurance_charge || 0) > 0);
 
-    const insuranceDeductions = deductions.filter(d => (d.insurance_charge || 0) > 0);
     if (insuranceDeductions.length === 0) {
-      return Response.json({ updated: 0, message: 'No insurance deductions found for this date' });
+      return Response.json({ updated: 0, message: 'No insurance deductions found' });
     }
 
-    // For each, find the matching subcontractor and advance insurance_start_date by 3 months
-    let updated = 0;
+    // Group deductions by plate_number to get latest per subcontractor
+    const byPlate: Record<string, any[]> = {};
     for (const ded of insuranceDeductions) {
-      const subs = await base44.asServiceRole.entities.Subcontractor.filter({
-        plate_number: ded.plate_number,
-      });
+      if (!byPlate[ded.plate_number]) byPlate[ded.plate_number] = [];
+      byPlate[ded.plate_number].push(ded);
+    }
 
+    let updated = 0;
+    for (const [plate_number, deds] of Object.entries(byPlate)) {
+      const subs = await base44.asServiceRole.entities.Subcontractor.filter({ plate_number });
       const sub = subs[0];
       if (!sub || !sub.insurance_start_date) continue;
 
-      // Advance start date by 3 months (one quarter)
-      const current = new Date(sub.insurance_start_date);
-      current.setMonth(current.getMonth() + 3);
-      const newStartDate = current.toISOString().split('T')[0];
+      const startDate = new Date(sub.insurance_start_date);
 
-      // Also advance end date if it exists
+      // Check all 4 quarters. For each quarter, if there's a deduction whose billing_received_date
+      // falls within the quarter window AND before or on the processed billing_received_date,
+      // that quarter has been paid — advance the start date by 3 months for each paid quarter.
+      let advanceCount = 0;
+      for (let q = 1; q <= 4; q++) {
+        const qStart = new Date(startDate);
+        qStart.setMonth(qStart.getMonth() + (q - 1) * 3);
+        const qEnd = new Date(startDate);
+        qEnd.setMonth(qEnd.getMonth() + q * 3);
+
+        const qStartStr = qStart.toISOString().split('T')[0];
+        const qEndStr = qEnd.toISOString().split('T')[0];
+
+        // A deduction pays for this quarter if its billing date is within the quarter window
+        // and that billing date is <= the payroll being processed now
+        const paidInThisQuarter = deds.some(d =>
+          d.billing_received_date >= qStartStr &&
+          d.billing_received_date <= qEndStr &&
+          d.billing_received_date <= billing_received_date
+        );
+
+        if (paidInThisQuarter) {
+          advanceCount++;
+        } else {
+          // Stop at first unpaid quarter
+          break;
+        }
+      }
+
+      if (advanceCount === 0) continue;
+
+      // Advance start date by advanceCount quarters (3 months each)
+      const newStart = new Date(sub.insurance_start_date);
+      newStart.setMonth(newStart.getMonth() + advanceCount * 3);
+      const newStartDate = newStart.toISOString().split('T')[0];
+
       let newEndDate = sub.insurance_end_date;
       if (sub.insurance_end_date) {
         const end = new Date(sub.insurance_end_date);
-        end.setMonth(end.getMonth() + 3);
+        end.setMonth(end.getMonth() + advanceCount * 3);
         newEndDate = end.toISOString().split('T')[0];
       }
 
