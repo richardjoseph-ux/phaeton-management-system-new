@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Trash2, Upload, Download, Search, X } from 'lucide-react';
+import { Plus, Trash2, Upload, Download, Search, X, MapPin } from 'lucide-react';
 import PickupLocationFeesManager from './PickupLocationFeesManager';
 import AddPickupLocationDialog from './AddPickupLocationDialog';
 
@@ -17,23 +17,36 @@ const emptyRoute = () => ({
   rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
 });
 
-function TabBar({ tabs, active, onSelect, label }) {
+function TabBar({ tabs, active, onSelect, onDeletePickup }) {
   return (
     <div className="flex gap-1 flex-wrap border-b border-border">
       {tabs.map(tab => (
-        <button
-          key={tab.value}
-          type="button"
-          onClick={() => onSelect(tab.value)}
-          title={tab.label}
-          className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors max-w-[180px] truncate ${
-            active === tab.value
-              ? 'border-primary text-primary bg-primary/5'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {tab.label}
-        </button>
+        <div key={tab.value} className="relative group flex items-center">
+          <button
+            type="button"
+            onClick={() => onSelect(tab.value)}
+            title={tab.label}
+            className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors max-w-[180px] truncate ${
+              onDeletePickup && tab.value !== '__all__' ? 'pr-6' : ''
+            } ${
+              active === tab.value
+                ? 'border-primary text-primary bg-primary/5'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+          </button>
+          {onDeletePickup && tab.value !== '__all__' && (
+            <button
+              type="button"
+              title={`Delete pickup "${tab.value}"`}
+              onClick={(e) => { e.stopPropagation(); onDeletePickup(tab.value); }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       ))}
     </div>
   );
@@ -149,6 +162,17 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   };
 
   const removeRoute = (idx) => setForm(p => ({ ...p, routes: p.routes.filter((_, i) => i !== idx) }));
+
+  const deletePickupLocation = (pickup) => {
+    const count = form.routes.filter(r => r.pickup_location === pickup).length;
+    const confirmed = window.confirm(
+      `Delete pickup location "${pickup}"?\n\nThis will remove all ${count} route(s) under this pickup. This cannot be undone.`
+    );
+    if (!confirmed) return;
+    setForm(p => ({ ...p, routes: p.routes.filter(r => r.pickup_location !== pickup) }));
+    setActivePickup('__all__');
+    setActiveTruck('__all__');
+  };
 
   // ── Excel Export — one sheet per truck type ───────────────────────────────
   const handleExport = () => {
@@ -454,7 +478,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             </div>
 
             {/* Level 1: Pickup Tabs */}
-            <TabBar tabs={pickupTabList} active={activePickup} onSelect={(v) => { setActivePickup(v); setActiveTruck(editData ? TRUCK_TYPES[0] : '__all__'); setRouteSearch(''); }} />
+            <TabBar tabs={pickupTabList} active={activePickup} onSelect={(v) => { setActivePickup(v); setActiveTruck(editData ? TRUCK_TYPES[0] : '__all__'); setRouteSearch(''); }} onDeletePickup={deletePickupLocation} />
 
             {/* Level 2: Truck Type Sub-Tabs + Add Route inline */}
             <div className="bg-muted/30 px-2 pt-1 pb-0 border-x border-border flex items-end justify-between">
