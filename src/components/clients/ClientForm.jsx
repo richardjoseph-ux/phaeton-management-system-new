@@ -246,6 +246,27 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Check for duplicate client_name or client_code
+      const existing = await base44.entities.ClientAccount.list();
+      const duplicateName = existing.find(c =>
+        c.id !== editData?.id &&
+        c.client_name?.trim().toLowerCase() === form.client_name?.trim().toLowerCase()
+      );
+      const duplicateCode = form.client_code?.trim() && existing.find(c =>
+        c.id !== editData?.id &&
+        c.client_code?.trim().toLowerCase() === form.client_code?.trim().toLowerCase()
+      );
+      if (duplicateName) {
+        alert(`Duplicate data: A client named "${form.client_name}" already exists.`);
+        setSaving(false);
+        return;
+      }
+      if (duplicateCode) {
+        alert(`Duplicate data: Client code "${form.client_code}" is already used by "${duplicateCode.client_name}".`);
+        setSaving(false);
+        return;
+      }
+
       const data = {
         ...form,
         routes: form.routes.map(r => ({
