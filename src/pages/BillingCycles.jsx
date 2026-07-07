@@ -44,6 +44,7 @@ export default function BillingCycles() {
   const [summaryCycles, setSummaryCycles] = useState([]);
   const [allOtherCharges, setAllOtherCharges] = useState([]);
   const [allTrips, setAllTrips] = useState([]);
+  const [tripsLoaded, setTripsLoaded] = useState(false);
   const fileInputRef = useRef(null);
 
 const syncClientIds = async () => {
@@ -76,23 +77,21 @@ const syncClientIds = async () => {
   };
 const load = async () => {
     setLoading(true);
-    // Added OtherCharges to the list
-    const [c, cl, s, sr, t, d, oc] = await Promise.all([
+    // TripRecord is NOT loaded here — fetched on-demand when opening a cycle's trips view
+    const [c, cl, s, sr, d, oc] = await Promise.all([
       base44.entities.BillingCycle.list('-created_date', 200),
       base44.entities.ClientAccount.list('client_name', 100),
       base44.entities.FuelSubsidy.list('-created_date', 100),
       base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
-      base44.entities.TripRecord.list('-created_date', 500),
       base44.entities.BillingDeduction.list('-billing_received_date', 500),
-      base44.entities.OtherCharges.list('-billing_received_date', 200), 
+      base44.entities.OtherCharges.list('-billing_received_date', 200),
     ]);
     setCycles(c);
     setClients(cl);
     setFuelSubsidies(s);
     setSummaryRecords(sr);
-    setAllTrips(t);
     setDeductions(d);
-    setOtherCharges(oc); // Save the data to state
+    setOtherCharges(oc);
     setLoading(false);
   };
 
@@ -125,6 +124,16 @@ const load = async () => {
 
   useEffect(() => { load(); }, []);
 
+  // Lazy-load trips only when the summary tab is first opened
+  useEffect(() => {
+    if (mainTab === 'summary' && !tripsLoaded) {
+      base44.entities.TripRecord.list('-created_date', 1000).then(t => {
+        setAllTrips(t);
+        setTripsLoaded(true);
+      });
+    }
+  }, [mainTab, tripsLoaded]);
+
   const openAdd = () => {
     setEditData(null);
     setForm({ cycle_name: '', client_account_id: '', notes: '', billing_received_date: '', cheque_date: '', paid_status: 'Unpaid' });
@@ -156,23 +165,25 @@ const load = async () => {
         await Promise.all(tripsToUpdate.map(trip => base44.entities.TripRecord.update(trip.id, { billing_date: form.billing_received_date })));
       }
       await base44.entities.BillingCycle.update(editData.id, form);
+      setCycles(prev => prev.map(c => c.id === editData.id ? { ...c, ...form } : c));
     } else {
-      await base44.entities.BillingCycle.create({ ...form, status: 'Open' });
+      const created = await base44.entities.BillingCycle.create({ ...form, status: 'Open' });
+      setCycles(prev => [created, ...prev]);
     }
     setSaving(false);
     setFormOpen(false);
-    load();
   };
 
   const toggleArchiveCycle = async (cycle) => {
-    await base44.entities.BillingCycle.update(cycle.id, { is_archived: !cycle.is_archived });
-    load();
+    const newVal = !cycle.is_archived;
+    await base44.entities.BillingCycle.update(cycle.id, { is_archived: newVal });
+    setCycles(prev => prev.map(c => c.id === cycle.id ? { ...c, is_archived: newVal } : c));
   };
 
   const handleDeleteCycle = async (cycle) => {
     if (!confirm(`Delete billing statement "${cycle.cycle_name}"? This cannot be undone.`)) return;
     await base44.entities.BillingCycle.delete(cycle.id);
-    load();
+    setCycles(prev => prev.filter(c => c.id !== cycle.id));
   };
 
   const getClientName = (id) => clients.find(c => c.id === id)?.client_name || '—';
@@ -246,17 +257,17 @@ const billingReceivedGroups = (() => {
     const record = await ensureSummaryRecord(date);
     const newValue = !record[field];
     await base44.entities.BillingReceivedSummary.update(record.id, { [field]: newValue });
-    // When marking payroll as processed, advance insurance quarters for subcontractors
+    setSummaryRecords(prev => prev.map(r => r.id === record.id ? { ...r, [field]: newValue } : r));
     if (field === 'payroll_processed' && newValue === true) {
       await base44.functions.invoke('processInsuranceAfterPayroll', { billing_received_date: date });
     }
-    load();
   };
 
   const toggleArchiveSummary = async (date) => {
     const record = await ensureSummaryRecord(date);
-    await base44.entities.BillingReceivedSummary.update(record.id, { is_archived: !record.is_archived });
-    load();
+    const newVal = !record.is_archived;
+    await base44.entities.BillingReceivedSummary.update(record.id, { is_archived: newVal });
+    setSummaryRecords(prev => prev.map(r => r.id === record.id ? { ...r, is_archived: newVal } : r));
   };
 
   const openSummary = (group) => {
