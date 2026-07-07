@@ -62,13 +62,19 @@ export default function Subcontractors() {
 
 const processedList = list.map(sub => {
   const insStatus = getInsuranceStatus(sub);
+  // Derive Q label: find which 3-month window (from insurance_start_date month-of-year)
+  // the due date falls in. Q1 = months 3, Q2 = months 6, Q3 = months 9, Q4 = months 12
+  // relative to the start month. We use total months from the start date to the due date.
   let quarter = null;
   if (sub.insurance_start_date && insStatus.dueDate) {
-    const start = moment(sub.insurance_start_date);
+    const startOfYear = moment(sub.insurance_start_date).startOf('year').month(moment(sub.insurance_start_date).month());
     const due = moment(insStatus.dueDate);
-    const monthsDiff = due.diff(start, 'months');
-    quarter = Math.round(monthsDiff / 3);
-    quarter = ((((quarter - 1) % 4) + 4) % 4) + 1;
+    // Total months elapsed from the insurance start month (in the same year anchor)
+    // We simply count how many 3-month blocks from the start month the due date is
+    const startMonth = moment(sub.insurance_start_date).month(); // 0-based
+    const dueMonths = (due.year() - moment(sub.insurance_start_date).year()) * 12 + due.month() - startMonth;
+    const qIndex = Math.ceil(dueMonths / 3); // 1=Q1, 2=Q2, 3=Q3, 4=Q4
+    quarter = ((((qIndex - 1) % 4) + 4) % 4) + 1;
   }
   return { ...sub, insStatus, quarter };
 });
