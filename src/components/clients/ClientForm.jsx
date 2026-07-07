@@ -110,7 +110,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     }
     setRouteSearch('');
     setNewRowIndices(new Set());
-  }, [editData, open]);
+  }, [editData?.id, open]);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -244,42 +244,42 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
+    // Snapshot the form NOW before any async calls that could trigger re-renders
+    const formSnapshot = {
+      ...form,
+      routes: form.routes.map(r => ({
+        ...r,
+        rates: Object.fromEntries(
+          Object.entries(r.rates).map(([k, v]) => [k, v === '' ? null : parseFloat(v)])
+        )
+      }))
+    };
+
     setSaving(true);
     try {
       // Check for duplicate client_name or client_code
-      const existing = await base44.entities.ClientAccount.list();
+      const existing = await base44.entities.ClientAccount.list('client_name', 500);
       const duplicateName = existing.find(c =>
         c.id !== editData?.id &&
-        c.client_name?.trim().toLowerCase() === form.client_name?.trim().toLowerCase()
+        c.client_name?.trim().toLowerCase() === formSnapshot.client_name?.trim().toLowerCase()
       );
-      const duplicateCode = form.client_code?.trim() && existing.find(c =>
+      const duplicateCode = formSnapshot.client_code?.trim() && existing.find(c =>
         c.id !== editData?.id &&
-        c.client_code?.trim().toLowerCase() === form.client_code?.trim().toLowerCase()
+        c.client_code?.trim().toLowerCase() === formSnapshot.client_code?.trim().toLowerCase()
       );
       if (duplicateName) {
-        alert(`Duplicate data: A client named "${form.client_name}" already exists.`);
-        setSaving(false);
+        alert(`Duplicate data: A client named "${formSnapshot.client_name}" already exists.`);
         return;
       }
       if (duplicateCode) {
-        alert(`Duplicate data: Client code "${form.client_code}" is already used by "${duplicateCode.client_name}".`);
-        setSaving(false);
+        alert(`Duplicate data: Client code "${formSnapshot.client_code}" is already used by "${duplicateCode.client_name}".`);
         return;
       }
 
-      const data = {
-        ...form,
-        routes: form.routes.map(r => ({
-          ...r,
-          rates: Object.fromEntries(
-            Object.entries(r.rates).map(([k, v]) => [k, v === '' ? null : parseFloat(v)])
-          )
-        }))
-      };
       if (editData) {
-        await base44.entities.ClientAccount.update(editData.id, data);
+        await base44.entities.ClientAccount.update(editData.id, formSnapshot);
       } else {
-        await base44.entities.ClientAccount.create(data);
+        await base44.entities.ClientAccount.create(formSnapshot);
       }
       setNewRowIndices(new Set());
       await onSaved();
