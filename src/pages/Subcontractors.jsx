@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Pencil, Truck, Trash2, Download, Upload } from 'lucide-react';
+import { Plus, Search, Pencil, Truck, Trash2, Download, Upload, Link2 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import SubcontractorForm from '@/components/subcontractors/SubcontractorForm';
+import InsuranceLinkDialog from '@/components/subcontractors/InsuranceLinkDialog';
 import { formatDateDisplay } from '@/lib/dateUtils';
 import { useAuth } from '@/lib/AuthContext';
 import * as XLSX from 'xlsx';
@@ -33,6 +34,7 @@ export default function Subcontractors() {
   const [statusTab, setStatusTab] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [insuranceLinkSub, setInsuranceLinkSub] = useState(null);
   const fileInputRef = useRef(null);
 
   const load = async () => {
@@ -312,7 +314,6 @@ const filtered = processedList
                         {/* Dynamic display based on tab */}
                         {(insStatus.dateDisplay || insStatus.dueDate) && (
                         <p className={`text-xs text-muted-foreground mt-0.5 ${
-                          // Only turn red if it's the Insurance tab AND it's due soon
                           (statusTab === 'insurance' && insStatus.days <= 5) ? 'text-red-600 font-bold' : ''
                         }`}>
                           {statusTab === 'active' 
@@ -323,11 +324,19 @@ const filtered = processedList
                         )}
                       </div>
                       
-                      {/* Quarter info should only show for the Insurance tab as requested */}
+                      {/* Quarter info + link button */}
                       {statusTab === 'insurance' && sub.quarter && (
                         <p className="text-[10px] text-muted-foreground font-mono mt-1 uppercase">
                           Q{sub.quarter} Renewal
                         </p>
+                      )}
+                      {sub.is_insured && sub.insurance_start_date && (
+                        <button
+                          onClick={() => setInsuranceLinkSub(sub)}
+                          className="mt-1 flex items-center gap-1 text-[11px] text-primary hover:underline font-medium"
+                        >
+                          <Link2 className="w-3 h-3" /> Link to Billing
+                        </button>
                       )}
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={sub.status} type="account" /></td>
@@ -356,6 +365,11 @@ const filtered = processedList
         onClose={() => setFormOpen(false)}
         onSaved={load}
         editData={editData}
+      />
+      <InsuranceLinkDialog
+        open={!!insuranceLinkSub}
+        onClose={() => setInsuranceLinkSub(null)}
+        subcontractor={insuranceLinkSub}
       />
     </div>
   );
