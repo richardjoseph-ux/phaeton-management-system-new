@@ -389,8 +389,17 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                 <Button type="button" variant="outline" size="sm" onClick={handleExport}>
                   <Download className="w-3.5 h-3.5 mr-1" /> Export Excel
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={addRoute}>
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Route
+                <Button type="button" variant="outline" size="sm" onClick={() => {
+                  const name = prompt('Enter pickup location name (e.g. DSV_MAKATI):');
+                  if (!name?.trim()) return;
+                  const loc = name.trim().toUpperCase();
+                  const newRoute = emptyRoute();
+                  newRoute.pickup_location = loc;
+                  setForm(p => ({ ...p, routes: [...p.routes, newRoute] }));
+                  setActivePickup(loc);
+                  setActiveTruck(TRUCK_TYPES[0]);
+                }}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Pickup Location
                 </Button>
               </div>
             </div>
@@ -398,9 +407,12 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             {/* Level 1: Pickup Tabs */}
             <TabBar tabs={pickupTabList} active={activePickup} onSelect={(v) => { setActivePickup(v); setActiveTruck(editData ? TRUCK_TYPES[0] : '__all__'); setRouteSearch(''); }} />
 
-            {/* Level 2: Truck Type Sub-Tabs */}
-            <div className="bg-muted/30 px-2 pt-1 pb-0 border-x border-border">
+            {/* Level 2: Truck Type Sub-Tabs + Add Route inline */}
+            <div className="bg-muted/30 px-2 pt-1 pb-0 border-x border-border flex items-end justify-between">
               <TabBar tabs={truckTabList} active={activeTruck} onSelect={setActiveTruck} />
+              <Button type="button" variant="outline" size="sm" onClick={addRoute} className="mb-1 ml-2 shrink-0">
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Route
+              </Button>
             </div>
 
             {/* Search Bar */}
