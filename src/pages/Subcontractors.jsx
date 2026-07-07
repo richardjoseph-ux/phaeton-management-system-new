@@ -92,6 +92,7 @@ const processedList = list.map(sub => {
   }
 });
 
+const seenPlatesForFilter = new Set();
 const filtered = processedList
   .filter(s => {
     // 1. Search Logic
@@ -111,31 +112,37 @@ const filtered = processedList
     } 
     else if (statusTab === 'insurance') {
       // EXCLUDE Uninsured and Inactive ONLY on this tab
-      if (s.insStatus.status === 'Uninsured' || s.status === 'Inactive') {
-        return false;
-      }
-      matchesStatus = true; // Show everything else (Expired, Payment Due, Insured)
+      if (s.insStatus.status === 'Uninsured' || s.status === 'Inactive') return false;
+      // Deduplicate by plate_number — same plate = same insurance
+      if (seenPlatesForFilter.has(s.plate_number)) return false;
+      seenPlatesForFilter.add(s.plate_number);
+      matchesStatus = true;
     }
     
     return matchesSearch && matchesStatus;
   })
 .sort((a, b) => {
   if (statusTab === 'insurance') {
-
     const daysA = a.insStatus.days ?? 999;
     const daysB = b.insStatus.days ?? 999;
-    
     return daysA - daysB;
   }
-  return 0; // No sorting for other tabs
+  return 0;
 });
 
   const activeCount = list.filter(s => s.status === 'Active').length;
   const inactiveCount = list.filter(s => s.status === 'Inactive').length;
+  // Deduplicate by plate_number for insurance count (same plate = same insurance regardless of truck type)
+  const seenPlatesForCount = new Set();
   const insuranceCount = list.filter(sub => {
-  const status = getInsuranceStatus(sub);
-  if (sub.status === 'Inactive' || status.status === 'Uninsured') return false;
-    return status.days !== undefined && status.days <= 10;
+    if (seenPlatesForCount.has(sub.plate_number)) return false;
+    const status = getInsuranceStatus(sub);
+    if (sub.status === 'Inactive' || status.status === 'Uninsured') return false;
+    if (status.days !== undefined && status.days <= 10) {
+      seenPlatesForCount.add(sub.plate_number);
+      return true;
+    }
+    return false;
   }).length;
 
   const handleEdit = (item) => { setEditData(item); setFormOpen(true); };
