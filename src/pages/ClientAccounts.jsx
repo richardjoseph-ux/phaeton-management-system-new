@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useAppData } from '@/lib/AppDataContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp, Trash2, Download } from 'lucide-react';
@@ -201,33 +202,18 @@ function ClientRouteTable({ client }) {
 // ==========================================
 export default function ClientAccounts() {
   const { user: currentUser } = useAuth();
+  const { clients: list, isLoading, invalidate } = useAppData();
   
   const isAdmin = currentUser?.role === 'admin';
   const canEdit = isAdmin || currentUser?.role === 'user';
   
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const loading = isLoading.clients;
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [expandedClients, setExpandedClients] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const data = await base44.entities.ClientAccount.list('client_name', 100);
-      setList(data || []);
-      return data || [];
-    } catch (error) {
-      console.error("Error loading client accounts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
 
   useEffect(() => { setCurrentPage(1); }, [search]);
 
@@ -247,7 +233,7 @@ export default function ClientAccounts() {
   const handleDelete = async (item) => {
     if (!confirm(`Delete client "${item.client_name}"? This cannot be undone.`)) return;
     await base44.entities.ClientAccount.delete(item.id);
-    load();
+    invalidate('clients');
   };
 
   return (
@@ -338,7 +324,7 @@ export default function ClientAccounts() {
       <ClientForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSaved={load}
+        onSaved={() => invalidate('clients')}
         editData={editData}
       />
     </div>

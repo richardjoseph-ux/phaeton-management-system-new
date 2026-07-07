@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useAppData } from '@/lib/AppDataContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,36 +30,20 @@ export default function AdditionalServices() {
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(null);
 
-  const queryClient = useQueryClient();
+  const { clients, fuelSubsidies: subsidies, isLoading: cacheLoading, invalidate, addCacheItem, removeCacheItem } = useAppData();
 
-  // Load saved Google Sheet URL on mount
+  // Pre-fill Google Sheet URL from cached subsidies
   useEffect(() => {
-    const loadSavedUrl = async () => {
-      const subsidies = await base44.entities.FuelSubsidy.list();
-      if (subsidies.length > 0 && subsidies[0].google_sheet_url) {
-        const url = subsidies[0].google_sheet_url;
-        setSavedSheetUrl(url);
-        setGoogleSheetUrl(url); // Pre-fill the input field
-      }
-    };
-    loadSavedUrl();
-  }, []);
-
-  const { data: subsidies, isLoading } = useQuery({
-    queryKey: ['fuelSubsidies'],
-    queryFn: () => base44.entities.FuelSubsidy.list('-created_date'),
-    initialData: [],
-  });
-
-  const { data: clients } = useQuery({
-    queryKey: ['clients'],
-    queryFn: () => base44.entities.ClientAccount.list(),
-    initialData: [],
-  });
+    const entry = subsidies.find(s => s.google_sheet_url);
+    if (entry) {
+      setSavedSheetUrl(entry.google_sheet_url);
+      setGoogleSheetUrl(prev => prev || entry.google_sheet_url);
+    }
+  }, [subsidies]);
 
   const deleteSubsidyMutation = useMutation({
     mutationFn: (id) => base44.entities.FuelSubsidy.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fuelSubsidies'] }),
+    onSuccess: (_, id) => removeCacheItem('fuelSubsidies', id),
   });
 
   const createSubsidyMutation = useMutation({
@@ -81,8 +65,8 @@ export default function AdditionalServices() {
         subsidy_amount: subsidyAmount
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fuelSubsidies'] });
+    onSuccess: (created) => {
+      addCacheItem('fuelSubsidies', created, true);
       setShowForm(false);
       setFormData({
         client_account_id: '',
