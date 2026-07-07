@@ -1,0 +1,58 @@
+{
+  "name": "Alert",
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "description": "Alert message text"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "InsuranceRenewal"
+      ],
+      "description": "Type of alert"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unread",
+        "read"
+      ],
+      "default": "unread"
+    },
+    "subcontractor_id": {
+      "type": "string",
+      "description": "Related subcontractor entity ID"
+    },
+    "plate_number": {
+      "type": "string"
+    },
+    "owner_name": {
+      "type": "string"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "The insurance renewal due date"
+    },
+    "quarter_label": {
+      "type": "string",
+      "description": "e.g. Q1, Q2, Q3, Q4"
+    }
+  },
+  "required": [
+    "message",
+    "type"
+  ],
+  "rls": {
+    "create": null,
+    "read": null,
+    "update": null,
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

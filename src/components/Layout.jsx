@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import NotificationBell from '@/components/NotificationBell';
 import {
   Truck, Users, Building2, FileText, BarChart3, Menu, X,
   ChevronRight, LogOut, CreditCard, ClipboardList, Fuel, MinusCircle
@@ -85,6 +86,14 @@ export default function Layout() {
             );
           })}
         </nav>
+
+        {/* Notification Bell */}
+        <div className="px-3 py-2 border-t border-[hsl(var(--sidebar-border))]">
+          <div className="flex items-center justify-between px-3 py-1">
+            <span className="text-xs text-sidebar-foreground/50 uppercase tracking-wide">Alerts</span>
+            <NotificationBell />
+          </div>
+        </div>
 
         {/* User */}
         <div className="px-3 py-4 border-t border-[hsl(var(--sidebar-border))]">
