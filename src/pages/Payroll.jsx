@@ -398,11 +398,11 @@ const tripTotals = useMemo(() => {
                     <div className="flex items-center justify-between mt-3 mb-1">
                       <span className="text-xs text-muted-foreground">Showing {(tripsPage - 1) * rowsPerPage + 1}–{Math.min(tripsPage * rowsPerPage, displayedTrips.length)} of {displayedTrips.length} trips</span>
                       <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" disabled={tripsPage === 1} onClick={() => setTripsPage(1)} className="px-2.5">«</Button>
                         <Button variant="outline" size="sm" disabled={tripsPage === 1} onClick={() => setTripsPage(p => p - 1)}>Previous</Button>
-                        {Array.from({ length: tripsTotalPages }, (_, i) => i + 1).map(page => (
-                          <Button key={page} variant={page === tripsPage ? 'default' : 'outline'} size="sm" onClick={() => setTripsPage(page)} className="w-9">{page}</Button>
-                        ))}
+                        <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{tripsPage} / {tripsTotalPages}</span>
                         <Button variant="outline" size="sm" disabled={tripsPage === tripsTotalPages} onClick={() => setTripsPage(p => p + 1)}>Next</Button>
+                        <Button variant="outline" size="sm" disabled={tripsPage === tripsTotalPages} onClick={() => setTripsPage(tripsTotalPages)} className="px-2.5">»</Button>
                       </div>
                     </div>
                   )}

@@ -875,11 +875,11 @@ export default function Deductions() {
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs text-muted-foreground">Showing {(allRecordsPage - 1) * rowsPerPage + 1}–{Math.min(allRecordsPage * rowsPerPage, allRows.length)} of {allRows.length}</span>
                                   <div className="flex items-center gap-1">
+                                    <Button variant="outline" size="sm" disabled={allRecordsPage === 1} onClick={() => setAllRecordsPage(1)} className="px-2.5">«</Button>
                                     <Button variant="outline" size="sm" disabled={allRecordsPage === 1} onClick={() => setAllRecordsPage(p => p - 1)}>Previous</Button>
-                                    {Array.from({ length: totalAllPages }, (_, i) => i + 1).map(page => (
-                                      <Button key={page} variant={page === allRecordsPage ? 'default' : 'outline'} size="sm" onClick={() => setAllRecordsPage(page)} className="w-9">{page}</Button>
-                                    ))}
+                                    <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{allRecordsPage} / {totalAllPages}</span>
                                     <Button variant="outline" size="sm" disabled={allRecordsPage === totalAllPages} onClick={() => setAllRecordsPage(p => p + 1)}>Next</Button>
+                                    <Button variant="outline" size="sm" disabled={allRecordsPage === totalAllPages} onClick={() => setAllRecordsPage(totalAllPages)} className="px-2.5">»</Button>
                                   </div>
                                 </div>
                               </td>

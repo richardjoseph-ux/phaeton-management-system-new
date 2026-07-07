@@ -324,11 +324,11 @@ export default function ClientAccounts() {
                 Showing {(currentPage - 1) * rowsPerPage + 1}–{Math.min(currentPage * rowsPerPage, filteredList.length)} of {filteredList.length}
               </span>
               <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(1)} className="px-2.5">«</Button>
                 <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
-                {Array.from({ length: Math.ceil(filteredList.length / rowsPerPage) }, (_, i) => i + 1).map(page => (
-                  <Button key={page} variant={page === currentPage ? 'default' : 'outline'} size="sm" onClick={() => setCurrentPage(page)} className="w-9">{page}</Button>
-                ))}
+                <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{currentPage} / {Math.ceil(filteredList.length / rowsPerPage)}</span>
                 <Button variant="outline" size="sm" disabled={currentPage === Math.ceil(filteredList.length / rowsPerPage)} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
+                <Button variant="outline" size="sm" disabled={currentPage === Math.ceil(filteredList.length / rowsPerPage)} onClick={() => setCurrentPage(Math.ceil(filteredList.length / rowsPerPage))} className="px-2.5">»</Button>
               </div>
             </div>
           )}

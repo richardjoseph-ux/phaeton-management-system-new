@@ -213,7 +213,20 @@ export default function Reports() {
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between p-4 border-t"><span className="text-xs text-muted-foreground">Page {currentPage} of {totalPages || 1}</span><div className="flex gap-2"><Button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} size="sm" variant="outline">Previous</Button><Button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)} size="sm" variant="outline">Next</Button></div></div>
+          <div className="flex items-center justify-between px-4 py-3 border-t">
+            <span className="text-xs text-muted-foreground">
+              Showing {filtered.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1}–{Math.min(currentPage * rowsPerPage, filtered.length)} of {filtered.length} trips
+            </span>
+            <div className="flex items-center gap-1">
+              <Button disabled={currentPage === 1} onClick={() => setCurrentPage(1)} size="sm" variant="outline" className="px-2.5">«</Button>
+              <Button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} size="sm" variant="outline">Previous</Button>
+              <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">
+                {currentPage} / {totalPages || 1}
+              </span>
+              <Button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)} size="sm" variant="outline">Next</Button>
+              <Button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(totalPages)} size="sm" variant="outline" className="px-2.5">»</Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
