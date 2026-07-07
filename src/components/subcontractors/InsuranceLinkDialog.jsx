@@ -32,19 +32,31 @@ export default function InsuranceLinkDialog({ open, onClose, subcontractor }) {
     setForm({ billing_received_date: '', insurance_charge: '' });
 
     Promise.all([
-      base44.entities.BillingCycle.list('-billing_received_date', 200),
+      base44.entities.TripRecord.filter({ plate_number: subcontractor.plate_number }, '-billing_date', 500),
       base44.entities.BillingDeduction.filter({ plate_number: subcontractor.plate_number }),
-    ]).then(([cycles, deds]) => {
-      const seen = new Set();
-      const dates = [];
-      cycles.forEach(c => {
-        if (c.billing_received_date && !seen.has(c.billing_received_date)) {
-          seen.add(c.billing_received_date);
-          dates.push(c.billing_received_date);
-        }
+    ]).then(([trips, deds]) => {
+      // Collect unique billing_received_dates from the subcontractor's trip records via their billing_cycle_id
+      // We need the billing cycles to resolve billing_received_date, so also fetch those cycle IDs
+      const cycleIds = [...new Set(trips.map(t => t.billing_cycle_id).filter(Boolean))];
+      if (cycleIds.length === 0) {
+        setBillingDates([]);
+        setDeductions(deds);
+        return;
+      }
+      // Fetch those specific billing cycles
+      base44.entities.BillingCycle.list('-billing_received_date', 500).then(allCycles => {
+        const relevantCycles = allCycles.filter(c => cycleIds.includes(c.id));
+        const seen = new Set();
+        const dates = [];
+        relevantCycles.forEach(c => {
+          if (c.billing_received_date && !seen.has(c.billing_received_date)) {
+            seen.add(c.billing_received_date);
+            dates.push(c.billing_received_date);
+          }
+        });
+        setBillingDates(dates.sort((a, b) => b.localeCompare(a)));
+        setDeductions(deds);
       });
-      setBillingDates(dates.sort((a, b) => b.localeCompare(a)));
-      setDeductions(deds);
     });
   }, [open, subcontractor]);
 
