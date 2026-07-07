@@ -59,8 +59,9 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const searchLower = routeSearch.trim().toLowerCase();
   const visibleIndices = form.routes.reduce((acc, r, i) => {
     const isNewRow = newRowIndices.has(i);
+    const hasNoRates = TRUCK_TYPES.every(t => r.rates?.[t] === '' || r.rates?.[t] == null);
     const pickupMatch = isNewRow || activePickup === '__all__' || r.pickup_location === activePickup;
-    const truckMatch = isNewRow || activeTruck === '__all__' || (r.rates?.[activeTruck] !== '' && r.rates?.[activeTruck] != null);
+    const truckMatch = isNewRow || hasNoRates || activeTruck === '__all__' || (r.rates?.[activeTruck] !== '' && r.rates?.[activeTruck] != null);
     const searchMatch = !searchLower ||
       (r.delivery_location || '').toLowerCase().includes(searchLower) ||
       (r.delivery_code || '').toLowerCase().includes(searchLower) ||
