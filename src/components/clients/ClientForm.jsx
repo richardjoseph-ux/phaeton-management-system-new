@@ -279,6 +279,17 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         return;
       }
 
+      // Check for duplicate routes within the form (same pickup + delivery + delivery_code)
+      const routeKeys = new Set();
+      for (const r of formSnapshot.routes) {
+        const key = `${(r.pickup_location || '').trim().toLowerCase()}||${(r.delivery_location || '').trim().toLowerCase()}||${(r.delivery_code || '').trim().toLowerCase()}`;
+        if (r.delivery_location?.trim() && routeKeys.has(key)) {
+          alert(`Duplicate route: "${r.delivery_location}" (${r.delivery_code || 'no code'}) under pickup "${r.pickup_location || 'none'}" appears more than once.`);
+          return;
+        }
+        routeKeys.add(key);
+      }
+
       if (editData) {
         await base44.entities.ClientAccount.update(editData.id, formSnapshot);
       } else {
