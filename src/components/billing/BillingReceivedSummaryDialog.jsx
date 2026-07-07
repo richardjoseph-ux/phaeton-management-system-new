@@ -107,7 +107,7 @@ const chargeTotals = otherCharges.reduce((acc, oc) => {
   // Normalize charge_type to lowercase to safely match 'demurrage'
   const type = (oc.charge_type || '').toLowerCase();
 
-  if (type === 'demurrage') {
+  if (type === 'demurrage' || type === 'fuel subsidy') {
     acc.demurrage += amount;
   } else {
     acc.others += amount;

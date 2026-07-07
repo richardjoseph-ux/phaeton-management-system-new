@@ -366,7 +366,7 @@ const getChequeAmountForDate = (date) => {
   const chargeTotals = relevantOtherCharges.reduce((acc, oc) => {
     const amount = oc.amount || 0;
     const type = (oc.charge_type || '').toLowerCase();
-    if (type === 'demurrage') {
+    if (type === 'demurrage' || type === 'fuel subsidy') {
       acc.demurrage += amount;
     } else {
       acc.others += amount;
