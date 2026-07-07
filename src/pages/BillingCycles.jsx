@@ -82,12 +82,12 @@ const load = async () => {
     setLoading(true);
     // TripRecord is NOT loaded here — fetched on-demand when opening a cycle's trips view
     const [c, cl, s, sr, d, oc] = await Promise.all([
-      base44.entities.BillingCycle.list('-created_date', 200),
-      base44.entities.ClientAccount.list('client_name', 100),
-      base44.entities.FuelSubsidy.list('-created_date', 100),
-      base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
-      base44.entities.BillingDeduction.list('-billing_received_date', 500),
-      base44.entities.OtherCharges.list('-billing_received_date', 200),
+      base44.entities.BillingCycle.list('-created_date', 100),
+      base44.entities.ClientAccount.list('client_name', 50),
+      base44.entities.FuelSubsidy.list('-created_date', 50),
+      base44.entities.BillingReceivedSummary.list('-billing_received_date', 100),
+      base44.entities.BillingDeduction.list('-billing_received_date', 200),
+      base44.entities.OtherCharges.list('-billing_received_date', 100),
     ]);
     setCycles(c);
     setClients(cl);
@@ -130,7 +130,7 @@ const load = async () => {
   // Lazy-load trips only when the summary tab is first opened
   useEffect(() => {
     if (mainTab === 'summary' && !tripsLoaded) {
-      base44.entities.TripRecord.list('-created_date', 1000).then(t => {
+      base44.entities.TripRecord.list('-created_date', 500).then(t => {
         setAllTrips(t);
         setTripsLoaded(true);
       });
@@ -580,11 +580,11 @@ const archivedSummaryGroups = (() => {
                 <div className="flex items-center justify-between p-3 border-t">
                   <span className="text-xs text-muted-foreground">Showing {(stmtPage - 1) * rowsPerPage + 1}–{Math.min(stmtPage * rowsPerPage, filteredCycles.length)} of {filteredCycles.length}</span>
                   <div className="flex items-center gap-1">
-                    <Button variant="outline" size="sm" disabled={stmtPage === 1} onClick={() => setStmtPage(p => p - 1)}>Previous</Button>
-                    {Array.from({ length: Math.ceil(filteredCycles.length / rowsPerPage) }, (_, i) => i + 1).map(page => (
-                      <Button key={page} variant={page === stmtPage ? 'default' : 'outline'} size="sm" onClick={() => setStmtPage(page)} className="w-9">{page}</Button>
-                    ))}
-                    <Button variant="outline" size="sm" disabled={stmtPage === Math.ceil(filteredCycles.length / rowsPerPage)} onClick={() => setStmtPage(p => p + 1)}>Next</Button>
+                   <Button variant="outline" size="sm" disabled={stmtPage === 1} onClick={() => setStmtPage(1)} className="px-2.5">«</Button>
+                   <Button variant="outline" size="sm" disabled={stmtPage === 1} onClick={() => setStmtPage(p => p - 1)}>Previous</Button>
+                   <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{stmtPage} / {Math.ceil(filteredCycles.length / rowsPerPage)}</span>
+                   <Button variant="outline" size="sm" disabled={stmtPage === Math.ceil(filteredCycles.length / rowsPerPage)} onClick={() => setStmtPage(p => p + 1)}>Next</Button>
+                   <Button variant="outline" size="sm" disabled={stmtPage === Math.ceil(filteredCycles.length / rowsPerPage)} onClick={() => setStmtPage(Math.ceil(filteredCycles.length / rowsPerPage))} className="px-2.5">»</Button>
                   </div>
                 </div>
               )}
@@ -711,11 +711,11 @@ const archivedSummaryGroups = (() => {
                   <div className="flex items-center justify-between p-3 border-t">
                     <span className="text-xs text-muted-foreground">Showing {(summaryPage - 1) * rowsPerPage + 1}–{Math.min(summaryPage * rowsPerPage, groups.length)} of {groups.length}</span>
                     <div className="flex items-center gap-1">
+                      <Button variant="outline" size="sm" disabled={summaryPage === 1} onClick={() => setSummaryPage(1)} className="px-2.5">«</Button>
                       <Button variant="outline" size="sm" disabled={summaryPage === 1} onClick={() => setSummaryPage(p => p - 1)}>Previous</Button>
-                      {Array.from({ length: Math.ceil(groups.length / rowsPerPage) }, (_, i) => i + 1).map(page => (
-                        <Button key={page} variant={page === summaryPage ? 'default' : 'outline'} size="sm" onClick={() => setSummaryPage(page)} className="w-9">{page}</Button>
-                      ))}
+                      <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{summaryPage} / {Math.ceil(groups.length / rowsPerPage)}</span>
                       <Button variant="outline" size="sm" disabled={summaryPage === Math.ceil(groups.length / rowsPerPage)} onClick={() => setSummaryPage(p => p + 1)}>Next</Button>
+                      <Button variant="outline" size="sm" disabled={summaryPage === Math.ceil(groups.length / rowsPerPage)} onClick={() => setSummaryPage(Math.ceil(groups.length / rowsPerPage))} className="px-2.5">»</Button>
                     </div>
                   </div>
                 )}

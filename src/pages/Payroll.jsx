@@ -35,14 +35,12 @@ export default function Payroll() {
   const load = async () => {
     setLoading(true);
     // Fetch lighter entities first, then heavier ones to avoid 502 timeouts
-    const [b, s, sr] = await Promise.all([
-      base44.entities.BillingCycle.list('-billing_received_date', 200),
-      base44.entities.FuelSubsidy.list('-created_date', 100),
-      base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
-    ]);
-    const [d, r] = await Promise.all([
-      base44.entities.BillingDeduction.list('-billing_received_date', 500),
-      base44.entities.Reimbursement.list('-billing_received_date', 500),
+    const [b, s, sr, d, r] = await Promise.all([
+      base44.entities.BillingCycle.list('-billing_received_date', 100),
+      base44.entities.FuelSubsidy.list('-created_date', 50),
+      base44.entities.BillingReceivedSummary.list('-billing_received_date', 100),
+      base44.entities.BillingDeduction.list('-billing_received_date', 200),
+      base44.entities.Reimbursement.list('-billing_received_date', 200),
     ]);
     setBillingCycles(b);
     setFuelSubsidies(s);

@@ -55,7 +55,7 @@ export default function Subcontractors() {
 
   const load = async () => {
     setLoading(true);
-    const data = await base44.entities.Subcontractor.list('-created_date', 200);
+    const data = await base44.entities.Subcontractor.list('-created_date', 100);
     setList(data);
     setLoading(false);
   };

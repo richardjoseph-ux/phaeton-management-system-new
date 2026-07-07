@@ -56,11 +56,11 @@ export default function Deductions() {
   const load = async () => {
     setLoading(true);
     const [b, d, summaries, r, o] = await Promise.all([
-      base44.entities.BillingCycle.list('-billing_received_date', 200),
-      base44.entities.BillingDeduction.list('-billing_received_date', 500),
-      base44.entities.BillingReceivedSummary.list('-billing_received_date', 200),
-      base44.entities.Reimbursement.list('-billing_received_date', 500),
-      base44.entities.OtherCharges.list('-billing_received_date', 500),
+      base44.entities.BillingCycle.list('-billing_received_date', 100),
+      base44.entities.BillingDeduction.list('-billing_received_date', 200),
+      base44.entities.BillingReceivedSummary.list('-billing_received_date', 100),
+      base44.entities.Reimbursement.list('-billing_received_date', 200),
+      base44.entities.OtherCharges.list('-billing_received_date', 200),
     ]);
     setBillingCycles(b);
     setDeductions(d);

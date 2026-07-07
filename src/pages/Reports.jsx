@@ -34,9 +34,9 @@ export default function Reports() {
   const load = async () => {
     setLoading(true);
     const [c, s, b] = await Promise.all([
-      base44.entities.ClientAccount.list('client_name', 100),
-      base44.entities.Subcontractor.list('owner_name', 200),
-      base44.entities.BillingCycle.list('-created_date', 100),
+      base44.entities.ClientAccount.list('client_name', 50),
+      base44.entities.Subcontractor.list('owner_name', 100),
+      base44.entities.BillingCycle.list('-created_date', 50),
     ]);
     setClients(c);
     setSubcontractors(s);
@@ -46,7 +46,7 @@ export default function Reports() {
 
   const loadTrips = async () => {
     if (tripsLoaded) return;
-    const t = await base44.entities.TripRecord.list('-delivery_date', 1000);
+    const t = await base44.entities.TripRecord.list('-delivery_date', 300);
     setTrips(t);
     setTripsLoaded(true);
   };

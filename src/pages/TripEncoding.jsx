@@ -38,10 +38,10 @@ export default function TripEncoding() {
   const load = async () => {
     setLoading(true);
     const [t, c, s, b] = await Promise.all([
-      base44.entities.TripRecord.list('-created_date', 500),
-      base44.entities.ClientAccount.list('client_name', 100),
-      base44.entities.Subcontractor.list('plate_number', 200),
-      base44.entities.BillingCycle.list('-created_date', 100),
+      base44.entities.TripRecord.list('-created_date', 200),
+      base44.entities.ClientAccount.list('client_name', 50),
+      base44.entities.Subcontractor.list('plate_number', 100),
+      base44.entities.BillingCycle.list('-created_date', 50),
     ]);
     setTrips(t);
     setClients(c);
