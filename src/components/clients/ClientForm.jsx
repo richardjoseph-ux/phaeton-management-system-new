@@ -283,17 +283,22 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     ? form.routes
     : form.routes.filter(r => r.pickup_location === activePickup);
 
+  // Global indices of routes that are in the current pickup filter
+  const routesInPickupWithIndex = form.routes.reduce((acc, r, i) => {
+    const pickupMatch = activePickup === '__all__' || r.pickup_location === activePickup;
+    if (pickupMatch) acc.push({ r, i });
+    return acc;
+  }, []);
+
+  const countForTruck = (t) => routesInPickupWithIndex.filter(
+    ({ r, i }) => (r.rates?.[t] !== '' && r.rates?.[t] != null) || newRowIndices.has(i)
+  ).length;
+
   const truckTabList = editData
-    ? TRUCK_TYPES.map(t => ({
-        value: t,
-        label: `${t} (${routesInPickup.filter(r => r.rates?.[t] !== '' && r.rates?.[t] != null).length})`
-      }))
+    ? TRUCK_TYPES.map(t => ({ value: t, label: `${t} (${countForTruck(t)})` }))
     : [
         { value: '__all__', label: `All Trucks (${routesInPickup.length})` },
-        ...TRUCK_TYPES.map(t => ({
-          value: t,
-          label: `${t} (${routesInPickup.filter(r => r.rates?.[t] !== '' && r.rates?.[t] != null).length})`
-        }))
+        ...TRUCK_TYPES.map(t => ({ value: t, label: `${t} (${countForTruck(t)})` }))
       ];
 
   // Columns to show: in "All Trucks" view show all 4 rate cols; in specific truck view show only that one
