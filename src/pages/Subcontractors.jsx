@@ -15,13 +15,27 @@ import moment from 'moment'; // Assuming you use Moment.js for date manipulation
 const getInsuranceStatus = (sub) => {
   if (!sub.is_insured || !sub.insurance_start_date) return { status: 'Uninsured', dueDate: null };
 
-  const nextDueDate = moment(sub.insurance_start_date).add(3, 'months');
   const today = moment().startOf('day');
+  const start = moment(sub.insurance_start_date);
+
+  // Find the next upcoming quarter due date from the start date
+  // Q1 = start+3mo, Q2 = start+6mo, Q3 = start+9mo, Q4 = start+12mo, then repeats
+  let nextDueDate = null;
+  for (let q = 1; q <= 4; q++) {
+    const due = start.clone().add(q * 3, 'months');
+    if (due.isSameOrAfter(today)) {
+      nextDueDate = due;
+      break;
+    }
+  }
+  // If all 4 quarters are in the past, use Q4 (insurance has fully expired)
+  if (!nextDueDate) nextDueDate = start.clone().add(12, 'months');
+
   const daysRemaining = nextDueDate.diff(today, 'days');
 
   if (daysRemaining < 0) return { status: 'Expired', days: daysRemaining, dueDate: nextDueDate.toDate() };
   if (daysRemaining <= 30) return { status: 'Due in ' + daysRemaining + ' days', days: daysRemaining, dueDate: nextDueDate.toDate() };
-  
+
   return { status: 'Insured', days: daysRemaining, dueDate: nextDueDate.toDate() };
 };
 
@@ -49,16 +63,19 @@ export default function Subcontractors() {
 const processedList = list.map(sub => {
   const insStatus = getInsuranceStatus(sub);
 
-  // Calculate quarter based on insurance start date
+  // Find which quarter is currently due (next upcoming from start date)
   let quarter = null;
   if (sub.insurance_start_date) {
     const startDate = moment(sub.insurance_start_date);
-    const today = moment();
-    
-    // Calculate how many 3-month periods have passed since the start date
-    // This makes the "Quarter" relative to when their specific insurance began
-    const monthsDiff = today.diff(startDate, 'months');
-    quarter = Math.floor(monthsDiff / 3) + 1;
+    const today = moment().startOf('day');
+    for (let q = 1; q <= 4; q++) {
+      const due = startDate.clone().add(q * 3, 'months');
+      if (due.isSameOrAfter(today)) {
+        quarter = q;
+        break;
+      }
+    }
+    if (!quarter) quarter = 4; // All expired
   }
 
   if (statusTab === 'active') {

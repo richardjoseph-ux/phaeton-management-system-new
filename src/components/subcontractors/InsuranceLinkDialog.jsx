@@ -13,6 +13,7 @@ const getQuarterDates = (startDate) => {
   if (!startDate) return [];
   return [1, 2, 3, 4].map(q => ({
     label: `Q${q}`,
+    startDate: moment(startDate).add((q - 1) * 3, 'months').format('YYYY-MM-DD'),
     dueDate: moment(startDate).add(q * 3, 'months').format('YYYY-MM-DD'),
   }));
 };
@@ -65,9 +66,13 @@ export default function InsuranceLinkDialog({ open, onClose, subcontractor }) {
   const quarters = getQuarterDates(subcontractor.insurance_start_date);
 
   // Check which quarters already have a deduction with insurance_charge > 0
-  // We match by looking at deductions whose billing_received_date falls within the quarter window
-  const isPaid = (quarterDueDate) => {
-    return deductions.some(d => d.insurance_charge > 0 && d.billing_received_date <= quarterDueDate);
+  // Match deductions whose billing_received_date falls within the quarter's window
+  const isPaid = (quarter) => {
+    return deductions.some(d =>
+      d.insurance_charge > 0 &&
+      d.billing_received_date >= quarter.startDate &&
+      d.billing_received_date <= quarter.dueDate
+    );
   };
 
   const handleSelectQuarter = (q) => {
@@ -127,7 +132,7 @@ export default function InsuranceLinkDialog({ open, onClose, subcontractor }) {
         {/* Q1–Q4 tracker */}
         <div className="grid grid-cols-4 gap-2 mt-2">
           {quarters.map(q => {
-            const paid = isPaid(q.dueDate);
+            const paid = isPaid(q);
             const isSelected = selectedQuarter?.label === q.label;
             return (
               <button
