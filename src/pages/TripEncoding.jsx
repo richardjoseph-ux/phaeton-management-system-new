@@ -32,11 +32,13 @@ export default function TripEncoding() {
   const [editData, setEditData] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncingData, setSyncingData] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
   
   const load = async () => {
     setLoading(true);
     const [t, c, s, b] = await Promise.all([
-      base44.entities.TripRecord.list('-created_date', 200),
+      base44.entities.TripRecord.list('-created_date', 500),
       base44.entities.ClientAccount.list('client_name', 100),
       base44.entities.Subcontractor.list('plate_number', 200),
       base44.entities.BillingCycle.list('-created_date', 100),
@@ -75,6 +77,12 @@ export default function TripEncoding() {
       }
     });
   }, [trips, search, filterBilling, sortOrder]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => { setCurrentPage(1); }, [search, filterBilling, sortOrder]);
+
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const paginated = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   const dashboardStats = useMemo(() => {
     const now = new Date();
@@ -465,7 +473,7 @@ const handleImportTrips = async (event) => {
                     <p className="text-muted-foreground text-sm">No trip records found</p>
                   </td>
                 </tr>
-              ) : filtered.map(trip => (
+              ) : paginated.map(trip => (
                 <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono font-semibold text-primary">{trip.plate_number}</td>
                   <td className="px-4 py-3">{trip.owner_name}</td>
@@ -521,6 +529,34 @@ const handleImportTrips = async (event) => {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-3">
+          <span className="text-xs text-muted-foreground">
+            Showing {(currentPage - 1) * rowsPerPage + 1}–{Math.min(currentPage * rowsPerPage, filtered.length)} of {filtered.length} trips
+          </span>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+              Previous
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <Button
+                key={page}
+                variant={page === currentPage ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCurrentPage(page)}
+                className="w-9"
+              >
+                {page}
+              </Button>
+            ))}
+            <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       <TripForm
         open={formOpen}
