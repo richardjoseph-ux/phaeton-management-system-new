@@ -217,6 +217,7 @@ export default function ClientAccounts() {
     try {
       const data = await base44.entities.ClientAccount.list('client_name', 100);
       setList(data || []);
+      return data || [];
     } catch (error) {
       console.error("Error loading client accounts:", error);
     } finally {

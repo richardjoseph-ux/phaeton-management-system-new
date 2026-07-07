@@ -245,24 +245,29 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
-    const data = {
-      ...form,
-      routes: form.routes.map(r => ({
-        ...r,
-        rates: Object.fromEntries(
-          Object.entries(r.rates).map(([k, v]) => [k, v === '' ? null : parseFloat(v)])
-        )
-      }))
-    };
-    if (editData) {
-      await base44.entities.ClientAccount.update(editData.id, data);
-    } else {
-      await base44.entities.ClientAccount.create(data);
+    try {
+      const data = {
+        ...form,
+        routes: form.routes.map(r => ({
+          ...r,
+          rates: Object.fromEntries(
+            Object.entries(r.rates).map(([k, v]) => [k, v === '' ? null : parseFloat(v)])
+          )
+        }))
+      };
+      if (editData) {
+        await base44.entities.ClientAccount.update(editData.id, data);
+      } else {
+        await base44.entities.ClientAccount.create(data);
+      }
+      setNewRowIndices(new Set());
+      await onSaved();
+      onClose();
+    } catch (err) {
+      alert('Save failed: ' + err.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setNewRowIndices(new Set());
-    onSaved();
-    onClose();
   };
 
   // ── Tab configs ───────────────────────────────────────────────────────────
