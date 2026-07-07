@@ -352,38 +352,41 @@ const handleImport = async (event) => {
 const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
-  
+
   // 1. Get relevant trips belonging ONLY to these cycles
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
   const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
+  // Use stored tax_deduction per trip (same as dialog's calculateTotals)
+  const baseTripTaxTotal = relevantTrips.reduce((sum, t) => sum + (t.tax_deduction || 0), 0);
 
-  // 2. Pull revenue adjustments from the active 'otherCharges' array
-  const relevantOtherCharges = otherCharges.filter(oc => cycleIds.includes(oc.billing_cycle_id));
+  // 2. Pull revenue adjustments filtered by billing_received_date (same as dialog)
+  const relevantOtherCharges = otherCharges.filter(oc => oc.billing_received_date === date);
 
-  // 3. Separate adjustments explicitly by type: 'demurrage' vs everything else ('others')
+  // 3. Separate by type: 'demurrage' (taxable) vs everything else
   const chargeTotals = relevantOtherCharges.reduce((acc, oc) => {
     const amount = oc.amount || 0;
     const type = (oc.charge_type || '').toLowerCase();
-
     if (type === 'demurrage') {
       acc.demurrage += amount;
     } else {
-      acc.others += amount; // 0% tax tier for "Other"
+      acc.others += amount;
     }
-    
     return acc;
   }, { demurrage: 0, others: 0 });
 
-  // 4. Calculate 2% tax ONLY on the Base Gross and Demurrage
-  const baseTripTaxTotal = baseTripGrossTotal * 0.02;
+  // 4. Tax: stored trip tax + 2% on demurrage only (matches dialog)
   const taxOnDemurrage = chargeTotals.demurrage * 0.02;
-  const totalTaxDeduction = baseTripTaxTotal + taxOnDemurrage;
+  const totalTax = baseTripTaxTotal + taxOnDemurrage;
 
-  // 5. Total gross additions
+  // 5. Total gross (trips + other charges)
   const totalGrossAmount = baseTripGrossTotal + chargeTotals.demurrage + chargeTotals.others;
 
-  // 6. Final Cheque amount calculation
-  return totalGrossAmount - totalTaxDeduction;
+  // 6. Subtract plate-level BillingDeduction "other_charges" (matches dialog's grandTotals.other)
+  const relevantDeductions = deductions.filter(d => d.billing_received_date === date);
+  const totalOtherDeductions = relevantDeductions.reduce((sum, d) => sum + (d.other_charges || 0), 0);
+
+  // 7. Final Cheque amount — identical to dialog formula
+  return totalGrossAmount - totalTax - totalOtherDeductions;
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
