@@ -14,7 +14,8 @@ export default function Reports() {
   const [subcontractors, setSubcontractors] = useState([]);
   const [billingCycles, setBillingCycles] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+  const [tripsLoaded, setTripsLoaded] = useState(false);
+
   // Pagination & Filter States
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
@@ -32,23 +33,30 @@ export default function Reports() {
 
   const load = async () => {
     setLoading(true);
-    const [t, c, s, b] = await Promise.all([
-      base44.entities.TripRecord.list('-delivery_date', 1000),
+    const [c, s, b] = await Promise.all([
       base44.entities.ClientAccount.list('client_name', 100),
       base44.entities.Subcontractor.list('owner_name', 200),
       base44.entities.BillingCycle.list('-created_date', 100),
     ]);
-
-    console.log("Check the data received from the API:", t); 
-
-    setTrips(t);
     setClients(c);
     setSubcontractors(s);
     setBillingCycles(b);
     setLoading(false);
   };
 
+  const loadTrips = async () => {
+    if (tripsLoaded) return;
+    const t = await base44.entities.TripRecord.list('-delivery_date', 1000);
+    setTrips(t);
+    setTripsLoaded(true);
+  };
+
   useEffect(() => { load(); }, []);
+
+  // Load trips once filters/table are first interacted with or page finishes loading
+  useEffect(() => {
+    if (!loading) loadTrips();
+  }, [loading]);
 
   // Reset to page 1 on filter change
   useEffect(() => { setCurrentPage(1); }, [filters]);

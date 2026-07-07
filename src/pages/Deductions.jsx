@@ -150,10 +150,11 @@ export default function Deductions() {
     };
     if (editingId) {
       await base44.entities.BillingDeduction.update(editingId, data);
+      setDeductions(prev => prev.map(d => d.id === editingId ? { ...d, ...data } : d));
     } else {
-      await base44.entities.BillingDeduction.create(data);
+      const created = await base44.entities.BillingDeduction.create(data);
+      setDeductions(prev => [...prev, created]);
     }
-    await load();
     handleCancel();
     setSaving(false);
   };
@@ -474,10 +475,11 @@ export default function Deductions() {
                             };
                             if (editingReimbursementId) {
                               await base44.entities.Reimbursement.update(editingReimbursementId, data);
+                              setReimbursements(prev => prev.map(r => r.id === editingReimbursementId ? { ...r, ...data } : r));
                             } else {
-                              await base44.entities.Reimbursement.create(data);
+                              const created = await base44.entities.Reimbursement.create(data);
+                              setReimbursements(prev => [...prev, created]);
                             }
-                            await load();
                             setReimbursementForm({
                               billing_received_date: reimbursementForm.billing_received_date,
                               plate_number: '',
@@ -680,10 +682,11 @@ export default function Deductions() {
                             };
                             if (editingOtherChargeId) {
                               await base44.entities.OtherCharges.update(editingOtherChargeId, data);
+                              setOtherCharges(prev => prev.map(o => o.id === editingOtherChargeId ? { ...o, ...data } : o));
                             } else {
-                              await base44.entities.OtherCharges.create(data);
+                              const created = await base44.entities.OtherCharges.create(data);
+                              setOtherCharges(prev => [...prev, created]);
                             }
-                            await load();
                             setOtherChargesForm({
                               billing_received_date: otherChargesForm.billing_received_date,
                               charge_type: '',

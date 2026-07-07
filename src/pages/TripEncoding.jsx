@@ -127,7 +127,7 @@ export default function TripEncoding() {
   const handleDelete = async (id) => {
     if (!confirm('Delete this trip record?')) return;
     await base44.entities.TripRecord.delete(id);
-    load();
+    setTrips(prev => prev.filter(t => t.id !== id));
   };
 
 const handleExportTrips = async () => {
@@ -163,7 +163,9 @@ const handleExportTrips = async () => {
       const response = await base44.functions.invoke('syncBillingDates', {});
       if (response.data.success) {
         alert(response.data.message);
-        await load();
+        // Reload trips only (billing dates changed on trip records)
+        const updated = await base44.entities.TripRecord.list('-created_date', 200);
+        setTrips(updated);
       }
     } catch (error) {
       alert('Error syncing billing dates: ' + error.message);

@@ -63,13 +63,12 @@ export default function AdditionalServices() {
 
   const createSubsidyMutation = useMutation({
     mutationFn: async (data) => {
-      // Fetch trips for the selected client and date range
-      const allTrips = await base44.entities.TripRecord.list();
-      const filteredTrips = allTrips.filter(trip => 
-        trip.client_account_id === data.client_account_id &&
-        trip.delivery_date >= data.start_date &&
-        trip.delivery_date <= data.end_date
-      );
+      // Fetch only trips for this client within the date range
+      const filteredTrips = await base44.entities.TripRecord.filter(
+        { client_account_id: data.client_account_id },
+        '-delivery_date',
+        500
+      ).then(trips => trips.filter(t => t.delivery_date >= data.start_date && t.delivery_date <= data.end_date));
 
       const totalGrossRate = filteredTrips.reduce((sum, trip) => sum + (trip.gross_rate || 0), 0);
       const subsidyAmount = totalGrossRate * (data.subsidy_percentage / 100);
