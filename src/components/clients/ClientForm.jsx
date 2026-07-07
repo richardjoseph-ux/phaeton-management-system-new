@@ -49,6 +49,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const [activePickup, setActivePickup] = useState('__all__');
   const [activeTruck, setActiveTruck] = useState('__all__');
   const [routeSearch, setRouteSearch] = useState('');
+  const [newRowIndices, setNewRowIndices] = useState(new Set());
   const fileInputRef = useRef(null);
 
   // Unique pickup locations
@@ -58,7 +59,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const searchLower = routeSearch.trim().toLowerCase();
   const visibleIndices = form.routes.reduce((acc, r, i) => {
     const pickupMatch = activePickup === '__all__' || r.pickup_location === activePickup;
-    const truckMatch = activeTruck === '__all__' || (r.rates?.[activeTruck] !== '' && r.rates?.[activeTruck] != null) || Object.values(r.rates || {}).every(v => v === '' || v == null);
+    const truckMatch = activeTruck === '__all__' || (r.rates?.[activeTruck] !== '' && r.rates?.[activeTruck] != null) || newRowIndices.has(i);
     const searchMatch = !searchLower ||
       r.delivery_location.toLowerCase().includes(searchLower) ||
       r.delivery_code.toLowerCase().includes(searchLower) ||
@@ -107,6 +108,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
       setActiveTruck('__all__');
     }
     setRouteSearch('');
+    setNewRowIndices(new Set());
   }, [editData, open]);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -137,8 +139,11 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
 
   const addRoute = () => {
     const newRoute = emptyRoute();
-    if (activePickup !== '__all__') newRoute.pickup_location = activePickup;
-    setForm(p => ({ ...p, routes: [...p.routes, newRoute] }));
+    setForm(p => {
+      const newRoutes = [newRoute, ...p.routes];
+      setNewRowIndices(prev => new Set([...prev].map(i => i + 1).concat([0])));
+      return { ...p, routes: newRoutes };
+    });
   };
 
   const removeRoute = (idx) => setForm(p => ({ ...p, routes: p.routes.filter((_, i) => i !== idx) }));
@@ -258,6 +263,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
       await base44.entities.ClientAccount.create(data);
     }
     setSaving(false);
+    setNewRowIndices(new Set());
     onSaved();
     onClose();
   };
