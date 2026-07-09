@@ -64,7 +64,9 @@ export default function BillingCycles() {
   const [tripsLoaded, setTripsLoaded] = useState(false);
   const fileInputRef = useRef(null);
   const [stmtPage, setStmtPage] = useState(1);
+  const [stmtNoBrdPage, setStmtNoBrdPage] = useState(1);
   const [summaryPage, setSummaryPage] = useState(1);
+  const [stmtClientFilter, setStmtClientFilter] = useState('all');
   const rowsPerPage = 10;
 
 const syncClientIds = async () => {
@@ -399,16 +401,27 @@ const getChequeAmountForDate = (date) => {
 };
 
   // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
-  const filteredCycles = displayCycles
-    .filter(cycle => {
-      if (stmtTab === 'archived') return !!cycle.is_archived;
-      return !cycle.is_archived;
-    })
+  const stmtTabCycles = displayCycles
+    .filter(cycle => stmtTab === 'archived' ? !!cycle.is_archived : !cycle.is_archived)
     .sort((a, b) => {
       const dateA = a.billing_received_date ? new Date(a.billing_received_date) : new Date(0);
       const dateB = b.billing_received_date ? new Date(b.billing_received_date) : new Date(0);
       return dateB - dateA;
     });
+
+  // Unique client names for filter dropdown (derived from current sub-tab)
+  const stmtClientOptions = [...new Set(
+    stmtTabCycles.map(c => getClientName(c.client_account_id)).filter(n => n && n !== '—')
+  )].sort();
+
+  // Apply client filter
+  const filteredCycles = stmtClientFilter === 'all'
+    ? stmtTabCycles
+    : stmtTabCycles.filter(c => getClientName(c.client_account_id) === stmtClientFilter);
+
+  // Split into with/without billing_received_date
+  const filteredCyclesWithBrd = filteredCycles.filter(c => !!c.billing_received_date);
+  const filteredCyclesNoBrd = filteredCycles.filter(c => !c.billing_received_date);
 
   // Update these definitions in your component
 const activeSummaryGroups = billingReceivedGroups
@@ -431,7 +444,8 @@ const archivedSummaryGroups = (() => {
     .sort((a, b) => b.date.localeCompare(a.date));
 })();
 
-  useEffect(() => { setStmtPage(1); }, [stmtTab]);
+  useEffect(() => { setStmtPage(1); setStmtNoBrdPage(1); setStmtClientFilter('all'); }, [stmtTab]);
+  useEffect(() => { setStmtPage(1); setStmtNoBrdPage(1); }, [stmtClientFilter]);
   useEffect(() => { setSummaryPage(1); }, [summaryTab]);
 
   const tabClass = (active) =>
@@ -513,71 +527,161 @@ const archivedSummaryGroups = (() => {
             ))}
           </div>
 
-          {filteredCycles.length === 0 ? (
+          {/* Client Filter */}
+          <div className="mb-4">
+            <Select value={stmtClientFilter} onValueChange={setStmtClientFilter}>
+              <SelectTrigger className="w-56 h-8 text-sm">
+                <SelectValue placeholder="All Clients" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Clients</SelectItem>
+                {stmtClientOptions.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredCyclesWithBrd.length === 0 && filteredCyclesNoBrd.length === 0 ? (
             <div className="text-center py-16">
               <CreditCard className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
               <p className="text-muted-foreground text-sm">No billing statements in this category</p>
             </div>
           ) : (
-            <div className="bg-card border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    {['Statement Name', 'Client', 'Billing Received', 'Cheque Date', 'Notes', ''].map(h => (
-                      <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCycles.slice((stmtPage - 1) * rowsPerPage, stmtPage * rowsPerPage).map(cycle => (
-                    <tr key={cycle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3">
-                        <button onClick={() => openTripsView(cycle)} className="font-semibold text-primary hover:underline">
-                          {cycle.cycle_name}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
-                      <td className="px-4 py-3 text-sm">{formatDateDisplay(cycle.billing_received_date)}</td>
-                      <td className="px-4 py-3 text-sm">{formatDateDisplay(cycle.cheque_date)}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
-                      <td className="px-4 py-3">
-                        {isAdmin && (
-                          <div className="flex items-center gap-1">
-                            {!cycle.is_archived && (
-                              <button onClick={() => openEdit(cycle)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
+            <>
+              {/* Primary table: statements WITH billing received date */}
+              {filteredCyclesWithBrd.length > 0 && (
+                <div className="bg-card border rounded-lg overflow-hidden mb-6">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        {['Statement Name', 'Client', 'Billing Received', 'Cheque Date', 'Notes', ''].map(h => (
+                          <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCyclesWithBrd.slice((stmtPage - 1) * rowsPerPage, stmtPage * rowsPerPage).map(cycle => (
+                        <tr key={cycle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <button onClick={() => openTripsView(cycle)} className="font-semibold text-primary hover:underline">
+                              {cycle.cycle_name}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
+                          <td className="px-4 py-3 text-sm">{formatDateDisplay(cycle.billing_received_date)}</td>
+                          <td className="px-4 py-3 text-sm">{formatDateDisplay(cycle.cheque_date)}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
+                          <td className="px-4 py-3">
+                            {isAdmin && (
+                              <div className="flex items-center gap-1">
+                                {!cycle.is_archived && (
+                                  <button onClick={() => openEdit(cycle)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => toggleArchiveCycle(cycle)}
+                                  className={`p-1.5 rounded transition-colors ${cycle.is_archived ? 'hover:bg-blue-50 hover:text-blue-600 text-muted-foreground' : 'hover:bg-amber-50 hover:text-amber-600 text-muted-foreground'}`}
+                                  title={cycle.is_archived ? 'Unarchive' : 'Archive'}
+                                >
+                                  {cycle.is_archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                                </button>
+                                <button onClick={() => handleDeleteCycle(cycle)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition-colors" title="Delete">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             )}
-                            <button
-                              onClick={() => toggleArchiveCycle(cycle)}
-                              className={`p-1.5 rounded transition-colors ${cycle.is_archived ? 'hover:bg-blue-50 hover:text-blue-600 text-muted-foreground' : 'hover:bg-amber-50 hover:text-amber-600 text-muted-foreground'}`}
-                              title={cycle.is_archived ? 'Unarchive' : 'Archive'}
-                            >
-                              {cycle.is_archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
-                            </button>
-                            <button onClick={() => handleDeleteCycle(cycle)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition-colors" title="Delete">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {Math.ceil(filteredCycles.length / rowsPerPage) > 1 && (
-                <div className="flex items-center justify-between p-3 border-t">
-                  <span className="text-xs text-muted-foreground">Showing {(stmtPage - 1) * rowsPerPage + 1}–{Math.min(stmtPage * rowsPerPage, filteredCycles.length)} of {filteredCycles.length}</span>
-                  <div className="flex items-center gap-1">
-                   <Button variant="outline" size="sm" disabled={stmtPage === 1} onClick={() => setStmtPage(1)} className="px-2.5">«</Button>
-                   <Button variant="outline" size="sm" disabled={stmtPage === 1} onClick={() => setStmtPage(p => p - 1)}>Previous</Button>
-                   <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{stmtPage} / {Math.ceil(filteredCycles.length / rowsPerPage)}</span>
-                   <Button variant="outline" size="sm" disabled={stmtPage === Math.ceil(filteredCycles.length / rowsPerPage)} onClick={() => setStmtPage(p => p + 1)}>Next</Button>
-                   <Button variant="outline" size="sm" disabled={stmtPage === Math.ceil(filteredCycles.length / rowsPerPage)} onClick={() => setStmtPage(Math.ceil(filteredCycles.length / rowsPerPage))} className="px-2.5">»</Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {Math.ceil(filteredCyclesWithBrd.length / rowsPerPage) > 1 && (
+                    <div className="flex items-center justify-between p-3 border-t">
+                      <span className="text-xs text-muted-foreground">Showing {(stmtPage - 1) * rowsPerPage + 1}–{Math.min(stmtPage * rowsPerPage, filteredCyclesWithBrd.length)} of {filteredCyclesWithBrd.length}</span>
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" disabled={stmtPage === 1} onClick={() => setStmtPage(1)} className="px-2.5">«</Button>
+                        <Button variant="outline" size="sm" disabled={stmtPage === 1} onClick={() => setStmtPage(p => p - 1)}>Previous</Button>
+                        <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{stmtPage} / {Math.ceil(filteredCyclesWithBrd.length / rowsPerPage)}</span>
+                        <Button variant="outline" size="sm" disabled={stmtPage === Math.ceil(filteredCyclesWithBrd.length / rowsPerPage)} onClick={() => setStmtPage(p => p + 1)}>Next</Button>
+                        <Button variant="outline" size="sm" disabled={stmtPage === Math.ceil(filteredCyclesWithBrd.length / rowsPerPage)} onClick={() => setStmtPage(Math.ceil(filteredCyclesWithBrd.length / rowsPerPage))} className="px-2.5">»</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Secondary table: statements WITHOUT billing received date */}
+              {filteredCyclesNoBrd.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">No Billing Received Date ({filteredCyclesNoBrd.length})</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  <div className="bg-card border border-dashed rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          {['Statement Name', 'Client', 'Billing Received', 'Cheque Date', 'Notes', ''].map(h => (
+                            <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredCyclesNoBrd.slice((stmtNoBrdPage - 1) * rowsPerPage, stmtNoBrdPage * rowsPerPage).map(cycle => (
+                          <tr key={cycle.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3">
+                              <button onClick={() => openTripsView(cycle)} className="font-semibold text-primary hover:underline">
+                                {cycle.cycle_name}
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{getClientName(cycle.client_account_id)}</td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground/50 italic">—</td>
+                            <td className="px-4 py-3 text-sm">{formatDateDisplay(cycle.cheque_date)}</td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground">{cycle.notes || '—'}</td>
+                            <td className="px-4 py-3">
+                              {isAdmin && (
+                                <div className="flex items-center gap-1">
+                                  {!cycle.is_archived && (
+                                    <button onClick={() => openEdit(cycle)} className="p-1.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => toggleArchiveCycle(cycle)}
+                                    className={`p-1.5 rounded transition-colors ${cycle.is_archived ? 'hover:bg-blue-50 hover:text-blue-600 text-muted-foreground' : 'hover:bg-amber-50 hover:text-amber-600 text-muted-foreground'}`}
+                                    title={cycle.is_archived ? 'Unarchive' : 'Archive'}
+                                  >
+                                    {cycle.is_archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                                  </button>
+                                  <button onClick={() => handleDeleteCycle(cycle)} className="p-1.5 hover:bg-red-50 rounded text-muted-foreground hover:text-red-600 transition-colors" title="Delete">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {Math.ceil(filteredCyclesNoBrd.length / rowsPerPage) > 1 && (
+                      <div className="flex items-center justify-between p-3 border-t">
+                        <span className="text-xs text-muted-foreground">Showing {(stmtNoBrdPage - 1) * rowsPerPage + 1}–{Math.min(stmtNoBrdPage * rowsPerPage, filteredCyclesNoBrd.length)} of {filteredCyclesNoBrd.length}</span>
+                        <div className="flex items-center gap-1">
+                          <Button variant="outline" size="sm" disabled={stmtNoBrdPage === 1} onClick={() => setStmtNoBrdPage(1)} className="px-2.5">«</Button>
+                          <Button variant="outline" size="sm" disabled={stmtNoBrdPage === 1} onClick={() => setStmtNoBrdPage(p => p - 1)}>Previous</Button>
+                          <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{stmtNoBrdPage} / {Math.ceil(filteredCyclesNoBrd.length / rowsPerPage)}</span>
+                          <Button variant="outline" size="sm" disabled={stmtNoBrdPage === Math.ceil(filteredCyclesNoBrd.length / rowsPerPage)} onClick={() => setStmtNoBrdPage(p => p + 1)}>Next</Button>
+                          <Button variant="outline" size="sm" disabled={stmtNoBrdPage === Math.ceil(filteredCyclesNoBrd.length / rowsPerPage)} onClick={() => setStmtNoBrdPage(Math.ceil(filteredCyclesNoBrd.length / rowsPerPage))} className="px-2.5">»</Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
         </>
       ) : (
