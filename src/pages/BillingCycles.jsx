@@ -934,6 +934,7 @@ const archivedSummaryGroups = (() => {
                 <div className="bg-card border rounded-lg p-4">
                   <p className="text-xs text-muted-foreground">Total Gross Rate</p>
                   <p className="text-xl font-bold mt-1 text-blue-700">₱{trips.reduce((s, t) => s + (t.gross_rate || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+
                   </div>
                   <div className="bg-card border rounded-lg p-4">
                   <p className="text-xs text-muted-foreground">Total Tax (2%)</p>
@@ -946,10 +947,10 @@ const archivedSummaryGroups = (() => {
                   <thead className="bg-muted/50">
                     <tr className="border-b">
                       {['Plate #', 'Owner / Driver', 'Truck', 'Route', 'Delivery Date', 'DR #'].map(h => (
-                        <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
+                       <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
                       ))}
-                      <th className="text-right px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">Gross Rate</th>
                       <th className="text-right px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">Tax (2%)</th>
+                      <th className="text-right px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">Gross Rate</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -969,8 +970,8 @@ const archivedSummaryGroups = (() => {
                           </td>
                           <td className="px-3 py-3 text-sm whitespace-nowrap">{formatDateDisplay(trip.delivery_date)}</td>
                           <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{trip.dr_number || '—'}</td>
-                          <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                           <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{tax.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
                       );
                     })}
@@ -978,8 +979,8 @@ const archivedSummaryGroups = (() => {
                   <tfoot>
                     <tr className="border-t bg-muted/50">
                       <td colSpan={6} className="px-3 py-3 text-sm font-semibold text-right">Grand Total</td>
-                      <td className="px-3 py-3 text-right font-bold whitespace-nowrap">₱{trips.reduce((s, t) => s + (t.gross_rate || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="px-3 py-3"></td>
+                      <td className="px-3 py-3 text-right font-bold whitespace-nowrap">₱{trips.reduce((s, t) => s + (t.gross_rate || 0) - (t.tax_deduction || (t.gross_rate || 0) * 0.02), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>
                   </tfoot>
                 </table>
