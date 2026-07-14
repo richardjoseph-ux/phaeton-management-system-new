@@ -806,19 +806,22 @@ export default function Deductions() {
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="deduction">Deductions</SelectItem>
                     <SelectItem value="reimbursement">Reimbursements</SelectItem>
+                    <SelectItem value="Demurrage">Demurrage</SelectItem>
+                    <SelectItem value="Fuel Subsidy">Fuel Subsidy</SelectItem>
+                    <SelectItem value="Other">Other (Adjustment)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="bg-card border rounded-lg overflow-hidden">
-                {/* Combined Summary */}
-                <div className="grid grid-cols-4 divide-x border-b">
+                {/* Combined Summary — 6 cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x border-b">
                   <div className="p-4">
                     <p className="text-xs text-muted-foreground">Total Deductions</p>
                     <p className="text-xl font-bold mt-1">{displayDeductions.length}</p>
                   </div>
                   <div className="p-4">
-                    <p className="text-xs text-muted-foreground">Total Deduction Amount</p>
+                    <p className="text-xs text-muted-foreground">Deduction Amount</p>
                     <p className="text-xl font-bold mt-1 text-red-700">₱{displayDeductions.reduce((s, d) => s + (d.insurance_charge || 0) + (d.other_charges || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="p-4">
@@ -826,8 +829,16 @@ export default function Deductions() {
                     <p className="text-xl font-bold mt-1">{displayReimbursements.length}</p>
                   </div>
                   <div className="p-4">
-                    <p className="text-xs text-muted-foreground">Total Reimbursement Amount</p>
+                    <p className="text-xs text-muted-foreground">Reimbursement Amount</p>
                     <p className="text-xl font-bold mt-1 text-green-700">₱{displayReimbursements.reduce((s, r) => s + (r.reimbursement_amount || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-xs text-muted-foreground">Total Adjustments</p>
+                    <p className="text-xl font-bold mt-1">{displayOtherCharges.length}</p>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-xs text-muted-foreground">Adjustment Amount</p>
+                    <p className="text-xl font-bold mt-1 text-amber-700">+₱{displayOtherCharges.reduce((s, o) => s + (o.amount || 0), 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                 </div>
 
@@ -845,10 +856,19 @@ export default function Deductions() {
                   </thead>
                   <tbody>
                     {(() => {
+                      const isAdjustmentFilter = ['Demurrage', 'Fuel Subsidy', 'Other'].includes(allRecordsTypeFilter);
+                      const includeDeductions = allRecordsTypeFilter === 'all' || allRecordsTypeFilter === 'deduction';
+                      const includeReimbursements = allRecordsTypeFilter === 'all' || allRecordsTypeFilter === 'reimbursement';
+                      const includeOtherCharges = allRecordsTypeFilter === 'all' || isAdjustmentFilter;
+
                       const allRows = [
-                        ...(allRecordsTypeFilter !== 'reimbursement' ? displayDeductions.map(d => ({ ...d, _type: 'deduction' })) : []),
-                        ...(allRecordsTypeFilter !== 'deduction' ? displayReimbursements.map(r => ({ ...r, _type: 'reimbursement' })) : []),
+                        ...(includeDeductions ? displayDeductions.map(d => ({ ...d, _type: 'deduction' })) : []),
+                        ...(includeReimbursements ? displayReimbursements.map(r => ({ ...r, _type: 'reimbursement' })) : []),
+                        ...(includeOtherCharges ? displayOtherCharges
+                          .filter(o => !isAdjustmentFilter || o.charge_type === allRecordsTypeFilter)
+                          .map(o => ({ ...o, _type: 'other_charge' })) : []),
                       ].sort((a, b) => (b.billing_received_date || '').localeCompare(a.billing_received_date || ''));
+
                       const totalAllPages = Math.ceil(allRows.length / rowsPerPage);
                       const pageRows = allRows.slice((allRecordsPage - 1) * rowsPerPage, allRecordsPage * rowsPerPage);
                       return (
@@ -856,30 +876,45 @@ export default function Deductions() {
                           {pageRows.length === 0 && (
                             <tr><td colSpan={7} className="px-4 py-16 text-center text-muted-foreground text-sm">No records found</td></tr>
                           )}
-                          {pageRows.map(item => item._type === 'deduction' ? (
-                            <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                              <td className="px-4 py-3"><span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-medium">Deduction</span></td>
-                              <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(item.billing_received_date)}</td>
-                              <td className="px-4 py-3 font-mono font-semibold text-primary">{item.plate_number}</td>
-                              <td className="px-4 py-3">{item.owner_name}</td>
-                              <td className="px-4 py-3 text-xs">
-                                <div className="text-blue-700">Insurance: ₱{(item.insurance_charge || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                <div className="text-orange-700">Other: ₱{(item.other_charges || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-red-700">-₱{((item.insurance_charge || 0) + (item.other_charges || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td className="px-4 py-3 text-muted-foreground text-xs">{item.notes || '—'}</td>
-                            </tr>
-                          ) : (
-                            <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                              <td className="px-4 py-3"><span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">Reimbursement</span></td>
-                              <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(item.billing_received_date)}</td>
-                              <td className="px-4 py-3 font-mono font-semibold text-primary">{item.plate_number}</td>
-                              <td className="px-4 py-3">{item.owner_name}</td>
-                              <td className="px-4 py-3 text-xs"><span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium capitalize">{item.reimbursement_type}</span></td>
-                              <td className="px-4 py-3 text-right font-bold text-green-700">+₱{(item.reimbursement_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td className="px-4 py-3 text-muted-foreground text-xs">{item.notes || '—'}</td>
-                            </tr>
-                          ))}
+                          {pageRows.map(item => {
+                            if (item._type === 'deduction') return (
+                              <tr key={'d-' + item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                                <td className="px-4 py-3"><span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-medium">Deduction</span></td>
+                                <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(item.billing_received_date)}</td>
+                                <td className="px-4 py-3 font-mono font-semibold text-primary">{item.plate_number}</td>
+                                <td className="px-4 py-3">{item.owner_name}</td>
+                                <td className="px-4 py-3 text-xs">
+                                  <div className="text-blue-700">Insurance: ₱{(item.insurance_charge || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                  <div className="text-orange-700">Other: ₱{(item.other_charges || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-red-700">-₱{((item.insurance_charge || 0) + (item.other_charges || 0)).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-muted-foreground text-xs">{item.notes || '—'}</td>
+                              </tr>
+                            );
+                            if (item._type === 'reimbursement') return (
+                              <tr key={'r-' + item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                                <td className="px-4 py-3"><span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">Reimbursement</span></td>
+                                <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(item.billing_received_date)}</td>
+                                <td className="px-4 py-3 font-mono font-semibold text-primary">{item.plate_number}</td>
+                                <td className="px-4 py-3">{item.owner_name}</td>
+                                <td className="px-4 py-3 text-xs"><span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium capitalize">{item.reimbursement_type}</span></td>
+                                <td className="px-4 py-3 text-right font-bold text-green-700">+₱{(item.reimbursement_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-muted-foreground text-xs">{item.notes || '—'}</td>
+                              </tr>
+                            );
+                            // other_charge
+                            return (
+                              <tr key={'o-' + item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                                <td className="px-4 py-3"><span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">{item.charge_type}</span></td>
+                                <td className="px-4 py-3 text-sm whitespace-nowrap">{formatDateDisplay(item.billing_received_date)}</td>
+                                <td className="px-4 py-3 text-muted-foreground">—</td>
+                                <td className="px-4 py-3 text-muted-foreground">—</td>
+                                <td className="px-4 py-3 text-xs text-muted-foreground">{item.charge_type}</td>
+                                <td className="px-4 py-3 text-right font-bold text-amber-700">+₱{(item.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-muted-foreground text-xs">{item.description || '—'}</td>
+                              </tr>
+                            );
+                          })}
                           {totalAllPages > 1 && (
                             <tr>
                               <td colSpan={7} className="px-4 py-3 border-t">
