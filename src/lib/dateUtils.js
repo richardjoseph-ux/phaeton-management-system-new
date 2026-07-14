@@ -26,6 +26,16 @@ export const formatDateDisplay = (dateString) => {
  * @param {string} dateString - Date in YYYY-MM-DD format
  * @returns {string} Formatted date string
  */
+/**
+ * Format a number as Philippine Peso amount with commas and 2 decimal places.
+ * e.g. 1234567.8 → "1,234,567.80"
+ * @param {number} value
+ * @returns {string}
+ */
+export const formatAmount = (value) => {
+  return (value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export const formatDateShort = (dateString) => {
   if (!dateString) return '—';
   

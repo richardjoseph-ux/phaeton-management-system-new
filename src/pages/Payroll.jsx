@@ -440,10 +440,10 @@ export default function Payroll() {
                       <span className="font-bold text-emerald-800">Grand Total Net Payroll</span>
                     </div>
                     <span className="text-xs text-emerald-600 mt-1">
-                      (Trip Net ₱{tripTotals.net.toFixed(2)}
-                      {flatInsurance > 0 ? ` − Insurance ₱${flatInsurance.toFixed(2)}` : ''}
-                      {flatOther > 0 ? ` − Other ₱${flatOther.toFixed(2)}` : ''}
-                      {totalReimbursement > 0 ? ` + Reimbursement ₱${totalReimbursement.toFixed(2)}` : ''})
+                      (Trip Net ₱{tripTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {flatInsurance > 0 ? ` − Insurance ₱${flatInsurance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                      {flatOther > 0 ? ` − Other ₱${flatOther.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                      {totalReimbursement > 0 ? ` + Reimbursement ₱${totalReimbursement.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''})
                     </span>
                   </div>
                   <span className="text-2xl font-bold text-emerald-700">₱{grandNetPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
