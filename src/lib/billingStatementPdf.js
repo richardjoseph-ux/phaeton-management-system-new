@@ -279,8 +279,8 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   y = rowY + 8;
 
   // ===== TOTALS =====
-  const totX = colXs[1];
-  const totW = colXs[4] - totX;
+  const totX = mR - 80;
+  const totW = 80;
   const totH = 5;
 
   const totalRow = (label, value, highlight = false) => {
