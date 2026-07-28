@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
 
-export const LOGO_URL = 'https://media.base44.com/images/public/6a2682ee2374bcbebfc01176/2dfe06e06_generated_image.png';
+export const LOGO_URL = 'https://media.base44.com/images/public/6a2682ee2374bcbebfc01176/777bec924_LOGOMAIN.png';
 
 const COMPANY = {
   name: 'Phaeton Trucking Services',

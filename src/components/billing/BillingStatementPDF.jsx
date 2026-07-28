@@ -81,7 +81,7 @@ export default function BillingStatementPDF() {
     <div className="space-y-5">
       {/* PART 1 — Company Header */}
       <section className="bg-card border rounded-lg p-6 text-center">
-        <img src={LOGO_URL} alt="Phaeton Trucking" className="w-14 h-14 rounded-full mx-auto mb-3 object-cover ring-1 ring-border" />
+        <img src={LOGO_URL} alt="Phaeton Trucking" className="w-20 h-20 rounded-full mx-auto mb-3 object-cover ring-1 ring-border bg-white" />
         <h2 className="text-lg font-bold text-foreground tracking-tight">{COMPANY.name}</h2>
         <p className="text-xs text-muted-foreground mt-1">{COMPANY.address}</p>
         <p className="text-xs text-muted-foreground">{COMPANY.phone} | {COMPANY.email}</p>
@@ -92,7 +92,7 @@ export default function BillingStatementPDF() {
       </section>
 
       {/* PART 2 — Statement Info & Bill To */}
-      <section className={`bg-card border rounded-lg p-5 ${dimClass}`}>
+      <section className="bg-card border rounded-lg p-5">
         <div className="flex items-center gap-2 mb-4">
           <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">2</span>
           <h3 className="text-sm font-semibold">Statement Info & Bill To</h3>
