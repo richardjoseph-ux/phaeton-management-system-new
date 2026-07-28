@@ -83,7 +83,6 @@ export default function BillingStatementPDFSummary() {
   const periodCovered = sortedDates.length
     ? `${formatDateDisplay(sortedDates[0])} - ${formatDateDisplay(sortedDates[sortedDates.length - 1])}`
     : '—';
-  const warehouse = [...new Set(allTrips.map(t => t.pickup_location).filter(Boolean))].join(', ') || '—';
   const soaDates = selectedCycles.map(c => c.billing_received_date).filter(Boolean);
   const soaDate = soaDates.length ? soaDates.join(', ') : '—';
 
@@ -188,7 +187,6 @@ export default function BillingStatementPDFSummary() {
           <p className="text-base font-bold text-foreground">{selectedClient?.client_name || '—'}</p>
           {selectedClient?.address && <p className="text-sm text-muted-foreground mt-1">{selectedClient.address}</p>}
           {selectedClient?.tin && <p className="text-sm text-muted-foreground">TIN: {selectedClient.tin}</p>}
-          <p className="text-sm text-muted-foreground">Warehouse: {warehouse}</p>
         </div>
       </section>
 
@@ -223,7 +221,7 @@ export default function BillingStatementPDFSummary() {
                     <td className="px-4 py-2.5 text-sm whitespace-nowrap">{formatDateDisplay(trip.delivery_date)}</td>
                     <td className="px-4 py-2.5 text-sm text-muted-foreground">{trip._cycle_name}</td>
                     <td className="px-4 py-2.5 text-sm text-muted-foreground whitespace-nowrap">{trip.dr_number || '—'}</td>
-                    <td className="px-4 py-2.5 text-sm text-muted-foreground">{trip.delivery_code || '—'}</td>
+                    <td className="px-4 py-2.5 text-sm text-muted-foreground">{trip.pickup_location || '—'}</td>
                     <td className="px-4 py-2.5 text-right font-semibold text-primary whitespace-nowrap">₱{formatAmount(trip.gross_rate || 0)}</td>
                   </tr>
                 ))}

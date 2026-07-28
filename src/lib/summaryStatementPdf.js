@@ -79,8 +79,6 @@ export async function generateSummaryStatementPDF({ groups = [], client, prepare
   const periodCovered = dates.length
     ? `${formatDateDisplay(dates[0])} - ${formatDateDisplay(dates[dates.length - 1])}`
     : '—';
-  const warehouses = [...new Set(allTrips.map(t => t.pickup_location).filter(Boolean))];
-  const warehouse = warehouses.join(', ') || '—';
   const soaDates = groups.map(g => g.cycle?.billing_received_date).filter(Boolean);
   const soaDate = soaDates.length ? soaDates.join(', ') : '—';
 
@@ -166,8 +164,6 @@ export async function generateSummaryStatementPDF({ groups = [], client, prepare
   doc.setTextColor(100, 116, 139);
   if (client?.address) { doc.text(client.address, leftX, metaY); metaY += 4.4; }
   if (client?.tin) { doc.text(`TIN: ${client.tin}`, leftX, metaY); metaY += 4.4; }
-  doc.text(`Warehouse: ${warehouse}`, leftX, metaY);
-  metaY += 4.4;
 
   const boxBottom = metaY + 2;
   doc.setDrawColor(LIGHT_BORDER.r, LIGHT_BORDER.g, LIGHT_BORDER.b);
@@ -223,7 +219,7 @@ export async function generateSummaryStatementPDF({ groups = [], client, prepare
   let rowY = drawHeader(tableTop);
 
   const drawTripRow = (trip) => {
-    const route = trip.delivery_code || '—';
+    const route = trip.pickup_location || '—';
     const routeLines = doc.splitTextToSize(route, routeMaxW);
     const bsLines = doc.splitTextToSize(trip._cycle_name, bsMaxW);
     const thisH = Math.max(rowH, routeLines.length * 4 + 2.5, bsLines.length * 4 + 2.5);
