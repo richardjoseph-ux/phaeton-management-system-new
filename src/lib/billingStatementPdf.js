@@ -55,7 +55,7 @@ const drawLogo = (doc, cx, y, imgData) => {
   }
 };
 
-export async function generateBillingStatementPDF({ cycle, client, trips = [], soaDate, preparedBy }) {
+export async function generateBillingStatementPDF({ cycle, client, trips = [], soaDate, creditTerms, preparedBy }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   doc.setFont('helvetica');
   doc.setTextColor(0, 0, 0);
@@ -133,7 +133,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   metaRow('SOA / Billing Date:', formatDateDisplay(soaDate), mL + metaColW);
   y += metaH;
   metaRow('Period Covered:', periodCovered, mL);
-  metaRow('Credit Terms:', '30 Days', mL + metaColW);
+  metaRow('Credit Terms:', creditTerms ? `${creditTerms} Days` : '—', mL + metaColW);
   y += metaH + 3;
 
   // --- 6. Bill To section ---

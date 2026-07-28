@@ -15,6 +15,10 @@
       "type": "string",
       "description": "Tax Identification Number of the client"
     },
+    "credit_terms": {
+      "type": "number",
+      "description": "Payment credit terms in days (e.g. 30)"
+    },
     "contact_person": {
       "type": "string"
     },

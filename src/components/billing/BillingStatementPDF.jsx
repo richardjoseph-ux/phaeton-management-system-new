@@ -68,6 +68,7 @@ export default function BillingStatementPDF() {
         client: selectedClient,
         trips,
         soaDate,
+        creditTerms: selectedClient?.credit_terms,
         preparedBy: user?.full_name,
       });
     } finally {
@@ -119,7 +120,7 @@ export default function BillingStatementPDF() {
           </div>
           <div className="space-y-1.5 md:col-span-2">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Credit Terms</Label>
-            <div className="text-sm font-medium text-foreground py-2">30 Days</div>
+            <div className="text-sm font-medium text-foreground py-2">{selectedClient?.credit_terms ? `${selectedClient.credit_terms} Days` : '—'}</div>
           </div>
         </div>
         <div className="mt-4 border-t pt-4">

@@ -55,7 +55,7 @@ function TabBar({ tabs, active, onSelect, onDeletePickup }) {
 export default function ClientForm({ open, onClose, onSaved, editData }) {
   const [form, setForm] = useState({
     client_name: '', client_code: '', address: '', contact_person: '',
-    contact_number: '', status: 'Active',
+    contact_number: '', status: 'Active', credit_terms: '',
     routes: [emptyRoute()],
     sub_accounts: []
   });
@@ -94,6 +94,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         contact_person: editData.contact_person || '',
         contact_number: editData.contact_number || '',
         status: editData.status || 'Active',
+        credit_terms: editData.credit_terms ?? '',
+        tin: editData.tin || '',
         routes: editData.routes?.length
           ? editData.routes.map(r => ({
               pickup_location: r.pickup_location || '',
@@ -117,7 +119,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     } else {
       setForm({
         client_name: '', client_code: '', address: '', contact_person: '',
-        contact_number: '', status: 'Active',
+        contact_number: '', status: 'Active', credit_terms: '',
         routes: [emptyRoute()],
         sub_accounts: []
       });
@@ -276,6 +278,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     // Snapshot the form NOW before any async calls that could trigger re-renders
     const formSnapshot = {
       ...form,
+      credit_terms: form.credit_terms === '' ? null : Number(form.credit_terms),
       routes: form.routes.map(r => ({
         ...r,
         rates: Object.fromEntries(
@@ -413,6 +416,10 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             <div className="space-y-1.5">
               <Label>TIN</Label>
               <Input value={form.tin || ''} onChange={e => set('tin', e.target.value)} placeholder="e.g. 123-456-789-000" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Credit Terms (days)</Label>
+              <Input type="number" min="0" step="1" value={form.credit_terms ?? ''} onChange={e => set('credit_terms', e.target.value === '' ? '' : Number(e.target.value))} placeholder="e.g. 30" />
             </div>
             <div className="space-y-1.5 col-span-2">
               <Label>Status</Label>
