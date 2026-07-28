@@ -159,7 +159,7 @@ export default function BillingStatementPDF() {
                 {trips.map(trip => (
                   <tr key={trip.id} className="border-b last:border-0">
                     <td className="px-4 py-2.5 text-sm whitespace-nowrap">{formatDateDisplay(trip.delivery_date)}</td>
-                    <td className="px-4 py-2.5 text-sm text-muted-foreground">{trip.pickup_location} → {trip.delivery_location}</td>
+                    <td className="px-4 py-2.5 text-sm text-muted-foreground">{trip.pickup_location} → {trip.delivery_location} → {trip.delivery_code}</td>
                     <td className="px-4 py-2.5"><span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium inline-flex items-center gap-1"><Truck className="w-3 h-3" />{trip.truck_type}</span></td>
                     <td className="px-4 py-2.5 text-right font-semibold text-primary whitespace-nowrap">₱{formatAmount(trip.gross_rate || 0)}</td>
                   </tr>
