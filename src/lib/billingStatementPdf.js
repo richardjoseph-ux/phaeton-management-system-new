@@ -275,27 +275,28 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   y = rowY + 8;
 
   // ===== TOTALS =====
-  const totX = colXs[2];
+  const totX = colXs[1];
   const totW = colXs[4] - totX;
+  const totH = 9.5;
 
   const totalRow = (label, value, highlight = false) => {
-    if (y + 8 > PAGE.h - PAGE.margin - 40) { doc.addPage(); y = PAGE.margin; }
+    if (y + totH > PAGE.h - PAGE.margin - 40) { doc.addPage(); y = PAGE.margin; }
     doc.setDrawColor(LIGHT_BORDER.r, LIGHT_BORDER.g, LIGHT_BORDER.b);
     doc.setLineWidth(0.2);
     if (highlight) {
       doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
-      doc.rect(totX, y, totW, 8, 'F');
+      doc.rect(totX, y, totW, totH, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
     } else {
-      doc.rect(totX, y, totW, 8, 'S');
+      doc.rect(totX, y, totW, totH, 'S');
       doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
       doc.setFont('helvetica', 'normal');
     }
     doc.setFontSize(9);
-    doc.text(label, totX + 2, y + 5);
-    doc.text(`P${formatAmount(value)}`, colXs[4] - 2, y + 5, { align: 'right' });
-    y += 8;
+    doc.text(label, totX + 4, y + 6.2);
+    doc.text(`P${formatAmount(value)}`, colXs[4] - 4, y + 6.2, { align: 'right' });
+    y += totH;
   };
 
   totalRow('TOTAL GROSS EX VAT', totalGross);
