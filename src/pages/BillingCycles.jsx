@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, ListChecks, Trash2, Download, Upload, RefreshCw } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
+import BillingStatementPDF from '@/components/billing/BillingStatementPDF';
 import { useAuth } from '@/lib/AuthContext';
 import { useAppData } from '@/lib/AppDataContext';
 import { formatDateDisplay } from '@/lib/dateUtils';
@@ -119,8 +120,6 @@ const syncClientIds = async () => {
     return seq;
   };
 
-  // Data comes from shared cache — no manual load needed
-
   // Lazy-load trips only when the summary tab is first opened
   useEffect(() => {
     if (mainTab === 'summary' && !tripsLoaded) {
@@ -192,38 +191,24 @@ const syncClientIds = async () => {
     let currentDate = new Date(billingReceivedDate);
     let workingDaysCount = 0;
     
-    // Count 30 working days (skip weekends)
     while (workingDaysCount < 30) {
       currentDate.setDate(currentDate.getDate() + 1);
       const dayOfWeek = currentDate.getDay();
-      // 0 = Sunday, 6 = Saturday
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         workingDaysCount++;
       }
     }
     
-    // Find nearest Tuesday
     const dayOfWeek = currentDate.getDay();
-    const daysToTuesday = [
-      2, // Sunday (0) -> Tuesday (+2)
-      1, // Monday (1) -> Tuesday (+1)
-      0, // Tuesday (2) -> Tuesday (0)
-      -1, // Wednesday (3) -> Tuesday (-1)
-      -2, // Thursday (4) -> Tuesday (-2)
-      -3, // Friday (5) -> Tuesday (-3)
-      3  // Saturday (6) -> Tuesday (+3)
-    ];
-    
+    const daysToTuesday = [2, 1, 0, -1, -2, -3, 3];
     currentDate.setDate(currentDate.getDate() + daysToTuesday[dayOfWeek]);
     
-    // Format as YYYY-MM-DD
     const year = currentDate.getFullYear();
     const month = String(currentDate.getMonth() + 1).padStart(2, '0');
     const day = String(currentDate.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
-  // Change this logic in your billingReceivedGroups definition
 const billingReceivedGroups = (() => {
   const groups = {};
   displayCycles.forEach(cycle => {
@@ -237,7 +222,6 @@ const billingReceivedGroups = (() => {
     .sort((a, b) => b.date.localeCompare(a.date));
 })();
 
-  // Get or create summary record for a date
   const getSummaryRecord = (date) => displaySummaryRecords.find(r => r.billing_received_date === date);
 
   const ensureSummaryRecord = async (date) => {
@@ -311,7 +295,6 @@ const handleImport = async (event) => {
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
       const processedData = jsonData.map(item => {
-        // 1. Normalize keys: map "cycle name" to "cycle_name"
         const normalizedItem = {
           cycle_name: item["cycle name"] || item.cycle_name,
           status: item.status,
@@ -322,7 +305,6 @@ const handleImport = async (event) => {
           notes: item.notes
         };
 
-        // 2. Map client_name to client_account_id
         const client = clients.find(c => c.client_name === item.client_name);
         
         return {
@@ -364,17 +346,10 @@ const handleImport = async (event) => {
 const getChequeAmountForDate = (date) => {
   const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
-
-  // 1. Get relevant trips belonging ONLY to these cycles
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
   const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
-  // Use stored tax_deduction per trip (same as dialog's calculateTotals)
   const baseTripTaxTotal = relevantTrips.reduce((sum, t) => sum + (t.tax_deduction || 0), 0);
-
-  // 2. Pull revenue adjustments filtered by billing_received_date (same as dialog)
   const relevantOtherCharges = otherCharges.filter(oc => oc.billing_received_date === date);
-
-  // 3. Separate by type: 'demurrage' (taxable) vs everything else
   const chargeTotals = relevantOtherCharges.reduce((acc, oc) => {
     const amount = oc.amount || 0;
     const type = (oc.charge_type || '').toLowerCase();
@@ -385,23 +360,14 @@ const getChequeAmountForDate = (date) => {
     }
     return acc;
   }, { demurrage: 0, others: 0 });
-
-  // 4. Tax: stored trip tax + 2% on demurrage only (matches dialog)
   const taxOnDemurrage = chargeTotals.demurrage * 0.02;
   const totalTax = baseTripTaxTotal + taxOnDemurrage;
-
-  // 5. Total gross (trips + other charges)
   const totalGrossAmount = baseTripGrossTotal + chargeTotals.demurrage + chargeTotals.others;
-
-  // 6. Subtract plate-level BillingDeduction "other_charges" (matches dialog's grandTotals.other)
   const relevantDeductions = deductions.filter(d => d.billing_received_date === date);
   const totalOtherDeductions = relevantDeductions.reduce((sum, d) => sum + (d.other_charges || 0), 0);
-
-  // 7. Final Cheque amount — identical to dialog formula
   return totalGrossAmount - totalTax - totalOtherDeductions;
 };
 
-  // Filtered cycles for statements tabs - sorted by billing received date latest to oldest
   const stmtTabCycles = displayCycles
     .filter(cycle => stmtTab === 'archived' ? !!cycle.is_archived : !cycle.is_archived)
     .sort((a, b) => {
@@ -410,21 +376,17 @@ const getChequeAmountForDate = (date) => {
       return dateB - dateA;
     });
 
-  // Unique client names for filter dropdown (derived from current sub-tab)
   const stmtClientOptions = [...new Set(
     stmtTabCycles.map(c => getClientName(c.client_account_id)).filter(n => n && n !== '—')
   )].sort();
 
-  // Apply client filter
   const filteredCycles = stmtClientFilter === 'all'
     ? stmtTabCycles
     : stmtTabCycles.filter(c => getClientName(c.client_account_id) === stmtClientFilter);
 
-  // Split into with/without billing_received_date
   const filteredCyclesWithBrd = filteredCycles.filter(c => !!c.billing_received_date);
   const filteredCyclesNoBrd = filteredCycles.filter(c => !c.billing_received_date);
 
-  // Update these definitions in your component
 const activeSummaryGroups = billingReceivedGroups
   .filter(g => !getSummaryRecord(g.date)?.is_archived)
   .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
@@ -441,7 +403,6 @@ const archivedSummaryGroups = (() => {
   });
   return Object.entries(groups)
     .map(([date, items]) => ({ date, cycles: items.sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
-    // Change the sort below:
     .sort((a, b) => b.date.localeCompare(a.date));
 })();
 
@@ -463,24 +424,20 @@ const archivedSummaryGroups = (() => {
   
   {mainTab === 'statements' && (
     <div className="flex items-center gap-2">
-      {/* Group Export, Sync, and Import together */}
       <div className="flex items-center gap-2 mr-4 border-r pr-4">
         <Button onClick={handleExport} size="sm" variant="outline">
-          <Download className="w-4 h-4 mr-1.5" /> Export
+        <Download className="w-4 h-4 mr-1.5" /> Export
         </Button>
         
         {isAdmin && (
           <>
-
-             <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
-              <Upload className="w-4 h-4 mr-1.5" /> Import
-            </Button>
+            <Button onClick={() => fileInputRef.current?.click()} size="sm" variant="outline">
+            <Upload className="w-4 h-4 mr-1.5" /> Import
+          </Button>
             
             <Button onClick={syncClientIds} size="sm" variant="outline">
-              <RefreshCw className="w-4 h-4 mr-1.5" /> Sync
-            </Button>
-            
-
+            <RefreshCw className="w-4 h-4 mr-1.5" /> Sync
+          </Button>
             
             <input
               ref={fileInputRef}
@@ -493,10 +450,9 @@ const archivedSummaryGroups = (() => {
         )}
       </div>
 
-      {/* Primary Action */}
       {isAdmin && (
         <Button onClick={openAdd} size="sm">
-          <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
+        <Plus className="w-4 h-4 mr-1.5" /> New Billing Statement
         </Button>
       )}
     </div>
@@ -510,6 +466,9 @@ const archivedSummaryGroups = (() => {
         </button>
         <button onClick={() => setMainTab('summary')} className={tabClass(mainTab === 'summary')}>
           Billing Received Summary
+        </button>
+        <button onClick={() => setMainTab('accounting')} className={tabClass(mainTab === 'accounting')}>
+          Accounting
         </button>
       </div>
 
@@ -686,7 +645,7 @@ const archivedSummaryGroups = (() => {
             </>
           )}
         </>
-      ) : (
+      ) : mainTab === 'summary' ? (
         <>
           {/* Summary sub-tabs */}
           <div className="flex items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
@@ -750,7 +709,6 @@ const archivedSummaryGroups = (() => {
                           const isPaid = rec?.is_paid || false;
                           const isPayroll = rec?.payroll_processed || false;
                           const isArchived = rec?.is_archived || false;
-                          // Collect unique client names for this group
                           const groupClients = [...new Set(group.cycles.map(c => getClientName(c.client_account_id)).filter(n => n && n !== '—'))].join(', ');
                           return (
                             <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -843,6 +801,9 @@ const archivedSummaryGroups = (() => {
             );
           })()}
         </>
+      ) : (
+        /* Accounting tab */
+        <BillingStatementPDF />
       )}
 
       {/* Form Dialog */}
@@ -946,11 +907,11 @@ const archivedSummaryGroups = (() => {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr className="border-b">
-                      {['Plate #', 'Owner / Driver', 'Truck', 'Route', 'Delivery Date', 'DR #'].map(h => (
-                       <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
-                      ))}
-                      <th className="text-right px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">Tax (2%)</th>
-                      <th className="text-right px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">Gross Rate</th>
+                       {['Plate #', 'Owner / Driver', 'Truck', 'Route', 'Delivery Date', 'DR #'].map(h => (
+                        <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">{h}</th>
+                       ))}
+                       <th className="text-right px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">Tax (2%)</th>
+                       <th className="text-right px-3 py-3 font-semibold text-xs text-muted-foreground uppercase whitespace-nowrap">Gross Rate</th>
                     </tr>
                   </thead>
                   <tbody>

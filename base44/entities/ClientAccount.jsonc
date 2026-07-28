@@ -11,6 +11,10 @@
     "address": {
       "type": "string"
     },
+    "tin": {
+      "type": "string",
+      "description": "Tax Identification Number of the client"
+    },
     "contact_person": {
       "type": "string"
     },
@@ -97,7 +101,12 @@
               "properties": {
                 "truck_type": {
                   "type": "string",
-                  "enum": ["AUV", "Sub-4W", "6-Wheel", "10-Wheel"],
+                  "enum": [
+                    "AUV",
+                    "Sub-4W",
+                    "6-Wheel",
+                    "10-Wheel"
+                  ],
                   "description": "Truck type identifier"
                 },
                 "hidden_fee_percentage": {
@@ -107,11 +116,17 @@
                   "maximum": 100
                 }
               },
-              "required": ["truck_type", "hidden_fee_percentage"]
+              "required": [
+                "truck_type",
+                "hidden_fee_percentage"
+              ]
             }
           }
         },
-        "required": ["pickup_location", "truck_type_fees"]
+        "required": [
+          "pickup_location",
+          "truck_type_fees"
+        ]
       }
     }
   },

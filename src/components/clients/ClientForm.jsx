@@ -411,6 +411,10 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
               <Input value={form.address} onChange={e => set('address', e.target.value)} />
             </div>
             <div className="space-y-1.5">
+              <Label>TIN</Label>
+              <Input value={form.tin || ''} onChange={e => set('tin', e.target.value)} placeholder="e.g. 123-456-789-000" />
+            </div>
+            <div className="space-y-1.5 col-span-2">
               <Label>Status</Label>
               <Select value={form.status} onValueChange={v => set('status', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
