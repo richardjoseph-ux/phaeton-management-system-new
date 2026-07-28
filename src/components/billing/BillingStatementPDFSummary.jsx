@@ -3,12 +3,12 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Loader2, Truck } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Download, Loader2, Check, ChevronDown, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { useAppData } from '@/lib/AppDataContext';
 import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
-import { generateBillingStatementPDF, LOGO_URL } from '@/lib/billingStatementPdf';
+import { generateSummaryStatementPDF, LOGO_URL } from '@/lib/summaryStatementPdf';
 
 const COMPANY = {
   name: 'Phaeton Trucking Services',
@@ -23,60 +23,84 @@ export default function BillingStatementPDFSummary() {
   const { user } = useAuth();
   const { billingCycles: cycles, clients } = useAppData();
 
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
   const [datePrepared, setDatePrepared] = useState(new Date().toISOString().split('T')[0]);
-  const [trips, setTrips] = useState([]);
-  const [loadingTrips, setLoadingTrips] = useState(false);
+  const [tripMap, setTripMap] = useState({}); // { [cycleId]: trips[] }
+  const [loadingIds, setLoadingIds] = useState([]);
   const [generating, setGenerating] = useState(false);
+  const [openMenus, setOpenMenus] = useState({});
 
-  const selectedCycle = useMemo(() => cycles.find(c => c.id === selectedId) || null, [cycles, selectedId]);
-  const selectedClient = useMemo(() => clients.find(c => c.id === selectedCycle?.client_account_id) || null, [clients, selectedCycle]);
-  const hasSelection = !!selectedId && !loadingTrips;
-  const soaDate = selectedCycle?.billing_received_date || '';
+  const availableCycles = useMemo(
+    () => cycles.filter(c => !c.is_archived).sort((a, b) => (b.cycle_name || '').localeCompare(a.cycle_name || '')),
+    [cycles]
+  );
 
-  const handleSelect = async (id) => {
-    setSelectedId(id);
-    setTrips([]);
-    if (!id) return;
-    setLoadingTrips(true);
+  const selectedCycles = useMemo(
+    () => selectedIds.map(id => cycles.find(c => c.id === id)).filter(Boolean),
+    [selectedIds, cycles]
+  );
+
+  const firstCycle = selectedCycles[0] || null;
+  const selectedClient = useMemo(
+    () => clients.find(c => c.id === firstCycle?.client_account_id) || null,
+    [clients, firstCycle]
+  );
+
+  const allTrips = useMemo(() => {
+    const merged = selectedIds.flatMap(id => (tripMap[id] || []).map(t => ({ ...t, _cycle_name: cycles.find(c => c.id === id)?.cycle_name || '—' })));
+    return merged.sort((a, b) => (a.delivery_date || '').localeCompare(b.delivery_date || ''));
+  }, [selectedIds, tripMap, cycles]);
+
+  const isLoading = loadingIds.length > 0;
+  const hasSelection = selectedIds.length > 0 && !isLoading;
+  const dimClass = hasSelection ? '' : 'opacity-50 pointer-events-none';
+
+  const fetchTrips = async (id) => {
+    if (tripMap[id]) return;
+    setLoadingIds(prev => [...prev, id]);
     try {
       const data = await base44.entities.TripRecord.filter({ billing_cycle_id: id }, 'delivery_date', 500);
-      setTrips(data);
+      setTripMap(prev => ({ ...prev, [id]: data }));
     } catch (e) {
       console.error(e);
     } finally {
-      setLoadingTrips(false);
+      setLoadingIds(prev => prev.filter(x => x !== id));
     }
   };
 
-  const sortedDates = trips.map(t => t.delivery_date).filter(Boolean).sort();
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    fetchTrips(id);
+  };
+
+  const removeSelected = (id) => {
+    setSelectedIds(prev => prev.filter(x => x !== id));
+  };
+
+  const selectedCycleName = (id) => cycles.find(c => c.id === id)?.cycle_name || id;
+
+  const sortedDates = allTrips.map(t => t.delivery_date).filter(Boolean).sort();
   const periodCovered = sortedDates.length
     ? `${formatDateDisplay(sortedDates[0])} - ${formatDateDisplay(sortedDates[sortedDates.length - 1])}`
     : '—';
-  const warehouse = [...new Set(trips.map(t => t.pickup_location).filter(Boolean))].join(', ') || '—';
-
-  const totalGross = trips.reduce((s, t) => s + (t.gross_rate || 0), 0);
-  const totalTax = totalGross * 0.02;
-  const amountDue = totalGross - totalTax;
+  const warehouse = [...new Set(allTrips.map(t => t.pickup_location).filter(Boolean))].join(', ') || '—';
+  const soaDates = selectedCycles.map(c => c.billing_received_date).filter(Boolean);
+  const soaDate = soaDates.length ? soaDates.join(', ') : '—';
 
   const handleDownload = async () => {
-    if (!selectedCycle) return;
+    if (!hasSelection) return;
     setGenerating(true);
     try {
-      await generateBillingStatementPDF({
-        cycle: selectedCycle,
+      const groups = selectedCycles.map(c => ({ cycle: c, trips: tripMap[c.id] || [] }));
+      await generateSummaryStatementPDF({
+        groups,
         client: selectedClient,
-        trips,
-        soaDate,
-        creditTerms: selectedClient?.credit_terms,
         preparedBy: user?.full_name,
       });
     } finally {
       setGenerating(false);
     }
   };
-
-  const dimClass = hasSelection ? '' : 'opacity-50 pointer-events-none';
 
   return (
     <div className="space-y-5">
@@ -101,18 +125,54 @@ export default function BillingStatementPDFSummary() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5 md:col-span-2">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Statement No.</Label>
-            <Select value={selectedId} onValueChange={handleSelect}>
-              <SelectTrigger><SelectValue placeholder="Select a billing statement" /></SelectTrigger>
-              <SelectContent>
-                {cycles.filter(c => !c.is_archived).sort((a, b) => (b.cycle_name || '').localeCompare(a.cycle_name || '')).map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.cycle_name}</SelectItem>
+            <Popover open={openMenus.main} onOpenChange={(o) => setOpenMenus(p => ({ ...p, main: o }))}>
+              <PopoverTrigger asChild>
+                <button type="button" className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring">
+                  <span className={selectedIds.length ? 'text-foreground' : 'text-muted-foreground'}>
+                    {selectedIds.length ? `${selectedIds.length} statement(s) selected` : 'Select billing statements'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <div className="max-h-64 overflow-y-auto p-1">
+                  {availableCycles.length === 0 ? (
+                    <p className="text-sm text-muted-foreground p-3 text-center">No billing statements available</p>
+                  ) : availableCycles.map(c => {
+                    const checked = selectedIds.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleSelect(c.id)}
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent text-left"
+                      >
+                        <span className={`flex h-4 w-4 items-center justify-center rounded border ${checked ? 'bg-primary border-primary' : 'border-input'}`}>
+                          {checked && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </span>
+                        <span className="flex-1 truncate">{c.cycle_name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {selectedIds.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {selectedCycles.map(c => (
+                  <span key={c.id} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+                    {c.cycle_name}
+                    <button type="button" onClick={() => removeSelected(c.id)} className="hover:text-primary/70">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">SOA / Billing Date</Label>
-            <div className="text-sm font-medium text-foreground py-2">{soaDate ? formatDateDisplay(soaDate) : '—'}</div>
+            <div className="text-sm font-medium text-foreground py-2">{soaDate || '—'}</div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Period Covered</Label>
@@ -132,58 +192,68 @@ export default function BillingStatementPDFSummary() {
         </div>
       </section>
 
-      {/* PART 3 — Trip Summary */}
+      {/* PART 3 — Consolidated Trip Table */}
       <section className={`bg-card border rounded-lg overflow-hidden ${dimClass}`}>
         <div className="px-5 py-3 border-b bg-muted/40 flex items-center gap-2">
           <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">3</span>
-          <h3 className="text-sm font-semibold">Description of Services Rendered ({trips.length})</h3>
+          <h3 className="text-sm font-semibold">Description of Services Rendered ({allTrips.length})</h3>
         </div>
-        {loadingTrips ? (
+        {isLoading ? (
           <div className="text-center py-10">
             <Loader2 className="w-6 h-6 text-primary animate-spin mx-auto mb-2" />
             <p className="text-muted-foreground text-sm">Loading trip records...</p>
           </div>
-        ) : trips.length === 0 ? (
-          <p className="text-center py-10 text-muted-foreground text-sm">No trips assigned to this billing statement</p>
+        ) : allTrips.length === 0 ? (
+          <p className="text-center py-10 text-muted-foreground text-sm">Select billing statements to load trips</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  {['Date', 'DR No.', 'Route', 'Truck Type', 'Amount'].map(h => (
-                    <th key={h} className={h === 'Amount' ? 'text-right px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase' : 'text-left px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase'}>{h}</th>
-                  ))}
+                  <th className="text-left px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase">Date</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase">Billing Statement</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase">DR No.</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase">Route</th>
+                  <th className="text-right px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {trips.map(trip => (
+                {allTrips.map(trip => (
                   <tr key={trip.id} className="border-b last:border-0">
                     <td className="px-4 py-2.5 text-sm whitespace-nowrap">{formatDateDisplay(trip.delivery_date)}</td>
+                    <td className="px-4 py-2.5 text-sm text-muted-foreground">{trip._cycle_name}</td>
                     <td className="px-4 py-2.5 text-sm text-muted-foreground whitespace-nowrap">{trip.dr_number || '—'}</td>
-                    <td className="px-4 py-2.5 text-sm text-muted-foreground">{trip.delivery_location} → {trip.delivery_code}{trip.trip_route_code ? ` (${trip.trip_route_code})` : ''}</td>
-                    <td className="px-4 py-2.5"><span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium inline-flex items-center gap-1"><Truck className="w-3 h-3" />{trip.truck_type}</span></td>
+                    <td className="px-4 py-2.5 text-sm text-muted-foreground">{trip.delivery_code || '—'}</td>
                     <td className="px-4 py-2.5 text-right font-semibold text-primary whitespace-nowrap">₱{formatAmount(trip.gross_rate || 0)}</td>
                   </tr>
                 ))}
                 <tr className="bg-slate-50 italic">
-                  <td colSpan={5} className="px-4 py-2.5 text-xs text-muted-foreground">NOTHING FOLLOWS</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">—</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">—</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">—</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">NOTHING FOLLOWS</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">—</td>
                 </tr>
               </tbody>
             </table>
           </div>
         )}
-        <div className="px-5 py-4 border-t bg-muted/20 flex justify-end">
-          <div className="w-72 space-y-1.5 text-sm">
-            <TotalLine label="Total Gross ex VAT" value={totalGross} />
-            <TotalLine label="Total Due" value={totalGross} />
-            <TotalLine label="2% Withholding Tax" value={totalTax} className="text-red-600" />
-            <div className="border-t pt-1.5">
-              <div className="flex items-center justify-between bg-primary text-white px-3 py-2 rounded font-bold">
-                <span>AMOUNT DUE</span>
-                <span>₱{formatAmount(amountDue)}</span>
+        {/* Per-statement totals */}
+        <div className="px-5 py-4 border-t bg-muted/20 flex flex-col items-end gap-3">
+          {selectedCycles.map(c => {
+            const trips = tripMap[c.id] || [];
+            const totalGross = trips.reduce((s, t) => s + (t.gross_rate || 0), 0);
+            const totalTax = totalGross * 0.02;
+            const amountDue = totalGross - totalTax;
+            return (
+              <div key={c.id} className="w-80 space-y-1 text-sm">
+                <TotalLine label={c.cycle_name.toUpperCase()} value={totalGross} bold />
+                <TotalLine label="2% WITH HOLDING TAX (IF APPLICABLE)" value={totalTax} />
+                <TotalLine label="TOTAL (VAT INC, IF APPLICABLE)" value={amountDue} bold />
+                <div className="border-t my-1" />
               </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       </section>
 
@@ -212,7 +282,7 @@ export default function BillingStatementPDFSummary() {
 
       {/* Download */}
       <div className="flex justify-end">
-        <Button onClick={handleDownload} disabled={generating || !hasSelection || !selectedCycle} size="lg">
+        <Button onClick={handleDownload} disabled={generating || !hasSelection} size="lg">
           {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
           {generating ? 'Generating...' : 'Download PDF'}
         </Button>
@@ -221,11 +291,11 @@ export default function BillingStatementPDFSummary() {
   );
 }
 
-function TotalLine({ label, value, className = '' }) {
+function TotalLine({ label, value, bold = false }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={`font-semibold ${className}`}>₱{formatAmount(value)}</span>
+      <span className={bold ? 'font-semibold text-foreground' : 'text-muted-foreground'}>{label}</span>
+      <span className={bold ? 'font-bold text-foreground' : 'font-medium'}>₱{formatAmount(value)}</span>
     </div>
   );
 }
