@@ -80,7 +80,7 @@ export async function generateSummaryStatementPDF({ groups = [], client, prepare
     ? `${formatDateDisplay(dates[0])} - ${formatDateDisplay(dates[dates.length - 1])}`
     : '—';
   const soaDates = groups.map(g => g.cycle?.billing_received_date).filter(Boolean);
-  const soaDate = soaDates.length ? soaDates.join(', ') : '—';
+  const soaDate = soaDates.length ? soaDates.map(d => formatDateDisplay(d)).join(', ') : '—';
 
   // ===== HEADER =====
   const logoData = await loadImageDataUrl(LOGO_URL);

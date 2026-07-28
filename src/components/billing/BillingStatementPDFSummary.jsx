@@ -84,7 +84,7 @@ export default function BillingStatementPDFSummary() {
     ? `${formatDateDisplay(sortedDates[0])} - ${formatDateDisplay(sortedDates[sortedDates.length - 1])}`
     : '—';
   const soaDates = selectedCycles.map(c => c.billing_received_date).filter(Boolean);
-  const soaDate = soaDates.length ? soaDates.join(', ') : '—';
+  const soaDate = soaDates.length ? soaDates.map(d => formatDateDisplay(d)).join(', ') : '—';
 
   const handleDownload = async () => {
     if (!hasSelection) return;
