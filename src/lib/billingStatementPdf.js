@@ -193,10 +193,11 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   y += 5;
 
   const colDate = 25;
+  const colDR = 25;
   const colTruck = 25;
   const colAmount = 28;
-  const colRoute = contentW - colDate - colTruck - colAmount;
-  const colXs = [mL, mL + colDate, mL + colDate + colRoute, mL + colDate + colRoute + colTruck, mR];
+  const colRoute = contentW - colDate - colDR - colTruck - colAmount;
+  const colXs = [mL, mL + colDate, mL + colDate + colDR, mL + colDate + colDR + colRoute, mL + colDate + colDR + colRoute + colTruck, mR];
   const rowH = 6;
   const bottomLimit = PAGE.h - PAGE.margin - 40;
 
@@ -209,9 +210,10 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.text('DATE', colXs[0] + 2, topY + 4);
-    doc.text('ROUTE', colXs[1] + 2, topY + 4);
-    doc.text('TRUCK TYPE', colXs[2] + 2, topY + 4);
-    doc.text('AMOUNT', colXs[3] + 2, topY + 4);
+    doc.text('DR NO.', colXs[1] + 2, topY + 4);
+    doc.text('ROUTE', colXs[2] + 2, topY + 4);
+    doc.text('TRUCK TYPE', colXs[3] + 2, topY + 4);
+    doc.text('AMOUNT', colXs[4] + 2, topY + 4);
     doc.setDrawColor(LIGHT_BORDER.r, LIGHT_BORDER.g, LIGHT_BORDER.b);
     doc.setLineWidth(0.2);
     doc.line(colXs[0], topY + rowH, colXs[4], topY + rowH);
@@ -244,9 +246,10 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
     doc.setFontSize(8);
     const baseY = rowY + 4;
     doc.text(doc.splitTextToSize(formatDateDisplay(trip.delivery_date), colDate - 4), colXs[0] + 2, baseY);
-    doc.text(routeLines, colXs[1] + 2, baseY);
-    doc.text(trip.truck_type || '—', colXs[2] + 2, baseY);
-    doc.text(`P${formatAmount(trip.gross_rate || 0)}`, colXs[3] + 2, baseY);
+    doc.text(doc.splitTextToSize(trip.dr_number || '—', colDR - 4), colXs[1] + 2, baseY);
+    doc.text(routeLines, colXs[2] + 2, baseY);
+    doc.text(trip.truck_type || '—', colXs[3] + 2, baseY);
+    doc.text(`P${formatAmount(trip.gross_rate || 0)}`, colXs[4] + 2, baseY);
     doc.setDrawColor(240, 240, 240);
     doc.setLineWidth(0.1);
     doc.line(colXs[0], rowY, colXs[4], rowY);
@@ -266,10 +269,11 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text('NOTHING FOLLOWS', colXs[1] + 2, rowY + 4);
+  doc.text('NOTHING FOLLOWS', colXs[2] + 2, rowY + 4);
   doc.text('---', colXs[0] + 2, rowY + 4);
-  doc.text('---', colXs[2] + 2, rowY + 4);
+  doc.text('---', colXs[1] + 2, rowY + 4);
   doc.text('---', colXs[3] + 2, rowY + 4);
+  doc.text('---', colXs[4] + 2, rowY + 4);
   doc.setDrawColor(240, 240, 240);
   doc.setLineWidth(0.1);
   doc.line(colXs[0], rowY, colXs[4], rowY);
