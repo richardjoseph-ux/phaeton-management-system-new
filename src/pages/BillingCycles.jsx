@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Plus, CreditCard, Pencil, Eye, ClipboardList, Calendar, Archive, ArchiveRestore, CheckCircle2, Circle, ListChecks, Trash2, Download, Upload, RefreshCw } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import BillingReceivedSummaryDialog from '@/components/billing/BillingReceivedSummaryDialog';
-import BillingStatementPDF from '@/components/billing/BillingStatementPDF';
 import { useAuth } from '@/lib/AuthContext';
 import { useAppData } from '@/lib/AppDataContext';
 import { formatDateDisplay } from '@/lib/dateUtils';
@@ -467,9 +466,6 @@ const archivedSummaryGroups = (() => {
         <button onClick={() => setMainTab('summary')} className={tabClass(mainTab === 'summary')}>
           Billing Received Summary
         </button>
-        <button onClick={() => setMainTab('accounting')} className={tabClass(mainTab === 'accounting')}>
-          Accounting
-        </button>
       </div>
 
       {loading ? (
@@ -801,10 +797,7 @@ const archivedSummaryGroups = (() => {
             );
           })()}
         </>
-      ) : (
-        /* Accounting tab */
-        <BillingStatementPDF />
-      )}
+      ) : null}
 
       {/* Form Dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
