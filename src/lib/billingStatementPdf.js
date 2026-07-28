@@ -281,7 +281,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   // ===== TOTALS =====
   const totX = colXs[1];
   const totW = colXs[4] - totX;
-  const totH = 6;
+  const totH = 5;
 
   const totalRow = (label, value, highlight = false) => {
     if (y + totH > PAGE.h - PAGE.margin - 40) { doc.addPage(); y = PAGE.margin; }
@@ -298,8 +298,8 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
       doc.setFont('helvetica', 'normal');
     }
     doc.setFontSize(9);
-    doc.text(label, totX + 4, y + 4.2);
-    doc.text(`P${formatAmount(value)}`, colXs[4] - 4, y + 4.2, { align: 'right' });
+    doc.text(label, totX + 4, y + 3.7);
+    doc.text(`P${formatAmount(value)}`, colXs[4] - 4, y + 3.7, { align: 'right' });
     y += totH;
   };
 
@@ -310,7 +310,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
 
   // ===== SIGNATURE BLOCK =====
   if (y + 28 > PAGE.h - PAGE.margin) { doc.addPage(); y = PAGE.margin; }
-  y += 14;
+  y += 8;
 
   const sigW = 75;
   const leftSig = mL;
