@@ -277,7 +277,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   // ===== TOTALS =====
   const totX = colXs[1];
   const totW = colXs[4] - totX;
-  const totH = 9.5;
+  const totH = 7;
 
   const totalRow = (label, value, highlight = false) => {
     if (y + totH > PAGE.h - PAGE.margin - 40) { doc.addPage(); y = PAGE.margin; }
@@ -294,8 +294,8 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
       doc.setFont('helvetica', 'normal');
     }
     doc.setFontSize(9);
-    doc.text(label, totX + 4, y + 6.2);
-    doc.text(`P${formatAmount(value)}`, colXs[4] - 4, y + 6.2, { align: 'right' });
+    doc.text(label, totX + 4, y + 4.8);
+    doc.text(`P${formatAmount(value)}`, colXs[4] - 4, y + 4.8, { align: 'right' });
     y += totH;
   };
 
@@ -306,8 +306,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
 
   // ===== SIGNATURE BLOCK =====
   if (y + 28 > PAGE.h - PAGE.margin) { doc.addPage(); y = PAGE.margin; }
-  if (y < PAGE.h - PAGE.margin - 32) y = PAGE.h - PAGE.margin - 30;
-  else y += 14;
+  y += 14;
 
   const sigW = 75;
   const leftSig = mL;
