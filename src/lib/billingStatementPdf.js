@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
 
 const COMPANY = {
-  name: 'PHAETON TRUCKING SERVICES',
+  name: 'Phaeton Trucking Services',
   address: 'Block 3 Lot 1, Pacita 2-B, Cyan St., Brgy. San Lazaro, City of San Pedro, Laguna, Philippines',
   phone: '0931-974-6058',
   email: 'operations@phaetontrucking.com',
@@ -10,220 +10,295 @@ const COMPANY = {
   tin: '274-546-612-00000',
 };
 
-export function generateBillingStatementPDF({ cycle, client, trips, soaDate, preparedBy }) {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 15;
-  let y = 15;
+const PAGE = { w: 210, h: 297, margin: 15 };
 
-  // ---------- Header ----------
-  doc.setFillColor(20, 50, 90);
-  doc.roundedRect(margin, y, 12, 12, 1.5, 1.5, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text('PT', margin + 6, y + 7.6, { align: 'center' });
-
-  doc.setTextColor(20, 50, 90);
-  doc.setFontSize(15);
-  doc.text(COMPANY.name, margin + 16, y + 5);
-  doc.setTextColor(95, 95, 95);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text('Transport & Logistics Solutions', margin + 16, y + 10);
-
-  const rightX = pageW - margin;
-  doc.setTextColor(95, 95, 95);
-  doc.setFontSize(7);
-  doc.text(COMPANY.address, rightX, y + 4, { align: 'right' });
-  doc.text(`Tel: ${COMPANY.phone}  |  Email: ${COMPANY.email}`, rightX, y + 8, { align: 'right' });
-  doc.text(`BIR Registration: ${COMPANY.birReg}  |  TIN: ${COMPANY.tin}`, rightX, y + 12, { align: 'right' });
-
-  y += 16;
-  doc.setDrawColor(20, 50, 90);
-  doc.setLineWidth(0.6);
-  doc.line(margin, y, pageW - margin, y);
-  y += 8;
-
-  // ---------- Title ----------
-  doc.setTextColor(20, 50, 90);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('BILLING STATEMENT', pageW / 2, y, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(120, 120, 120);
-  doc.text('Statement of Account', pageW / 2, y + 5, { align: 'center' });
-  y += 11;
-
-  // ---------- Statement meta ----------
-  const colLeft = margin;
-  const colRight = margin + 95;
-  const lineH = 5.5;
-
-  const metaRow = (label, value, x) => {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text(label, x, y);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 30, 30);
-    doc.text(value || '—', x + 28, y);
-  };
-
-  metaRow('Statement No.', cycle?.cycle_name || '', colLeft);
-  metaRow('Period Covered:', formatDateDisplay(cycle?.billing_received_date), colRight);
-  y += lineH;
-  metaRow('SOA / Billing Date:', formatDateDisplay(soaDate), colLeft);
-  metaRow('Credit Terms:', '30 Days', colRight);
-  y += lineH;
-  metaRow('Date Prepared:', formatDateDisplay(new Date().toISOString().split('T')[0]), colLeft);
-  y += 6;
-
-  // ---------- Bill To ----------
-  doc.setFillColor(244, 246, 250);
-  doc.rect(margin, y, pageW - margin * 2, 20, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(20, 50, 90);
-  doc.text('BILL TO:', margin + 3, y + 6);
-  y += 12;
-
-  doc.setTextColor(30, 30, 30);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(client?.client_name || '—', margin + 3, y);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(95, 95, 95);
-  let billY = y;
-  let lineOff = 5;
-  if (client?.address) { doc.text(client.address, margin + 3, billY + lineOff); lineOff += 5; }
-  if (client?.tin) { doc.text(`TIN: ${client.tin}`, margin + 3, billY + lineOff); lineOff += 5; }
-  const subs = client?.sub_accounts || [];
-  if (subs.length) {
-    const subText = subs.map(s => s.sub_account_name).join(', ');
-    doc.text(`Sub-Account(s): ${subText}`, margin + 3, billY + lineOff);
-  }
-  y += 20;
-
-  // ---------- Trip table ----------
-  const tableTop = y + 2;
-  const tableW = pageW - margin * 2;
-  const colWidths = [30, 95, 35, 0];
-  colWidths[3] = tableW - colWidths[0] - colWidths[1] - colWidths[2];
-
-  doc.setFillColor(20, 50, 90);
-  doc.rect(margin, tableTop, tableW, 8, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  let cx = margin + 2;
-  ['Date', 'Route', 'Truck Type', 'Amount'].forEach((h, i) => {
-    if (i === 3) doc.text(h, margin + tableW - 2, tableTop + 5.5, { align: 'right' });
-    else { doc.text(h, cx, tableTop + 5.5); cx += colWidths[i]; }
-  });
-
-  y = tableTop + 8;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(30, 30, 30);
-
-  const rowH = 6;
-  const maxRows = Math.floor((250 - y) / rowH);
-  const rowsToShow = trips.slice(0, Math.max(maxRows, 0));
-
-  rowsToShow.forEach((trip, idx) => {
-    if (idx % 2 === 0) {
-      doc.setFillColor(249, 250, 252);
-      doc.rect(margin, y, tableW, rowH, 'F');
-    }
-    let x = margin + 2;
-    doc.text(formatDateDisplay(trip.delivery_date), x, y + 4);
-    x += colWidths[0];
-    const route = `${trip.pickup_location || ''} → ${trip.delivery_location || ''}`;
-    doc.text(route.length > 48 ? route.slice(0, 46) + '…' : route, x, y + 4);
-    x += colWidths[1];
-    doc.text(trip.truck_type || '—', x, y + 4);
-    doc.setTextColor(20, 50, 90);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`₱${formatAmount(trip.gross_rate || 0)}`, margin + tableW - 2, y + 4, { align: 'right' });
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(30, 30, 30);
-    y += rowH;
-  });
-
-  // NOTHING FOLLOWS row
-  doc.setFillColor(240, 240, 240);
-  doc.rect(margin, y, tableW, rowH, 'F');
-  doc.setTextColor(120, 120, 120);
-  doc.setFont('helvetica', 'italic');
-  doc.text('NOTHING FOLLOWS', margin + 2, y + 4);
-  y += rowH;
-  doc.setDrawColor(210, 210, 210);
+const dashedLine = (doc, y, x1, x2) => {
+  doc.setLineDashPattern([0.6, 0.6], 0);
   doc.setLineWidth(0.2);
-  doc.rect(margin, tableTop, tableW, y - tableTop);
+  doc.line(x1, y, x2, y);
+  doc.setLineDashPattern([], 0);
+};
 
-  // ---------- Totals ----------
-  y += 3;
-  const boxX = margin + (tableW - 80);
+export function generateBillingStatementPDF({ cycle, client, trips = [], soaDate, preparedBy }) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  doc.setFont('helvetica');
+  doc.setTextColor(0, 0, 0);
+  const mL = PAGE.margin, mR = PAGE.w - PAGE.margin;
+  const contentW = mR - mL;
+  let y = PAGE.margin;
 
-  const totalRow = (label, value, bold, color = [30, 30, 30]) => {
-    if (bold) { doc.setFont('helvetica', 'bold'); } else { doc.setFont('helvetica', 'normal'); }
-    doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
-    doc.text(label, boxX, y + 4);
-    doc.setTextColor(color[0], color[1], color[2]);
-    doc.text(`₱${formatAmount(value)}`, margin + tableW, y + 4, { align: 'right' });
-    y += 7;
-  };
+  // --- Period Covered & Warehouse (derived from trips) ---
+  const dates = trips.map(t => t.delivery_date).filter(Boolean).sort();
+  const periodCovered = dates.length
+    ? `${formatDateDisplay(dates[0])} - ${formatDateDisplay(dates[dates.length - 1])}`
+    : '—';
+  const warehouses = [...new Set(trips.map(t => t.pickup_location).filter(Boolean))];
+  const warehouse = warehouses.join(', ') || '—';
 
   const totalGross = trips.reduce((s, t) => s + (t.gross_rate || 0), 0);
   const totalTax = totalGross * 0.02;
   const amountDue = totalGross - totalTax;
 
-  totalRow('Total Gross ex VAT:', totalGross, false);
-  totalRow('Total Due:', totalGross, false);
-  totalRow('2% Withholding Tax:', totalTax, false, [200, 60, 60]);
-  doc.setDrawColor(20, 50, 90);
-  doc.setLineWidth(0.4);
-  doc.line(boxX, y, margin + tableW, y);
-  y += 3;
-  doc.setFillColor(20, 50, 90);
-  doc.rect(boxX, y - 4, (margin + tableW) - boxX, 9, 'F');
-  doc.setTextColor(255, 255, 255);
+  // --- 1. Centered circular logo badge ---
+  const cx = PAGE.w / 2;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.6);
+  doc.circle(cx, y + 5, 5, 'S');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('AMOUNT DUE:', boxX, y + 1.5);
-  doc.text(`₱${formatAmount(amountDue)}`, margin + tableW, y + 1.5, { align: 'right' });
+  doc.setFontSize(8);
+  doc.text('PT', cx, y + 6.6, { align: 'center' });
   y += 12;
 
-  // ---------- Footer: Prepared By ----------
-  y = Math.max(y + 6, 250);
-  doc.setTextColor(95, 95, 95);
+  // --- 2. Company name + address/phone/email centered ---
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text(COMPANY.name, cx, y);
+  y += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.text('___________________________', margin + 5, y);
-  doc.text('Prepared By', margin + 5, y + 5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 30, 30);
-  doc.text(preparedBy || '—', margin + 5, y + 10);
+  doc.text(COMPANY.address, cx, y);
+  y += 4;
+  doc.text(`${COMPANY.phone} | ${COMPANY.email}`, cx, y);
+  y += 5;
 
-  doc.setTextColor(95, 95, 95);
+  // --- 3. BIR Registration (left) + TIN (right) ---
+  doc.setFontSize(8);
+  doc.text(`BIR Registration: ${COMPANY.birReg}`, mL, y);
+  doc.text(`TIN: ${COMPANY.tin}`, mR, y, { align: 'right' });
+  y += 4;
+
+  // --- 4. Dashed line ---
+  dashedLine(doc, y, mL, mR);
+  y += 6;
+
+  // --- Bold centered title ---
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('BILLING STATEMENT / STATEMENT OF ACCOUNT', cx, y, { align: 'center' });
+  y += 5;
+
+  dashedLine(doc, y, mL, mR);
+  y += 8;
+
+  // --- 5. Statement metadata block ---
+  doc.setFontSize(9);
+  const metaH = 5.5;
+  const metaColW = contentW / 2;
+
+  const metaRow = (label, value, xi, highlight = false) => {
+    doc.setFont('helvetica', 'normal');
+    doc.text(label, xi, y);
+    if (highlight) {
+      const tw = doc.getTextWidth(value, { fontSize: 9 }) + 2;
+      doc.setFillColor(240, 240, 240);
+      doc.rect(xi + doc.getTextWidth(label, { fontSize: 9 }) + 1, y - 3.2, tw, 4.6, 'F');
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.text(value, xi + doc.getTextWidth(label, { fontSize: 9 }) + 1.5, y);
+  };
+
+  metaRow('Statement No.:', cycle?.cycle_name || '', mL, true);
+  metaRow('SOA / Billing Date:', formatDateDisplay(soaDate), mL + metaColW);
+  y += metaH;
+  metaRow('Period Covered:', periodCovered, mL);
+  metaRow('Credit Terms:', '30 Days', mL + metaColW);
+  y += metaH + 3;
+
+  // --- 6. Bill To section ---
   doc.setFont('helvetica', 'normal');
-  doc.text('___________________________', pageW - margin - 60, y);
-  doc.text('Date Prepared', pageW - margin - 60, y + 5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 30, 30);
-  doc.text(formatDateDisplay(new Date().toISOString().split('T')[0]), pageW - margin - 60, y + 10);
+  doc.setFontSize(9);
+  doc.setLineDashPattern([0.4, 0.4], 0);
+  doc.setLineWidth(0.2);
+  doc.line(mL, y, mL + 28, y);
+  doc.setLineDashPattern([], 0);
+  doc.setFontSize(8);
+  doc.text('Bill To:', mL, y);
+  y += 5;
 
-  doc.setDrawColor(210, 210, 210);
-  doc.setLineWidth(0.3);
-  doc.line(margin, 282, pageW - margin, 282);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(client?.client_name || '—', mL, y);
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  if (client?.address) { doc.text(client.address, mL, y); y += 4.5; }
+  if (client?.tin) { doc.text(`TIN: ${client.tin}`, mL, y); y += 4.5; }
+  doc.text(`Warehouse: ${warehouse}`, mL, y);
+  y += 7;
+
+  // --- 7. Dashed line + Description of Services Rendered + dashed line ---
+  dashedLine(doc, y, mL, mR);
+  y += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Description of Services Rendered', cx, y, { align: 'center' });
+  y += 4;
+  dashedLine(doc, y, mL, mR);
+  y += 6;
+
+  // --- 8 & 9. Bordered 4-column trip table with multi-page support ---
+  const colDate = 25;
+  const colTruck = 25;
+  const colAmount = 28;
+  const colRoute = contentW - colDate - colTruck - colAmount;
+  const colXs = [mL, mL + colDate, mL + colDate + colRoute, mL + colDate + colRoute + colTruck, mR];
+  const rowH = 6;
+
+  const drawBorders = (topY, bottomY) => {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.2);
+    doc.rect(mL, topY, contentW, bottomY - topY);
+    for (let i = 1; i < colXs.length - 1; i++) doc.line(colXs[i], topY, colXs[i], bottomY);
+  };
+
+  const drawHeader = (topY) => {
+    doc.setFillColor(0, 0, 0);
+    doc.rect(mL, topY, contentW, rowH, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('DATE', colXs[0] + 2, topY + 4);
+    doc.text('Route', colXs[1] + 2, topY + 4);
+    doc.text('Truck Type', colXs[2] + 2, topY + 4);
+    doc.text('Amount', colXs[3] + 2, topY + 4);
+    // underline headers underline already implied by filled band; keep simple
+    return topY + rowH;
+  };
+
+  let firstHeader = true;
+  let tableTop = y;
+  let rowY = y;
+  let rowsStarted = false;
+  const bottomLimit = PAGE.h - PAGE.margin - 40;
+
+  const startTableBlock = () => {
+    tableTop = rowY;
+    rowY = drawHeader(tableTop);
+    rowsStarted = true;
+  };
+
+  startTableBlock();
+
+  const drawTripRow = (trip) => {
+    if (rowY + rowH > bottomLimit) {
+      // close current grid and continue on next page
+      drawBorders(tableTop, rowY);
+      doc.addPage();
+      y = PAGE.margin;
+      rowY = y;
+      startTableBlock();
+    }
+    // row background border row
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(formatDateDisplay(trip.delivery_date), colXs[0] + 2, rowY + 4);
+    const route = `${trip.pickup_location || ''} -> ${trip.delivery_location || ''}`;
+    const routeTxt = route.length > 58 ? route.slice(0, 56) + '…' : route;
+    doc.text(routeTxt, colXs[1] + 2, rowY + 4);
+    doc.text(trip.truck_type || '—', colXs[2] + 2, rowY + 4);
+    doc.text(`P${formatAmount(trip.gross_rate || 0)}`, colXs[3] + 2, rowY + 4);
+    doc.line(colXs[0], rowY, colXs[4], rowY);
+    rowY += rowH;
+  };
+
+  trips.forEach(drawTripRow);
+
+  // --- NOTHING FOLLOWS row ---
+  if (rowY + rowH > bottomLimit) {
+    drawBorders(tableTop, rowY);
+    doc.addPage();
+    rowY = PAGE.margin;
+    tableTop = rowY;
+    rowY = drawHeader(tableTop);
+  }
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(140, 140, 140);
-  doc.text('This billing statement is system-generated. Please settle within the stated credit terms.', pageW / 2, 287, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setTextColor(0, 0, 0);
+  doc.text('NOTHING FOLLOWS', colXs[1] + 2, rowY + 4);
+  doc.text('---', colXs[0] + 2, rowY + 4);
+  doc.text('---', colXs[2] + 2, rowY + 4);
+  doc.text('---', colXs[3] + 2, rowY + 4);
+  doc.line(colXs[0], rowY, colXs[4], rowY);
+  rowY += rowH;
+
+  drawBorders(tableTop, rowY);
+  y = rowY + 6;
+
+  // --- 10. Totals grid (spanning right two columns) ---
+  const totX = colXs[2];
+  const totW = colXs[4] - totX;
+
+  const totalRow = (label, value, bold = false, fill = false) => {
+    if (y + 7 > PAGE.h - PAGE.margin - 25) { doc.addPage(); y = PAGE.margin; }
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.2);
+    if (fill) { doc.setFillColor(0, 0, 0); doc.rect(totX, y, totW, 7, 'F'); }
+    else { doc.rect(totX, y, totW, 7, 'S'); }
+    doc.setTextColor(fill ? 255 : 0, fill ? 255 : 0, fill ? 255 : 0);
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(9);
+    if (!fill) doc.rect(totX, y, totW, 7, 'S');
+    doc.text(label, totX + 2, y + 4.5);
+    doc.text(value, colXs[4] - 2, y + 4.5, { align: 'right' });
+    y += 7;
+  };
+
+  totalRow('Total Gross ex VAT', `P${formatAmount(totalGross)}`);
+  totalRow('Total Due', `P${formatAmount(totalGross)}`);
+  totalRow('2% Withholding Tax', `P${formatAmount(totalTax)}`);
+  totalRow('AMOUNT DUE', `P${formatAmount(amountDue)}`, true, true);
+
+  // --- 11. Signature section ---
+  y += 14;
+  const sigW = 70;
+  const leftSig = mL;
+  const rightSig = mR - sigW;
+  const today = formatDateDisplay(new Date().toISOString().split('T')[0]);
+
+  const sigBlock = (label, name, dateLabel, dateVal, sx) => {
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(label, sx, y);
+    y += 6;
+    doc.setLineDashPattern([0.5, 0.5], 0);
+    doc.setLineWidth(0.2);
+    doc.line(sx, y, sx + sigW, y);
+    doc.setLineDashPattern([], 0);
+    y += 4;
+    doc.setFont('helvetica', 'bold');
+    if (name) doc.text(name, sx, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    y += 0;
+  };
+
+  // Prepared By (left) - filled in
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('Prepared By:', leftSig, y);
+  y += 6;
+  doc.setLineDashPattern([0.5, 0.5], 0);
+  doc.line(leftSig, y, leftSig + sigW, y);
+  doc.setLineDashPattern([], 0);
+  y += 4;
+  doc.setFont('helvetica', 'bold');
+  doc.text(preparedBy || '', leftSig, y);
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`Date Prepared: ${today}`, leftSig, y);
+
+  // Received By (right) - blank
+  y -= 15;
+  doc.text('Received By:', rightSig, y);
+  y += 6;
+  doc.setLineDashPattern([0.5, 0.5], 0);
+  doc.line(rightSig, y, rightSig + sigW, y);
+  doc.setLineDashPattern([], 0);
+  y += 9;
+  doc.text('Date Received: ____________________', rightSig, y);
 
   doc.save(`${cycle?.cycle_name || 'billing-statement'}.pdf`);
 }

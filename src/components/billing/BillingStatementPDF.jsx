@@ -38,6 +38,12 @@ export default function BillingStatementPDF() {
     }
   };
 
+  const sortedDates = trips.map(t => t.delivery_date).filter(Boolean).sort();
+  const periodCovered = sortedDates.length
+    ? `${formatDateDisplay(sortedDates[0])} - ${formatDateDisplay(sortedDates[sortedDates.length - 1])}`
+    : '—';
+  const warehouse = [...new Set(trips.map(t => t.pickup_location).filter(Boolean))].join(', ') || '—';
+
   const totalGross = trips.reduce((s, t) => s + (t.gross_rate || 0), 0);
   const totalTax = totalGross * 0.02;
   const amountDue = totalGross - totalTax;
@@ -103,8 +109,8 @@ export default function BillingStatementPDF() {
             </div>
             <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
               <PreviewRow label="Statement No." value={selectedCycle?.cycle_name} />
-              <PreviewRow label="Period Covered" value={formatDateDisplay(selectedCycle?.billing_received_date)} />
               <PreviewRow label="SOA / Billing Date" value={formatDateDisplay(soaDate)} />
+              <PreviewRow label="Period Covered" value={periodCovered} />
               <PreviewRow label="Credit Terms" value="30 Days" />
             </div>
             <div className="px-5 pb-5">
@@ -113,6 +119,7 @@ export default function BillingStatementPDF() {
                 <p className="text-base font-bold text-foreground">{selectedClient?.client_name || '—'}</p>
                 {selectedClient?.address && <p className="text-sm text-muted-foreground mt-1">{selectedClient.address}</p>}
                 {selectedClient?.tin && <p className="text-sm text-muted-foreground">TIN: {selectedClient.tin}</p>}
+                <p className="text-sm text-muted-foreground">Warehouse: {warehouse}</p>
                 {selectedClient?.sub_accounts?.length > 0 && (
                   <p className="text-sm text-muted-foreground">
                     Sub-Account(s): {selectedClient.sub_accounts.map(s => s.sub_account_name).join(', ')}
