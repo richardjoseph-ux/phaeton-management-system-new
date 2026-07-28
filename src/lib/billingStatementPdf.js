@@ -49,7 +49,7 @@ const loadImageDataUrl = (url) =>
   });
 
 const drawLogo = (doc, cx, y, imgData) => {
-  const r = 6;
+  const r = 7;
   if (imgData) {
     doc.addImage(imgData, 'PNG', cx - r, y, r * 2, r * 2);
   } else {
@@ -87,11 +87,11 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   // ===== HEADER =====
   const logoData = await loadImageDataUrl(LOGO_URL);
   drawLogo(doc, cx, y, logoData);
-  y += 14;
+  y += 18;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text(COMPANY.name, cx, y, { align: 'center' });
+  doc.text(COMPANY.name.toUpperCase(), cx, y, { align: 'center' });
   y += 5.5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
@@ -112,22 +112,20 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   solidLine(doc, y, mL, mR);
   y += 7;
 
-  // ===== STATEMENT INFO + BILL TO BOX =====
-  const boxTop = y - 2;
-  doc.setFillColor(BOX_BG.r, BOX_BG.g, BOX_BG.b);
-  doc.setDrawColor(LIGHT_BORDER.r, LIGHT_BORDER.g, LIGHT_BORDER.b);
-  doc.setLineWidth(0.2);
-
-  const colW = contentW / 2;
-  const metaH = 6;
-  let metaY = y;
-
+  // ===== STATEMENT OF ACCOUNT (title outside box) =====
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('STATEMENT OF ACCOUNT', cx, metaY, { align: 'center' });
-  metaY += 5;
-  solidLine(doc, metaY, mL + contentW * 0.25, mL + contentW * 0.75);
-  metaY += 6;
+  doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
+  doc.text('STATEMENT OF ACCOUNT', cx, y, { align: 'center' });
+  y += 4;
+  solidLine(doc, y, mL, mR);
+  y += 6;
+
+  // ===== STATEMENT INFO + BILL TO BOX =====
+  const boxTop = y;
+  const colW = contentW / 2;
+  const metaH = 6;
+  let metaY = y + 4;
 
   doc.setFontSize(8.5);
   const labelH = 4.5;
@@ -189,7 +187,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
-  doc.text('Description of Services Rendered', cx, y, { align: 'center' });
+  doc.text('DESCRIPTION OF SERVICES RENDERED', cx, y, { align: 'center' });
   y += 4;
   solidLine(doc, y, mL, mR);
   y += 5;
@@ -209,9 +207,9 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.text('DATE', colXs[0] + 2, topY + 4);
-    doc.text('Route', colXs[1] + 2, topY + 4);
-    doc.text('Truck Type', colXs[2] + 2, topY + 4);
-    doc.text('Amount', colXs[3] + 2, topY + 4);
+    doc.text('ROUTE', colXs[1] + 2, topY + 4);
+    doc.text('TRUCK TYPE', colXs[2] + 2, topY + 4);
+    doc.text('AMOUNT', colXs[3] + 2, topY + 4);
     doc.setDrawColor(LIGHT_BORDER.r, LIGHT_BORDER.g, LIGHT_BORDER.b);
     doc.setLineWidth(0.2);
     doc.line(colXs[0], topY + rowH, colXs[4], topY + rowH);
@@ -300,9 +298,9 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
     y += 8;
   };
 
-  totalRow('Total Gross ex VAT', totalGross);
-  totalRow('Total Due', totalGross);
-  totalRow('2% Withholding Tax', totalTax);
+  totalRow('TOTAL GROSS EX VAT', totalGross);
+  totalRow('TOTAL DUE', totalGross);
+  totalRow('2% WITHHOLDING TAX', totalTax);
   totalRow('AMOUNT DUE', amountDue, true);
 
   // ===== SIGNATURE BLOCK =====
