@@ -24,7 +24,6 @@ export default function BillingStatementPDF() {
   const { billingCycles: cycles, clients } = useAppData();
 
   const [selectedId, setSelectedId] = useState('');
-  const [soaDate, setSoaDate] = useState(new Date().toISOString().split('T')[0]);
   const [datePrepared, setDatePrepared] = useState(new Date().toISOString().split('T')[0]);
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
@@ -33,6 +32,7 @@ export default function BillingStatementPDF() {
   const selectedCycle = useMemo(() => cycles.find(c => c.id === selectedId) || null, [cycles, selectedId]);
   const selectedClient = useMemo(() => clients.find(c => c.id === selectedCycle?.client_account_id) || null, [clients, selectedCycle]);
   const hasSelection = !!selectedId && !loadingTrips;
+  const soaDate = selectedCycle?.billing_received_date || '';
 
   const handleSelect = async (id) => {
     setSelectedId(id);
@@ -111,7 +111,7 @@ export default function BillingStatementPDF() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">SOA / Billing Date</Label>
-            <Input type="date" value={soaDate} onChange={e => setSoaDate(e.target.value)} />
+            <div className="text-sm font-medium text-foreground py-2">{soaDate ? formatDateDisplay(soaDate) : '—'}</div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Period Covered</Label>
