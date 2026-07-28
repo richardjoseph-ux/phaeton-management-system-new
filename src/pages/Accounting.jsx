@@ -14,7 +14,7 @@ export default function Accounting() {
 
       <div className="flex items-center gap-2 border-b mb-6">
         <button onClick={() => setTab('statement')} className={tabClass(tab === 'statement')}>
-          Top Sheet
+          Top Sheet (Shuttle)
         </button>
       </div>
 
