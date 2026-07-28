@@ -130,40 +130,54 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   metaY += 6;
 
   doc.setFontSize(8.5);
-  const metaRow = (label, value, xi) => {
+  const labelH = 4.5;
+  const valueH = 5;
+  const drawField = (label, value, xi) => {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
+    doc.setFontSize(7.5);
     doc.text(label, xi, metaY);
+    metaY += labelH;
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
-    doc.text(String(value || '—'), xi + doc.getTextWidth(label, { fontSize: 8.5 }) + 1.5, metaY);
+    doc.setFontSize(9.5);
+    doc.text(String(value || '—'), xi, metaY);
   };
 
-  metaRow('Statement No.:', cycle?.cycle_name || '', mL + 2);
-  metaRow('SOA / Billing Date:', formatDateDisplay(soaDate), mL + colW + 2);
-  metaY += metaH;
-  metaRow('Period Covered:', periodCovered, mL + 2);
-  metaRow('Credit Terms:', creditTerms ? `${creditTerms} Days` : '—', mL + colW + 2);
-  metaY += metaH + 2;
+  const leftX = mL + 3;
+  const rightX = mL + colW + 3;
+  const startY = metaY;
+  drawField('Statement No.', cycle?.cycle_name || '', leftX);
+  const afterLeft = metaY;
+  metaY = startY + valueH + labelH;
+  drawField('Period Covered', periodCovered, leftX);
+  const maxLeft = Math.max(afterLeft, metaY);
+  metaY = startY;
+  drawField('SOA / Billing Date', formatDateDisplay(soaDate), rightX);
+  const afterRight = metaY;
+  metaY = startY + valueH + labelH;
+  drawField('Credit Terms', creditTerms ? `${creditTerms} Days` : '—', rightX);
+  metaY = Math.max(maxLeft, Math.max(afterRight, metaY)) + 5;
+  metaY += 3;
 
   // Bill To column
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('helvetica', 'bold');
   doc.setTextColor(100, 116, 139);
   doc.setFontSize(7.5);
-  doc.text('BILL TO', mL + 2, metaY);
+  doc.text('BILL TO', mL + 3, metaY);
   metaY += 5;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
-  doc.text(client?.client_name || '—', mL + 2, metaY);
-  metaY += 5;
+  doc.text(client?.client_name || '—', mL + 3, metaY);
+  metaY += 5.5;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setTextColor(100, 116, 139);
-  if (client?.address) { doc.text(client.address, mL + 2, metaY); metaY += 4.2; }
-  if (client?.tin) { doc.text(`TIN: ${client.tin}`, mL + 2, metaY); metaY += 4.2; }
-  doc.text(`Warehouse: ${warehouse}`, mL + 2, metaY);
-  metaY += 4.2;
+  if (client?.address) { doc.text(client.address, mL + 3, metaY); metaY += 4.4; }
+  if (client?.tin) { doc.text(`TIN: ${client.tin}`, mL + 3, metaY); metaY += 4.4; }
+  doc.text(`Warehouse: ${warehouse}`, mL + 3, metaY);
+  metaY += 4.4;
 
   const boxBottom = metaY + 2;
   doc.setDrawColor(LIGHT_BORDER.r, LIGHT_BORDER.g, LIGHT_BORDER.b);
