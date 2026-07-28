@@ -200,6 +200,8 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   const rowH = 6;
   const bottomLimit = PAGE.h - PAGE.margin - 40;
 
+  const routeMaxW = colRoute - 4;
+
   const drawHeader = (topY) => {
     doc.setFillColor(MUTED_BG.r, MUTED_BG.g, MUTED_BG.b);
     doc.rect(mL, topY, contentW, rowH, 'F');
@@ -227,7 +229,10 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   let rowY = drawHeader(tableTop);
 
   const drawTripRow = (trip) => {
-    if (rowY + rowH > bottomLimit) {
+    const route = `${trip.pickup_location || ''} -> (${trip.delivery_location || ''}) ${trip.delivery_code || ''}`;
+    const routeLines = doc.splitTextToSize(route, routeMaxW);
+    const thisH = Math.max(rowH, routeLines.length * 4 + 2.5);
+    if (rowY + thisH > bottomLimit) {
       drawBorders(tableTop, rowY);
       doc.addPage();
       y = PAGE.margin;
@@ -237,16 +242,15 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
     doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text(formatDateDisplay(trip.delivery_date), colXs[0] + 2, rowY + 4);
-    const route = `${trip.pickup_location || ''} -> (${trip.delivery_location || ''}) ${trip.delivery_code || ''}`;
-    const routeTxt = route.length > 70 ? route.slice(0, 68) + '…' : route;
-    doc.text(routeTxt, colXs[1] + 2, rowY + 4);
-    doc.text(trip.truck_type || '—', colXs[2] + 2, rowY + 4);
-    doc.text(`P${formatAmount(trip.gross_rate || 0)}`, colXs[3] + 2, rowY + 4);
+    const baseY = rowY + 4;
+    doc.text(doc.splitTextToSize(formatDateDisplay(trip.delivery_date), colDate - 4), colXs[0] + 2, baseY);
+    doc.text(routeLines, colXs[1] + 2, baseY);
+    doc.text(trip.truck_type || '—', colXs[2] + 2, baseY);
+    doc.text(`P${formatAmount(trip.gross_rate || 0)}`, colXs[3] + 2, baseY);
     doc.setDrawColor(240, 240, 240);
     doc.setLineWidth(0.1);
     doc.line(colXs[0], rowY, colXs[4], rowY);
-    rowY += rowH;
+    rowY += thisH;
   };
 
   trips.forEach(drawTripRow);
