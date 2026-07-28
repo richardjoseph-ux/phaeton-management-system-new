@@ -116,7 +116,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
-  doc.text('STATEMENT OF ACCOUNT', cx, y, { align: 'center' });
+  doc.text('BILLING STATEMENT / STATEMENT OF ACCOUNT', cx, y, { align: 'center' });
   y += 4;
   solidLine(doc, y, mL, mR);
   y += 6;
