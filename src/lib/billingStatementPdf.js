@@ -229,7 +229,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   let rowY = drawHeader(tableTop);
 
   const drawTripRow = (trip) => {
-    const route = `${trip.pickup_location || ''} -> (${trip.delivery_location || ''}) ${trip.delivery_code || ''}`;
+    const route = `${trip.delivery_location || ''} -> ${trip.delivery_code || ''}`;
     const routeLines = doc.splitTextToSize(route, routeMaxW);
     const thisH = Math.max(rowH, routeLines.length * 4 + 2.5);
     if (rowY + thisH > bottomLimit) {
