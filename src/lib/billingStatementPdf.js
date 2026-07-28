@@ -225,7 +225,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.text(formatDateDisplay(trip.delivery_date), colXs[0] + 2, rowY + 4);
-    const route = `${trip.pickup_location || ''} -> ${trip.delivery_location || ''} -> ${trip.delivery_code || ''}`;
+    const route = `${trip.pickup_location || ''} -> (${trip.delivery_location || ''}) ${trip.delivery_code || ''}`;
     const routeTxt = route.length > 70 ? route.slice(0, 68) + '…' : route;
     doc.text(routeTxt, colXs[1] + 2, rowY + 4);
     doc.text(trip.truck_type || '—', colXs[2] + 2, rowY + 4);
