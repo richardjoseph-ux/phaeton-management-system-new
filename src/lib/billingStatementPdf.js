@@ -1,6 +1,8 @@
 import jsPDF from 'jspdf';
 import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
 
+export const LOGO_URL = 'https://media.base44.com/images/public/6a2682ee2374bcbebfc01176/2dfe06e06_generated_image.png';
+
 const COMPANY = {
   name: 'Phaeton Trucking Services',
   address: 'Block 3 Lot 1, Pacita 2-B, Cyan St., Brgy. San Lazaro, City of San Pedro, Laguna, Philippines',
@@ -19,7 +21,41 @@ const dashedLine = (doc, y, x1, x2) => {
   doc.setLineDashPattern([], 0);
 };
 
-export function generateBillingStatementPDF({ cycle, client, trips = [], soaDate, preparedBy }) {
+const loadImageDataUrl = (url) =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 300;
+        canvas.height = img.naturalHeight || 300;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/png'));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+
+const drawLogo = (doc, cx, y, imgData) => {
+  const r = 5;
+  if (imgData) {
+    doc.addImage(imgData, 'PNG', cx - r, y, r * 2, r * 2);
+  } else {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.6);
+    doc.circle(cx, y + r, r, 'S');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('PT', cx, y + r + 1.6, { align: 'center' });
+  }
+};
+
+export async function generateBillingStatementPDF({ cycle, client, trips = [], soaDate, preparedBy }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   doc.setFont('helvetica');
   doc.setTextColor(0, 0, 0);
@@ -39,14 +75,10 @@ export function generateBillingStatementPDF({ cycle, client, trips = [], soaDate
   const totalTax = totalGross * 0.02;
   const amountDue = totalGross - totalTax;
 
-  // --- 1. Centered circular logo badge ---
+  // --- 1. Centered circular logo badge (image, vector fallback) ---
   const cx = PAGE.w / 2;
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.6);
-  doc.circle(cx, y + 5, 5, 'S');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('PT', cx, y + 6.6, { align: 'center' });
+  const logoData = await loadImageDataUrl(LOGO_URL);
+  drawLogo(doc, cx, y, logoData);
   y += 12;
 
   // --- 2. Company name + address/phone/email centered ---
