@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import BillingStatementPDF from '@/components/billing/BillingStatementPDF';
 import BillingStatementPDFDelivery from '@/components/billing/BillingStatementPDFDelivery';
+import BillingStatementPDFSummary from '@/components/billing/BillingStatementPDFSummary';
 
 export default function Accounting() {
   const [tab, setTab] = useState('statement');
@@ -20,10 +21,14 @@ export default function Accounting() {
         <button onClick={() => setTab('delivery')} className={tabClass(tab === 'delivery')}>
           Top Sheet (Delivery)
         </button>
+        <button onClick={() => setTab('summary')} className={tabClass(tab === 'summary')}>
+          Top Sheet (Summary)
+        </button>
       </div>
 
       {tab === 'statement' && <BillingStatementPDF />}
       {tab === 'delivery' && <BillingStatementPDFDelivery />}
+      {tab === 'summary' && <BillingStatementPDFSummary />}
     </div>
   );
 }
