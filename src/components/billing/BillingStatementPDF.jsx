@@ -104,7 +104,7 @@ export default function BillingStatementPDF() {
             <Select value={selectedId} onValueChange={handleSelect}>
               <SelectTrigger><SelectValue placeholder="Select a billing statement" /></SelectTrigger>
               <SelectContent>
-                {cycles.slice().sort((a, b) => (b.cycle_name || '').localeCompare(a.cycle_name || '')).map(c => (
+                {cycles.filter(c => !c.is_archived).sort((a, b) => (b.cycle_name || '').localeCompare(a.cycle_name || '')).map(c => (
                   <SelectItem key={c.id} value={c.id}>{c.cycle_name}</SelectItem>
                 ))}
               </SelectContent>
