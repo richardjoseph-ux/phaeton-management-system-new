@@ -82,6 +82,13 @@ export async function generatePayrollPDF(payload) {
   }
   y += logoSize + 2;
 
+  // company name (between logo and contact block)
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(BLACK.r, BLACK.g, BLACK.b);
+  doc.text(COMPANY.name.toUpperCase(), mL, y + 1);
+  y += 5;
+
   const colCW = 92;            // company contact column
   const colLW = 36;            // labels column
   const colVW = contentW - colCW - colLW;
