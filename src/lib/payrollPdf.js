@@ -3,10 +3,18 @@ import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
 
 const COMPANY = {
   name: 'Phaeton Trucking Services',
-  address: 'Block 3 Lot 1, Pacita 2-B, Cyan St., Brgy. San Lazaro, City of San Pedro, Laguna, Philippines',
+  addressLines: [
+    'Block 3 Lot 1, Pacita 2-B, Cyan St.,',
+    'Brgy. San Lorenzo Ruiz, City of San Pedro',
+    'Laguna, Philippines',
+  ],
+  tin: '274-546-612-00000',
   phone: '0931-974-6058',
-  email: 'operations@phaetontrucking.com',
+  email: 'Operations@phaetontrucking.com',
 };
+
+const BLACK = { r: 0, g: 0, b: 0 };
+const LINK_BLUE = { r: 0, g: 0, b: 238 };
 
 const LOGO_URL = 'https://media.base44.com/images/public/6a2682ee2374bcbebfc01176/777bec924_LOGOMAIN.png';
 const NAVY = { r: 22, g: 56, b: 100 };
@@ -67,24 +75,55 @@ export async function generatePayrollPDF(payload) {
 
   const logoData = await loadImageDataUrl(LOGO_URL);
 
-  // ===== HEADER =====
+  // ===== LETTERHEAD (centered logo + company info) =====
+  const cx = PAGE.w / 2;
+  const logoSize = 15;
   if (logoData) {
-    try { doc.addImage(logoData, 'PNG', mL, y, 16, 16); } catch { /* ignore */ }
+    try { doc.addImage(logoData, 'PNG', cx - logoSize / 2, y, logoSize, logoSize); } catch { /* ignore */ }
   }
+  y += logoSize + 3;
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(NAVY.r, NAVY.g, NAVY.b);
-  doc.text(COMPANY.name.toUpperCase(), mL + 20, y + 5);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-  doc.text(doc.splitTextToSize(COMPANY.address, 70), mL + 20, y + 10);
-  doc.text(`${COMPANY.phone} | ${COMPANY.email}`, mL + 20, y + 14);
-  const headerBottom = y + 18;
+  doc.text(COMPANY.name.toUpperCase(), cx, y, { align: 'center' });
+  y += 5;
 
-  // Info block (right)
-  const infoX = 120, infoW = mR - infoX;
-  let iy = y + 4;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(BLACK.r, BLACK.g, BLACK.b);
+  COMPANY.addressLines.forEach((ln) => {
+    doc.text(ln, cx, y, { align: 'center' });
+    y += 3.8;
+  });
+  y += 1;
+
+  const drawCenteredKV = (label, value, valueColor = BLACK) => {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    const lw = doc.getTextDimensions(label).w;
+    doc.setFont('helvetica', 'normal');
+    const vw = doc.getTextDimensions(value).w;
+    const totalW = lw + vw;
+    let xx = cx - totalW / 2;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(BLACK.r, BLACK.g, BLACK.b);
+    doc.text(label, xx, y);
+    xx += lw;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(valueColor.r, valueColor.g, valueColor.b);
+    doc.text(value, xx, y);
+    y += 4;
+  };
+  drawCenteredKV('TIN: ', COMPANY.tin);
+  drawCenteredKV('Mobile #: ', COMPANY.phone);
+  drawCenteredKV('E-mail: ', COMPANY.email, LINK_BLUE);
+
+  y += 1;
+  line(doc, mL, y, mR);
+  y += 4;
+
+  // ===== OWNER / PERIOD INFO ROW =====
   const infoRows = [
     ['Owner', ownerLabel || '—'],
     ['Plate', plateLabel || '—'],
@@ -94,18 +133,22 @@ export async function generatePayrollPDF(payload) {
     ['Company', clientName || '—'],
   ];
   doc.setFontSize(8);
-  infoRows.forEach(([label, val]) => {
+  const colCount = 3;
+  const colW = contentW / colCount;
+  infoRows.forEach(([label, val], idx) => {
+    const col = idx % colCount;
+    const row = Math.floor(idx / colCount);
+    const xBase = mL + col * colW;
+    const yy = y + row * 5;
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-    doc.text(`${label}:`, infoX, iy);
+    doc.text(`${label}:`, xBase, yy);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(TEXT_COLOR.r, TEXT_COLOR.g, TEXT_COLOR.b);
-    const valLines = doc.splitTextToSize(String(val), infoW - 18);
-    doc.text(valLines, infoX + 16, iy);
-    iy += Math.max(5, valLines.length * 4 + 1.5);
+    doc.text(doc.splitTextToSize(String(val), colW - 22), xBase + 20, yy);
   });
+  y += Math.ceil(infoRows.length / colCount) * 5 + 2;
 
-  y = Math.max(headerBottom, iy) + 2;
   line(doc, mL, y, mR);
   y += 4;
 
