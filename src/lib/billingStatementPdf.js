@@ -13,11 +13,11 @@ const COMPANY = {
 };
 
 // Primary dark-navy derived from app token --primary (hsl 214 64% 24%) ≈ rgb(22, 56, 100)
-const NAVY = { r: 22, g: 56, b: 100 };
-const MUTED_BG = { r: 244, g: 246, b: 249 };   // light gray header row
-const BOX_BG = { r: 248, g: 250, b: 252 };     // subtle statement info box
+export const NAVY = { r: 22, g: 56, b: 100 };
+export const MUTED_BG = { r: 244, g: 246, b: 249 };   // light gray header row
+export const BOX_BG = { r: 248, g: 250, b: 252 };     // subtle statement info box
 const RULE = { r: 214, g: 220, b: 228 };       // light horizontal rule
-const LIGHT_BORDER = { r: 226, g: 232, b: 240 };
+export const LIGHT_BORDER = { r: 226, g: 232, b: 240 };
 const TEXT = { r: 30, g: 41, b: 59 };
 
 const PAGE = { w: 210, h: 297, margin: 15 };
@@ -28,7 +28,7 @@ const solidLine = (doc, y, x1, x2, color = RULE) => {
   doc.line(x1, y, x2, y);
 };
 
-const loadImageDataUrl = (url) =>
+export const loadImageDataUrl = (url) =>
   new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';

@@ -6,7 +6,8 @@ import { FileText, Sheet, ShieldCheck, PackageMinus, PlusCircle, Info } from 'lu
 import PageHeader from '@/components/ui/PageHeader';
 import { formatDateDisplay } from '@/lib/dateUtils';
 import { useAppData } from '@/lib/AppDataContext';
-import { jsPDF } from 'jspdf';
+import { generatePayrollPDF } from '@/lib/payrollPdf';
+import { formatAmount } from '@/lib/dateUtils';
 
 export default function Payroll() {
   const {
@@ -146,49 +147,64 @@ export default function Payroll() {
   
   const grandNetPayroll = tripTotals.net - flatInsurance - flatOther + totalReimbursement;
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
     if (!selectedDate) return;
-    const doc = new jsPDF();
     const ownerLabel = selectedOwner
       ? ownerList.find(o => o.plate_number === selectedOwner)?.owner_name || selectedOwner
       : 'All Owners';
+    const plateLabel = selectedOwner || '—';
 
-    doc.setFontSize(16);
-    doc.text('PT Tracking - Payroll Report', 14, 18);
-    doc.setFontSize(10);
-    doc.text(`Billing Received: ${selectedDate}`, 14, 26);
-    doc.text(`Owner / Driver: ${ownerLabel}`, 14, 32);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 38);
+    const tripsWithFuel = displayedTrips.map(trip => ({
+      ...trip,
+      _fuelSubsidy: calculateTripNet(trip).fuelSubsidy,
+    }));
 
-    doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
-    let y = 48;
-    doc.text('Plate #', 14, y); doc.text('Owner', 35, y); doc.text('Route', 75, y);
-    doc.text('Gross', 120, y); doc.text('Fuel Sub', 148, y); doc.text('Net', 176, y);
-    doc.setFont(undefined, 'normal');
-    y += 2; doc.line(14, y, 196, y); y += 5;
+    const totalGross = tripTotals.gross;
+    const computedTax = totalGross * 0.02;
+    const totalAdmin = tripTotals.admin;
+    const totalCharge = flatInsurance + flatOther;
+    const totalFuelSubsidy = tripTotals.fuelSubsidy;
+    const grandTotal = totalGross - computedTax - totalAdmin - totalCharge + totalReimbursement + totalFuelSubsidy;
 
-    displayedTrips.forEach(trip => {
-      if (y > 270) { doc.addPage(); y = 20; }
-      const t = calculateTripNet(trip);
-      doc.text(trip.plate_number, 14, y);
-      doc.text((trip.owner_name || '').substring(0, 18), 35, y);
-      doc.text(`${trip.delivery_code || ''}`, 75, y);
-      doc.text(`₱${t.gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 120, y);
-      doc.text(t.fuelSubsidy > 0 ? `₱${t.fuelSubsidy.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-', 148, y);
-      doc.text(`₱${t.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 176, y);
-      y += 6;
+    const dates = displayedTrips.map(t => t.delivery_date).filter(Boolean).sort();
+    const periodStart = dates.length ? dates[0] : null;
+    const periodEnd = dates.length ? dates[dates.length - 1] : null;
+
+    const clientCounts = {};
+    displayedTrips.forEach(t => {
+      if (t.client_name) clientCounts[t.client_name] = (clientCounts[t.client_name] || 0) + 1;
     });
+    const clientName = Object.entries(clientCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
 
-    y += 3; doc.line(14, y, 196, y); y += 5;
-    doc.setFont(undefined, 'bold');
-    doc.text(`Subtotal Net (Trips): ₱${tripTotals.net.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6;
-    if (flatInsurance > 0) { doc.setFont(undefined, 'normal'); doc.text(`Insurance Deduction: -₱${flatInsurance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6; }
-    if (flatOther > 0) { doc.setFont(undefined, 'normal'); doc.text(`Other Charges Deduction: -₱${flatOther.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6; }
-    if (totalReimbursement > 0) { doc.setFont(undefined, 'normal'); doc.text(`Reimbursements: +₱${totalReimbursement.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y); y += 6; }
-    doc.setFont(undefined, 'bold');
-    doc.text(`GRAND TOTAL NET PAYROLL: ₱${grandNetPayroll.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 14, y);
-    doc.save(`Payroll_${selectedDate}_${ownerLabel.replace(/\s/g, '_')}.pdf`);
+    const noteParts = [];
+    applicableDeductions.forEach(d => {
+      const amt = (d.insurance_charge || 0) + (d.other_charges || 0);
+      if (amt > 0) noteParts.push(`-P${formatAmount(amt)} (${d.notes || 'deduction'})`);
+    });
+    applicableReimbursements.forEach(r => {
+      if ((r.reimbursement_amount || 0) > 0) noteParts.push(`+P${formatAmount(r.reimbursement_amount)} (${r.notes || r.reimbursement_type || 'reimbursement'})`);
+    });
+    const notes = noteParts.join(' | ');
+
+    await generatePayrollPDF({
+      trips: tripsWithFuel,
+      ownerLabel,
+      plateLabel,
+      cycleNames: activeCycles.map(c => c.cycle_name),
+      periodStart,
+      periodEnd,
+      billingDate: selectedDate,
+      clientName,
+      totalGross,
+      totalTax: computedTax,
+      totalAdmin,
+      totalCharge,
+      totalReimburse: totalReimbursement,
+      totalFuelSubsidy,
+      grandTotal,
+      notes,
+      fileName: `Payroll_${selectedDate}_${ownerLabel.replace(/\s/g, '_')}.pdf`,
+    });
   };
 
   const exportToGoogleSheet = async () => {
