@@ -112,10 +112,6 @@ export async function generatePayrollPDF(payload) {
     const ry = gridTop + i * rowH;
     const midY = ry + rowH / 2 + 1.2;
 
-    // value cell (dropdown look)
-    doc.setFillColor(240, 240, 240);
-    doc.rect(xL, ry, colVW, rowH, 'F');
-
     // contact (left column)
     const c = contactRows[i];
     doc.setFont('helvetica', 'normal');
