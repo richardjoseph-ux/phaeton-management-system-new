@@ -147,19 +147,9 @@ export async function generatePayrollPDF(payload) {
     doc.text(doc.splitTextToSize(String(infoPairs[i][1]), colVW - 4), xL + 2, midY);
   }
 
-  // grid lines
   const gridBottom = gridTop + contactRows.length * rowH;
-  doc.setDrawColor(LIGHT_BORDER.r, LIGHT_BORDER.g, LIGHT_BORDER.b);
-  doc.setLineWidth(0.2);
-  doc.rect(mL, gridTop, contentW, contactRows.length * rowH);
-  doc.line(xC, gridTop, xC, gridBottom);
-  doc.line(xL, gridTop, xL, gridBottom);
-  for (let i = 1; i < contactRows.length; i++) {
-    doc.line(mL, gridTop + i * rowH, mR, gridTop + i * rowH);
-  }
 
   y = gridBottom + 3;
-  line(doc, mL, y, mR);
   y += 4;
 
   // ===== TABLE =====
