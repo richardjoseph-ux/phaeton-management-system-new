@@ -80,14 +80,12 @@ export async function generatePayrollPDF(payload) {
   if (logoData) {
     try { doc.addImage(logoData, 'PNG', mL, y, logoSize, logoSize); } catch { /* ignore */ }
   }
-  y += logoSize + 2;
-
-  // company name (between logo and contact block)
+  // company name (right of logo, blue)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(BLACK.r, BLACK.g, BLACK.b);
-  doc.text(COMPANY.name.toUpperCase(), mL, y + 1);
-  y += 5;
+  doc.setTextColor(LINK_BLUE.r, LINK_BLUE.g, LINK_BLUE.b);
+  doc.text(COMPANY.name.toUpperCase(), mL + logoSize + 3, y + logoSize / 2 + 1.5);
+  y += logoSize + 2;
 
   const colCW = 92;            // company contact column
   const colLW = 36;            // labels column
