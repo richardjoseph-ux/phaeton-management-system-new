@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf';
-import { LOGO_URL, NAVY, MUTED_BG, LIGHT_BORDER, loadImageDataUrl } from '@/lib/billingStatementPdf';
 import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
 
 const COMPANY = {
@@ -8,6 +7,31 @@ const COMPANY = {
   phone: '0931-974-6058',
   email: 'operations@phaetontrucking.com',
 };
+
+const LOGO_URL = 'https://media.base44.com/images/public/6a2682ee2374bcbebfc01176/777bec924_LOGOMAIN.png';
+const NAVY = { r: 22, g: 56, b: 100 };
+const MUTED_BG = { r: 244, g: 246, b: 249 };
+const LIGHT_BORDER = { r: 226, g: 232, b: 240 };
+
+const loadImageDataUrl = (url) =>
+  new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 300;
+        canvas.height = img.naturalHeight || 300;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/png'));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
 
 const PAGE = { w: 210, h: 297, margin: 12 };
 // Column widths (mm). Sum == content width (186).
@@ -19,10 +43,12 @@ const TOTAL_ROWS = 20;
 const TEXT_COLOR = { r: 30, g: 41, b: 59 };
 const MUTED = { r: 100, g: 116, b: 139 };
 
+const num = (v, fallback = 0) => (typeof v === 'number' && isFinite(v) ? v : fallback);
 const line = (doc, x1, y, x2, color = LIGHT_BORDER, w = 0.2) => {
-  doc.setDrawColor(color.r, color.g, color.b);
-  doc.setLineWidth(w);
-  doc.line(x1, y, x2, y);
+  const c = color && typeof color === 'object' ? color : LIGHT_BORDER;
+  doc.setDrawColor(num(c.r, 226), num(c.g, 232), num(c.b, 240));
+  doc.setLineWidth(num(w, 0.2));
+  doc.line(num(x1), num(y), num(x2), num(y));
 };
 
 export async function generatePayrollPDF(payload) {
