@@ -34,8 +34,16 @@ export default function TripEncoding() {
   
   const loadTrips = async () => {
     setLoading(true);
-    const t = await base44.entities.TripRecord.list('-created_date', 200);
-    setTrips(t);
+    const all = [];
+    let skip = 0;
+    const limit = 5000;
+    while (true) {
+      const batch = await base44.entities.TripRecord.list('-created_date', limit, skip);
+      all.push(...batch);
+      if (batch.length < limit) break;
+      skip += limit;
+    }
+    setTrips(all);
     setLoading(false);
   };
 
@@ -156,8 +164,7 @@ export default function TripEncoding() {
       const response = await base44.functions.invoke('syncBillingDates', {});
       if (response.data.success) {
         alert(response.data.message);
-        const updated = await base44.entities.TripRecord.list('-created_date', 200);
-        setTrips(updated);
+        await loadTrips();
       }
     } catch (error) {
       alert('Error syncing billing dates: ' + error.message);
