@@ -208,7 +208,6 @@ export async function generatePayrollPDF(payload) {
       else if (ci === 6 || ci === 7) doc.text(v, x + w - 2, baseY, { align: 'right' });
       else doc.text(doc.splitTextToSize(v, w - 4), x + 2, baseY);
     });
-    if (!opts.noBottom) line(doc, mL, topY + ROW_H, mR);
   };
 
   const bottomLimit = PAGE.h - 55;
