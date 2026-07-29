@@ -154,10 +154,10 @@ export default function Payroll() {
       : 'All Owners';
     const plateLabel = selectedOwner || '—';
 
-    const tripsWithFuel = displayedTrips.map(trip => ({
-      ...trip,
-      _fuelSubsidy: calculateTripNet(trip).fuelSubsidy,
-    }));
+    const tripsWithFuel = displayedTrips.map(trip => {
+      const t = calculateTripNet(trip);
+      return { ...trip, _fuelSubsidy: t.fuelSubsidy, _netPayroll: t.net };
+    });
 
     const totalGross = tripTotals.gross;
     const computedTax = totalGross * 0.02;

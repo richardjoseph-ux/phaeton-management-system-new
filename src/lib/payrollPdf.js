@@ -43,7 +43,7 @@ const loadImageDataUrl = (url) =>
 
 const PAGE = { w: 210, h: 297, margin: 12 };
 // Column widths (mm). Sum == content width (186).
-const COLS = [8, 24, 22, 22, 30, 30, 26, 24];
+const COLS = [8, 22, 28, 20, 30, 30, 24, 24];
 const HEADERS = ['NO.', 'DATE', 'DR NO.', 'VEHICLE TYPE', 'RATE', 'FUEL SUBSIDY'];
 const FULL_COLS = [0, 1, 2, 3, 6, 7];
 const ROW_H = 6;
@@ -222,7 +222,7 @@ export async function generatePayrollPDF(payload) {
       trip.truck_type || '—',
       trip.pickup_location || '—',
       trip.delivery_location || '—',
-      `P${formatAmount(trip.gross_rate || 0)}`,
+      `P${formatAmount(trip._netPayroll != null ? trip._netPayroll : trip.net_payroll || 0)}`,
       trip._fuelSubsidy > 0 ? `P${formatAmount(trip._fuelSubsidy)}` : '—',
     ]);
     rowY += ROW_H;
