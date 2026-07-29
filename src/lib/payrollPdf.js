@@ -189,7 +189,7 @@ export async function generatePayrollPDF(payload) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7.5);
         setTxt(doc, INK);
-        doc.text(v, x + w - 2, by, { align: 'right' });
+        doc.text(v, x + w / 2, by, { align: 'center' });
       } else {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7.2);
