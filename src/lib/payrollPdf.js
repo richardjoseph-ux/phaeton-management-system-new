@@ -75,80 +75,94 @@ export async function generatePayrollPDF(payload) {
 
   const logoData = await loadImageDataUrl(LOGO_URL);
 
-  // ===== LETTERHEAD (centered logo + company info) =====
-  const cx = PAGE.w / 2;
-  const logoSize = 15;
+  // ===== HEADER: logo (top-left) + info grid =====
+  const logoSize = 14;
   if (logoData) {
-    try { doc.addImage(logoData, 'PNG', cx - logoSize / 2, y, logoSize, logoSize); } catch { /* ignore */ }
+    try { doc.addImage(logoData, 'PNG', mL, y, logoSize, logoSize); } catch { /* ignore */ }
   }
-  y += logoSize + 3;
+  y += logoSize + 2;
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(NAVY.r, NAVY.g, NAVY.b);
-  doc.text(COMPANY.name.toUpperCase(), cx, y, { align: 'center' });
-  y += 5;
+  const colCW = 92;            // company contact column
+  const colLW = 36;            // labels column
+  const colVW = contentW - colCW - colLW;
+  const xC = mL + colCW;
+  const xL = xC + colLW;
+  const gridTop = y;
+  const rowH = 7.5;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(BLACK.r, BLACK.g, BLACK.b);
-  COMPANY.addressLines.forEach((ln) => {
-    doc.text(ln, cx, y, { align: 'center' });
-    y += 3.8;
-  });
-  y += 1;
-
-  const drawCenteredKV = (label, value, valueColor = BLACK) => {
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    const lw = doc.getTextDimensions(label).w;
-    doc.setFont('helvetica', 'normal');
-    const vw = doc.getTextDimensions(value).w;
-    const totalW = lw + vw;
-    let xx = cx - totalW / 2;
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(BLACK.r, BLACK.g, BLACK.b);
-    doc.text(label, xx, y);
-    xx += lw;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(valueColor.r, valueColor.g, valueColor.b);
-    doc.text(value, xx, y);
-    y += 4;
-  };
-  drawCenteredKV('TIN: ', COMPANY.tin);
-  drawCenteredKV('Mobile #: ', COMPANY.phone);
-  drawCenteredKV('E-mail: ', COMPANY.email, LINK_BLUE);
-
-  y += 1;
-  line(doc, mL, y, mR);
-  y += 4;
-
-  // ===== OWNER / PERIOD INFO ROW =====
-  const infoRows = [
-    ['Owner', ownerLabel || '—'],
-    ['Plate', plateLabel || '—'],
+  const contactRows = [
+    { text: COMPANY.addressLines[0] },
+    { text: COMPANY.addressLines[1] },
+    { text: COMPANY.addressLines[2] },
+    { label: 'TIN: ', value: COMPANY.tin },
+    { label: 'Mobile #: ', value: COMPANY.phone },
+    { label: 'E-mail: ', value: COMPANY.email, link: true },
+  ];
+  const infoPairs = [
+    ['Owner Name', ownerLabel || '—'],
+    ['Plate #', plateLabel || '—'],
     ['BS/SOA#', cycleNames.length ? cycleNames.join(' ') : '—'],
     ['Payroll Period', periodStart ? `${formatDateDisplay(periodStart)} - ${formatDateDisplay(periodEnd)}` : '—'],
     ['Date', formatDateDisplay(billingDate)],
     ['Company', clientName || '—'],
   ];
-  doc.setFontSize(8);
-  const colCount = 3;
-  const colW = contentW / colCount;
-  infoRows.forEach(([label, val], idx) => {
-    const col = idx % colCount;
-    const row = Math.floor(idx / colCount);
-    const xBase = mL + col * colW;
-    const yy = y + row * 5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-    doc.text(`${label}:`, xBase, yy);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(TEXT_COLOR.r, TEXT_COLOR.g, TEXT_COLOR.b);
-    doc.text(doc.splitTextToSize(String(val), colW - 22), xBase + 20, yy);
-  });
-  y += Math.ceil(infoRows.length / colCount) * 5 + 2;
 
+  doc.setFontSize(8);
+  for (let i = 0; i < contactRows.length; i++) {
+    const ry = gridTop + i * rowH;
+    const midY = ry + rowH / 2 + 1.2;
+
+    // value cell (dropdown look)
+    doc.setFillColor(240, 240, 240);
+    doc.rect(xL, ry, colVW, rowH, 'F');
+
+    // contact (left column)
+    const c = contactRows[i];
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(BLACK.r, BLACK.g, BLACK.b);
+    if (c.text) {
+      doc.text(c.text, mL + 2, midY);
+    } else {
+      doc.setFont('helvetica', 'bold');
+      doc.text(c.label, mL + 2, midY);
+      const lw = doc.getTextDimensions(c.label).w;
+      doc.setFont('helvetica', 'normal');
+      if (c.link) {
+        doc.setTextColor(LINK_BLUE.r, LINK_BLUE.g, LINK_BLUE.b);
+        const ex = mL + 2 + lw;
+        doc.text(c.value, ex, midY);
+        const vw = doc.getTextDimensions(c.value).w;
+        doc.setDrawColor(LINK_BLUE.r, LINK_BLUE.g, LINK_BLUE.b);
+        doc.setLineWidth(0.15);
+        doc.line(ex, midY + 0.5, ex + vw, midY + 0.5);
+      } else {
+        doc.text(c.value, mL + 2 + lw, midY);
+      }
+    }
+
+    // label (right-aligned)
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(BLACK.r, BLACK.g, BLACK.b);
+    doc.text(infoPairs[i][0] + ':', xL - 2, midY, { align: 'right' });
+
+    // value
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(TEXT_COLOR.r, TEXT_COLOR.g, TEXT_COLOR.b);
+    doc.text(doc.splitTextToSize(String(infoPairs[i][1]), colVW - 4), xL + 2, midY);
+  }
+
+  // grid lines
+  const gridBottom = gridTop + contactRows.length * rowH;
+  doc.setDrawColor(LIGHT_BORDER.r, LIGHT_BORDER.g, LIGHT_BORDER.b);
+  doc.setLineWidth(0.2);
+  doc.rect(mL, gridTop, contentW, contactRows.length * rowH);
+  doc.line(xC, gridTop, xC, gridBottom);
+  doc.line(xL, gridTop, xL, gridBottom);
+  for (let i = 1; i < contactRows.length; i++) {
+    doc.line(mL, gridTop + i * rowH, mR, gridTop + i * rowH);
+  }
+
+  y = gridBottom + 3;
   line(doc, mL, y, mR);
   y += 4;
 
