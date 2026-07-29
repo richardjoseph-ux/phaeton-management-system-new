@@ -250,7 +250,7 @@ export default function Payroll() {
         <div className="text-center py-16 text-muted-foreground">Loading...</div>
       ) : (
         <div>
-          <div className="flex items-end gap-4 mb-5">
+          <div className="flex flex-wrap items-end gap-4 mb-5">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Received Date</p>
               <Select value={selectedDate || ''} onValueChange={v => selectDate(v)}>
@@ -433,7 +433,7 @@ export default function Payroll() {
                   ) : <div className="px-4 py-3 text-xs text-muted-foreground">No reimbursements.</div>}
                 </div>
 
-                <div className="flex items-center justify-between px-4 py-4 bg-emerald-50 border-t rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 py-4 bg-emerald-50 border-t rounded-lg">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-emerald-700" />

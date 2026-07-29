@@ -289,7 +289,7 @@ export default function Deductions() {
                     <p className="text-sm">No deductions declared for {selectedDate} yet.</p>
                   </div>
                 ) : (
-                  <div className="bg-card border rounded-lg overflow-hidden">
+                  <div className="bg-card border rounded-lg overflow-x-auto">
                     {/* Summary */}
                     <div className="grid grid-cols-3 divide-x border-b">
                       <div className="p-4">
@@ -527,7 +527,7 @@ export default function Deductions() {
                         );
                       }
                       return (
-                        <div className="bg-card border rounded-lg overflow-hidden">
+                        <div className="bg-card border rounded-lg overflow-x-auto">
                           {/* Summary */}
                           <div className="grid grid-cols-3 divide-x border-b">
                             <div className="p-4">
@@ -730,7 +730,7 @@ export default function Deductions() {
                         );
                       }
                       return (
-                        <div className="bg-card border rounded-lg overflow-hidden">
+                        <div className="bg-card border rounded-lg overflow-x-auto">
                           {/* Summary */}
                           <div className="grid grid-cols-2 divide-x border-b">
                             <div className="p-4">
@@ -796,7 +796,7 @@ export default function Deductions() {
             {/* All Records Tab */}
             <TabsContent value="all" className="space-y-6">
               {/* Type Filter */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide shrink-0">Filter by Type</p>
                 <Select value={allRecordsTypeFilter} onValueChange={v => { setAllRecordsTypeFilter(v); setAllRecordsPage(1); }}>
                   <SelectTrigger className="w-48">
@@ -813,7 +813,7 @@ export default function Deductions() {
                 </Select>
               </div>
 
-              <div className="bg-card border rounded-lg overflow-hidden">
+              <div className="bg-card border rounded-lg overflow-x-auto">
                 {/* Combined Summary — 6 cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x border-b">
                   <div className="p-4">

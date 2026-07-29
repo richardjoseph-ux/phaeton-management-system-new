@@ -415,15 +415,15 @@ const archivedSummaryGroups = (() => {
 
   return (
     <div className="p-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
   <div>
     <h1 className="text-2xl font-bold text-foreground">Billing Cycles</h1>
     <p className="text-sm text-muted-foreground">Manage billing statements and received summaries</p>
   </div>
   
   {mainTab === 'statements' && (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-2 mr-4 border-r pr-4">
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 sm:mr-4 sm:border-r sm:pr-4">
         <Button onClick={handleExport} size="sm" variant="outline">
         <Download className="w-4 h-4 mr-1.5" /> Export
         </Button>
@@ -459,7 +459,7 @@ const archivedSummaryGroups = (() => {
 </div>
 
       {/* Main tabs */}
-      <div className="flex items-center gap-2 border-b mb-0">
+      <div className="flex flex-wrap items-center gap-2 border-b mb-0">
         <button onClick={() => setMainTab('statements')} className={tabClass(mainTab === 'statements')}>
           Billing Statements
         </button>
@@ -473,7 +473,7 @@ const archivedSummaryGroups = (() => {
       ) : mainTab === 'statements' ? (
         <>
           {/* Statement sub-tabs */}
-          <div className="flex items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
+          <div className="flex flex-wrap items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
             {[
               { key: 'active', label: `Billing Statements (${displayCycles.filter(c => !c.is_archived).length})` },
               { key: 'archived', label: `Archived (${displayCycles.filter(c => !!c.is_archived).length})` },
@@ -508,7 +508,7 @@ const archivedSummaryGroups = (() => {
             <>
               {/* Primary table: statements WITH billing received date */}
               {filteredCyclesWithBrd.length > 0 && (
-                <div className="bg-card border rounded-lg overflow-hidden mb-6">
+                <div className="bg-card border rounded-lg overflow-x-auto mb-6">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-muted/50">
@@ -577,7 +577,7 @@ const archivedSummaryGroups = (() => {
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">No Billing Received Date ({filteredCyclesNoBrd.length})</span>
                     <div className="h-px flex-1 bg-border" />
                   </div>
-                  <div className="bg-card border border-dashed rounded-lg overflow-hidden">
+                  <div className="bg-card border border-dashed rounded-lg overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-muted/50">
@@ -644,7 +644,7 @@ const archivedSummaryGroups = (() => {
       ) : mainTab === 'summary' ? (
         <>
           {/* Summary sub-tabs */}
-          <div className="flex items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
+          <div className="flex flex-wrap items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
             {[
               { key: 'active', label: `Active (${activeSummaryGroups.length})` },
               { key: 'archived', label: `Archived (${archivedSummaryGroups.length})` },
@@ -690,7 +690,7 @@ const archivedSummaryGroups = (() => {
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-card border rounded-lg overflow-hidden">
+                  <div className="bg-card border rounded-lg overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-muted/50">

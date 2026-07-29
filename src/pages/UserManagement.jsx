@@ -83,7 +83,7 @@ export default function UserManagement() {
           <Button variant="outline" onClick={load} className="mt-2">Retry</Button>
         </div>
       ) : (
-        <div className="bg-card border rounded-lg overflow-hidden">
+        <div className="bg-card border rounded-lg overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">

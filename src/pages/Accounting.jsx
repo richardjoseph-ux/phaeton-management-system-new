@@ -14,7 +14,7 @@ export default function Accounting() {
     <div className="p-6">
       <PageHeader title="Accounting" subtitle="Billing statement generation and accounting tools" />
 
-      <div className="flex items-center gap-2 border-b mb-6">
+      <div className="flex flex-wrap items-center gap-2 border-b mb-6">
         <button onClick={() => setTab('statement')} className={tabClass(tab === 'statement')}>
           Top Sheet (Shuttle)
         </button>

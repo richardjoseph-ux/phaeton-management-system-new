@@ -165,8 +165,8 @@ export default function Subcontractors() {
         title="Subcontractors"
         subtitle="Manage registered vehicles and subcontractors"
         actions={
-          <div className="flex gap-2 items-center">
-            <div className="flex gap-2 mr-4">
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="flex flex-wrap gap-2 sm:mr-4">
               <Button onClick={handleExport} size="sm" variant="outline">
                 <Download className="w-4 h-4 mr-1.5" /> Export Excel
               </Button>

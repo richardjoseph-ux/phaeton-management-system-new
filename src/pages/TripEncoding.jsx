@@ -306,8 +306,8 @@ export default function TripEncoding() {
         title="Trip Encoding"
         subtitle="Encode and manage trip records"
         actions={
-          <div className="flex gap-2">
-            <div className="flex gap-2 mr-4">
+          <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 sm:mr-4">
               <Button onClick={handleExportTrips} size="sm" variant="outline">
                 <Download className="w-4 h-4 mr-1.5" /> Export Excel
               </Button>
