@@ -222,7 +222,7 @@ export async function generatePayrollPDF(payload) {
       trip.truck_type || '—',
       trip.pickup_location || '—',
       trip.delivery_location || '—',
-      `P${formatAmount(trip._netPayroll != null ? trip._netPayroll : trip.net_payroll || 0)}`,
+      `P${formatAmount((trip.gross_rate || 0) - (trip.tax_deduction || 0) - (trip.hidden_fee || 0))}`,
       trip._fuelSubsidy > 0 ? `P${formatAmount(trip._fuelSubsidy)}` : '—',
     ]);
     rowY += ROW_H;
@@ -272,7 +272,6 @@ export async function generatePayrollPDF(payload) {
   const totH = 6.5;
   const rows = [
     ['TOTAL RATE', `P${formatAmount(totalGross)}`, false],
-    ['2% WITHHOLDING TAX', `-P${formatAmount(totalTax)}`, false],
     ['6% ADMIN FEE', `-P${formatAmount(totalAdmin)}`, false],
     ['CHARGE/PENALTY', `-P${formatAmount(totalCharge)}`, false],
     ['REIMBURSE', `+P${formatAmount(totalReimburse)}`, false],

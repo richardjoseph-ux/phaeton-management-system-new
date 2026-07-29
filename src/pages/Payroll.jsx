@@ -159,12 +159,11 @@ export default function Payroll() {
       return { ...trip, _fuelSubsidy: t.fuelSubsidy, _netPayroll: t.net };
     });
 
-    const totalGross = tripTotals.gross;
-    const computedTax = totalGross * 0.02;
+    const totalGross = tripTotals.gross - tripTotals.tax - tripTotals.hidden;
     const totalAdmin = tripTotals.admin;
     const totalCharge = flatInsurance + flatOther;
     const totalFuelSubsidy = tripTotals.fuelSubsidy;
-    const grandTotal = totalGross - computedTax - totalAdmin - totalCharge + totalReimbursement + totalFuelSubsidy;
+    const grandTotal = totalGross - totalAdmin - totalCharge + totalReimbursement + totalFuelSubsidy;
 
     const dates = displayedTrips.map(t => t.delivery_date).filter(Boolean).sort();
     const periodStart = dates.length ? dates[0] : null;
@@ -196,7 +195,7 @@ export default function Payroll() {
       billingDate: selectedDate,
       clientName,
       totalGross,
-      totalTax: computedTax,
+      totalTax: 0,
       totalAdmin,
       totalCharge,
       totalReimburse: totalReimbursement,
