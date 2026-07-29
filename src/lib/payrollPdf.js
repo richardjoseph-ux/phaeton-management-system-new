@@ -92,19 +92,16 @@ export async function generatePayrollPDF(payload) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   setTxt(doc, MUTED);
-  doc.text(COMPANY.addressLines.join('  •  '), mL + logoSize + 7, y + 12);
+  doc.text(COMPANY.addressLines.join('  •  '), mL + logoSize + 7, y + 11);
 
-  y += logoSize + 4;
-  setDraw(doc, NAVY, 0.6);
-  doc.line(mL, y, mR, y);
-  y += 5;
-
-  // contact line: TIN, Mobile, Email
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.8);
-  setTxt(doc, MUTED);
-  const cLine = `TIN:  ${COMPANY.tin}      Mobile:  ${COMPANY.phone}      E-mail:  ${COMPANY.email}`;
-  doc.text(cLine, mL, y + 4);
+  setTxt(doc, NAVY);
+  doc.text(`TIN: ${COMPANY.tin}    •    Mobile: ${COMPANY.phone}    •    E-mail: ${COMPANY.email}`, mL + logoSize + 7, y + 16);
+
+  y += logoSize + 6;
+  setDraw(doc, NAVY, 0.6);
+  doc.line(mL, y, mR, y);
   y += 8;
 
   // ===== INFO GRID =====
@@ -197,7 +194,7 @@ export async function generatePayrollPDF(payload) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7.2);
         setTxt(doc, INK);
-        doc.text(doc.splitTextToSize(v, w - 3), x + 2, by);
+        doc.text(doc.splitTextToSize(v, w - 3), x + w / 2, by, { align: 'center' });
       }
     });
   };
