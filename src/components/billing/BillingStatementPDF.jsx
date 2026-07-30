@@ -70,6 +70,7 @@ export default function BillingStatementPDF() {
         soaDate,
         creditTerms: selectedClient?.credit_terms,
         preparedBy: user?.full_name,
+        warehouseLabel: 'Service Type',
       });
     } finally {
       setGenerating(false);
@@ -128,7 +129,7 @@ export default function BillingStatementPDF() {
           <p className="text-base font-bold text-foreground">{selectedClient?.client_name || '—'}</p>
           {selectedClient?.address && <p className="text-sm text-muted-foreground mt-1">{selectedClient.address}</p>}
           {selectedClient?.tin && <p className="text-sm text-muted-foreground">TIN: {selectedClient.tin}</p>}
-          <p className="text-sm text-muted-foreground">Warehouse: {warehouse}</p>
+          <p className="text-sm text-muted-foreground">Service Type: {warehouse}</p>
         </div>
       </section>
 

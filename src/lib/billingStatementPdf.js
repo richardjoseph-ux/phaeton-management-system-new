@@ -63,7 +63,7 @@ const drawLogo = (doc, cx, y, imgData) => {
   }
 };
 
-export async function generateBillingStatementPDF({ cycle, client, trips = [], soaDate, creditTerms, preparedBy }) {
+export async function generateBillingStatementPDF({ cycle, client, trips = [], soaDate, creditTerms, preparedBy, warehouseLabel = 'Warehouse' }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   doc.setFont('helvetica');
   doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
@@ -174,7 +174,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
   doc.setTextColor(100, 116, 139);
   if (client?.address) { doc.text(client.address, mL + 3, metaY); metaY += 4.4; }
   if (client?.tin) { doc.text(`TIN: ${client.tin}`, mL + 3, metaY); metaY += 4.4; }
-  doc.text(`Warehouse: ${warehouse}`, mL + 3, metaY);
+  doc.text(`${warehouseLabel}: ${warehouse}`, mL + 3, metaY);
   metaY += 4.4;
 
   const boxBottom = metaY + 2;
