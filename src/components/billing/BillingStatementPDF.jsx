@@ -150,23 +150,22 @@ export default function BillingStatementPDF() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  {['Date', 'DR No.', 'Route', 'Truck Type', 'Amount'].map(h => (
-                    <th key={h} className={h === 'Amount' ? 'text-right px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase' : 'text-left px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase'}>{h}</th>
+                  {['Date', 'Route', 'Truck Type', 'Amount'].map(h => (
+                  	<th key={h} className={h === 'Amount' ? 'text-right px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase' : 'text-left px-4 py-2.5 font-semibold text-xs text-muted-foreground uppercase'}>{h}</th>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {trips.map(trip => (
+                  </tr>
+                  </thead>
+                  <tbody>
+                  {trips.map(trip => (
                   <tr key={trip.id} className="border-b last:border-0">
-                    <td className="px-4 py-2.5 text-sm whitespace-nowrap">{formatDateDisplay(trip.delivery_date)}</td>
-                    <td className="px-4 py-2.5 text-sm text-muted-foreground whitespace-nowrap">{trip.dr_number || '—'}</td>
-                    <td className="px-4 py-2.5 text-sm text-muted-foreground">{trip.delivery_location} → {trip.delivery_code}{trip.trip_route_code ? ` (${trip.trip_route_code})` : ''}</td>
+                  	<td className="px-4 py-2.5 text-sm whitespace-nowrap">{formatDateDisplay(trip.delivery_date)}</td>
+                  	<td className="px-4 py-2.5 text-sm text-muted-foreground">{trip.delivery_location} → {trip.delivery_code}{trip.trip_route_code ? ` (${trip.trip_route_code})` : ''}</td>
                     <td className="px-4 py-2.5"><span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium inline-flex items-center gap-1"><Truck className="w-3 h-3" />{trip.truck_type}</span></td>
                     <td className="px-4 py-2.5 text-right font-semibold text-primary whitespace-nowrap">₱{formatAmount(trip.gross_rate || 0)}</td>
                   </tr>
                 ))}
                 <tr className="bg-slate-50 italic">
-                  <td colSpan={5} className="px-4 py-2.5 text-xs text-muted-foreground">NOTHING FOLLOWS</td>
+                	<td colSpan={4} className="px-4 py-2.5 text-xs text-muted-foreground">NOTHING FOLLOWS</td>
                 </tr>
               </tbody>
             </table>
