@@ -187,7 +187,7 @@ export async function generateQuotationPDF(payload) {
     doc.text('TRIP TYPE', colXs[2] + 2, topY + 4.5);
     doc.text('TRIPS', colXs[3] + 2, topY + 4.5);
     doc.text('RATE', colXs[5] - 2, topY + 4.5, { align: 'right' });
-    doc.text('ROW TOTAL', colXs[6] - 2, topY + 4.5, { align: 'right' });
+    doc.text('TOTAL', colXs[6] - 2, topY + 4.5, { align: 'right' });
     setDraw(doc, LIGHT_BORDER, 0.2);
     doc.line(mL, topY + rowH, mR, topY + rowH);
     return topY + rowH;

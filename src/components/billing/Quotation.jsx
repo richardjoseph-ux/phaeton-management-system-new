@@ -291,7 +291,7 @@ export default function Quotation() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
-                {['Service / Route', 'Truck Type', 'Trip Type', 'Trips', 'Rate', 'Row Total', ''].map((h, i) => (
+                {['Service / Route', 'Truck Type', 'Trip Type', 'Trips', 'Rate', 'Total', ''].map((h, i) => (
                   <th
                     key={i}
                     className={
