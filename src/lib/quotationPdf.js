@@ -117,7 +117,7 @@ export async function generateQuotationPDF(payload) {
 
   const metaRows = [
     ['Quote No.', quote_number || '—', 'Validity', validity || '—'],
-    ['Quote Date', formatDateDisplay(quote_date), 'Prepared By', prepared_by || '—'],
+    ['Quote Date', formatDateDisplay(quote_date), '', ''],
   ];
 
   let metaY = y + 5;
