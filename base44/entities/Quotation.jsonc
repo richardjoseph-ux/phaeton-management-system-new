@@ -1,0 +1,102 @@
+{
+  "name": "Quotation",
+  "type": "object",
+  "properties": {
+    "quote_number": {
+      "type": "string",
+      "description": "Manual quote number entered by user (e.g. Q-2026-001)"
+    },
+    "quote_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "validity": {
+      "type": "string",
+      "description": "Validity text, e.g. '30 days'"
+    },
+    "quoted_for_name": {
+      "type": "string",
+      "description": "Client / prospect name the quote is prepared for"
+    },
+    "quoted_for_address": {
+      "type": "string",
+      "description": "Address of the client / prospect"
+    },
+    "line_items": {
+      "type": "array",
+      "description": "Service line items included in the quotation",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Service description / route"
+          },
+          "truck_type": {
+            "type": "string",
+            "enum": [
+              "AUV",
+              "Sub-4W",
+              "6-Wheel",
+              "10-Wheel"
+            ]
+          },
+          "trip_type": {
+            "type": "string",
+            "enum": [
+              "One Way",
+              "Round Trip"
+            ]
+          },
+          "num_trips": {
+            "type": "number"
+          },
+          "rate": {
+            "type": "number"
+          },
+          "row_total": {
+            "type": "number",
+            "description": "Computed: rate * num_trips"
+          }
+        }
+      }
+    },
+    "terms_and_conditions": {
+      "type": "string",
+      "description": "Free-text terms & conditions shown on the quotation"
+    },
+    "prepared_by": {
+      "type": "string",
+      "description": "Name of the user who prepared the quotation"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "finalized"
+      ],
+      "default": "draft"
+    }
+  },
+  "required": [
+    "quote_number"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

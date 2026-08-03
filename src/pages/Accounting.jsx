@@ -3,6 +3,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import BillingStatementPDF from '@/components/billing/BillingStatementPDF';
 import BillingStatementPDFDelivery from '@/components/billing/BillingStatementPDFDelivery';
 import BillingStatementPDFSummary from '@/components/billing/BillingStatementPDFSummary';
+import Quotation from '@/components/billing/Quotation';
 
 export default function Accounting() {
   const [tab, setTab] = useState('statement');
@@ -24,11 +25,15 @@ export default function Accounting() {
         <button onClick={() => setTab('summary')} className={tabClass(tab === 'summary')}>
           Top Sheet (Summary)
         </button>
+        <button onClick={() => setTab('quotation')} className={tabClass(tab === 'quotation')}>
+          Quotation
+        </button>
       </div>
 
       {tab === 'statement' && <BillingStatementPDF />}
       {tab === 'delivery' && <BillingStatementPDFDelivery />}
       {tab === 'summary' && <BillingStatementPDFSummary />}
+      {tab === 'quotation' && <Quotation />}
     </div>
   );
 }
