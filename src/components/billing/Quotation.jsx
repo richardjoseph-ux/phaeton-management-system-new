@@ -255,16 +255,7 @@ export default function Quotation() {
               placeholder="e.g., 30 days"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</Label>
-            <Select value={form.status} onValueChange={(v) => update('status', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="finalized">Finalized</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
           <div className="space-y-1.5 md:col-span-2">
             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quoted For — Name</Label>
             <Input

@@ -82,14 +82,19 @@ export async function generateQuotationPDF(payload) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-  doc.text(COMPANY.address, mL + logoSize + 6, y + 10.5);
+  doc.text(COMPANY.address, mL + logoSize + 6, y + 10);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(NAVY.r, NAVY.g, NAVY.b);
-  doc.text(`TIN: ${COMPANY.tin}    •    Mobile: ${COMPANY.phone}    •    E-mail: ${COMPANY.email}`, mL + logoSize + 6, y + 14.5);
+  doc.text(`BIR Registration: ${COMPANY.birReg}    •    TIN: ${COMPANY.tin}`, mL + logoSize + 6, y + 14.5);
 
-  y += logoSize + 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
+  doc.text(`Mobile: ${COMPANY.phone}    •    E-mail: ${COMPANY.email}`, mL + logoSize + 6, y + 19);
+
+  y += logoSize + 10;
   setDraw(doc, NAVY, 0.6);
   doc.line(mL, y, mR, y);
   y += 9;
@@ -112,7 +117,7 @@ export async function generateQuotationPDF(payload) {
 
   const metaRows = [
     ['Quote No.', quote_number || '—', 'Validity', validity || '—'],
-    ['Quote Date', formatDateDisplay(quote_date), 'Status', (status || 'draft').toUpperCase()],
+    ['Quote Date', formatDateDisplay(quote_date), 'Prepared By', prepared_by || '—'],
   ];
 
   let metaY = y + 5;
@@ -181,8 +186,8 @@ export async function generateQuotationPDF(payload) {
     doc.text('TRUCK TYPE', colXs[1] + 2, topY + 4.5);
     doc.text('TRIP TYPE', colXs[2] + 2, topY + 4.5);
     doc.text('TRIPS', colXs[3] + 2, topY + 4.5);
-    doc.text('RATE', colXs[4] + 2, topY + 4.5);
-    doc.text('ROW TOTAL', colXs[5] + 2, topY + 4.5);
+    doc.text('RATE', colXs[5] - 2, topY + 4.5, { align: 'right' });
+    doc.text('ROW TOTAL', colXs[6] - 2, topY + 4.5, { align: 'right' });
     setDraw(doc, LIGHT_BORDER, 0.2);
     doc.line(mL, topY + rowH, mR, topY + rowH);
     return topY + rowH;
@@ -215,8 +220,8 @@ export async function generateQuotationPDF(payload) {
     doc.text(String(item.truck_type || '—'), colXs[1] + 2, baseY);
     doc.text(String(item.trip_type || '—'), colXs[2] + 2, baseY);
     doc.text(String(item.num_trips || 0), colXs[3] + 2, baseY, { align: 'center' });
-    doc.text(peso(item.rate || 0), colXs[4] + 2, baseY, { align: 'right' });
-    doc.text(peso(item.row_total || 0), colXs[5] + 2, baseY, { align: 'right' });
+    doc.text(peso(item.rate || 0), colXs[5] - 2, baseY, { align: 'right' });
+    doc.text(peso(item.row_total || 0), colXs[6] - 2, baseY, { align: 'right' });
     setDraw(doc, { r: 240, g: 240, b: 240 }, 0.1);
     doc.line(mL, rowY, mR, rowY);
     rowY += thisH;
