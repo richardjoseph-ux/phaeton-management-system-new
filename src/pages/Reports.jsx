@@ -68,7 +68,9 @@ export default function Reports() {
 
   const totalGross = filtered.reduce((s, t) => s + (t.gross_rate || 0), 0);
   const totalNet = filtered.reduce((s, t) => s + (t.net_payroll || 0), 0);
-  const companyIncome = totalGross - totalNet;
+  const totalAdminFee = filtered.reduce((s, t) => s + (t.admin_fee || 0), 0);
+  const totalHiddenFee = filtered.reduce((s, t) => s + (t.hidden_fee || 0), 0);
+  const companyIncome = totalAdminFee + totalHiddenFee;
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const paginatedData = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
@@ -147,7 +149,7 @@ export default function Reports() {
         <div className="bg-card border rounded-lg p-4"><p className="text-xs text-muted-foreground">Records Found</p><p className="text-2xl font-bold mt-1">{filtered.length}</p></div>
         <div className="bg-card border rounded-lg p-4"><p className="text-xs text-muted-foreground">Total Gross</p><p className="text-2xl font-bold mt-1 text-blue-700">{formatCurrency(totalGross)}</p></div>
         <div className="bg-card border rounded-lg p-4"><p className="text-xs text-muted-foreground">Total Net Payroll</p><p className="text-2xl font-bold mt-1 text-emerald-700">{formatCurrency(totalNet)}</p></div>
-        <div className="bg-card border rounded-lg p-4 border-l-4 border-l-amber-500"><p className="text-xs text-muted-foreground">Company Income</p><p className="text-2xl font-bold mt-1 text-amber-700">{formatCurrency(companyIncome)}</p></div>
+        <div className="bg-card border rounded-lg p-4 border-l-4 border-l-amber-500"><p className="text-xs text-muted-foreground">Company Income (Admin + Hidden Fees)</p><p className="text-2xl font-bold mt-1 text-amber-700">{formatCurrency(companyIncome)}</p></div>
       </div>
 
       {pageLoading ? (
