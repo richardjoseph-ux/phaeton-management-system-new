@@ -1,82 +1,52 @@
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
-const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
+const DEFAULT_TRUCK_FEE = 4;
 
-export default function PickupLocationFeesManager({ clientAccount, onUpdate }) {
-  const [pickupLocationFees, setPickupLocationFees] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [editingIndex, setEditingIndex] = useState(null);
-
-  useEffect(() => {
-    if (clientAccount?.pickup_location_fees) {
-      setPickupLocationFees(JSON.parse(JSON.stringify(clientAccount.pickup_location_fees)));
-    } else {
-      setPickupLocationFees([]);
-    }
-  }, [clientAccount]);
-
-  // Get unique pickup locations from routes
-  const availablePickupLocations = clientAccount?.routes
-    ? [...new Set(clientAccount.routes.map(r => r.pickup_location).filter(Boolean))]
-    : [];
+export default function PickupLocationFeesManager({ pickupLocationFees, availablePickupLocations, onChange }) {
+  const fees = Array.isArray(pickupLocationFees) ? pickupLocationFees : [];
 
   const addPickupLocation = () => {
-    setPickupLocationFees([
-      ...pickupLocationFees,
+    onChange([
+      ...fees,
       {
         pickup_location: '',
         truck_type_fees: [
-          { truck_type: 'AUV', hidden_fee_percentage: 4 },
-          { truck_type: 'Sub-4W', hidden_fee_percentage: 4 },
-          { truck_type: '6-Wheel', hidden_fee_percentage: 4 },
-          { truck_type: '10-Wheel', hidden_fee_percentage: 4 },
+          { truck_type: 'AUV', hidden_fee_percentage: DEFAULT_TRUCK_FEE },
+          { truck_type: 'Sub-4W', hidden_fee_percentage: DEFAULT_TRUCK_FEE },
+          { truck_type: '6-Wheel', hidden_fee_percentage: DEFAULT_TRUCK_FEE },
+          { truck_type: '10-Wheel', hidden_fee_percentage: DEFAULT_TRUCK_FEE },
         ],
       },
     ]);
   };
 
   const removePickupLocation = (index) => {
-    setPickupLocationFees(pickupLocationFees.filter((_, i) => i !== index));
+    onChange(fees.filter((_, i) => i !== index));
   };
 
   const updatePickupLocation = (index, value) => {
-    const updated = [...pickupLocationFees];
-    updated[index].pickup_location = value;
-    setPickupLocationFees(updated);
+    onChange(fees.map((pf, i) => (i === index ? { ...pf, pickup_location: value } : pf)));
   };
 
   const updateTruckTypeFee = (pickupIndex, truckTypeIndex, percentage) => {
-    const updated = [...pickupLocationFees];
-    updated[pickupIndex].truck_type_fees[truckTypeIndex].hidden_fee_percentage = parseFloat(percentage) || 0;
-    setPickupLocationFees(updated);
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      // Validate that all pickup locations are filled
-      const hasEmptyLocation = pickupLocationFees.some(pf => !pf.pickup_location);
-      if (hasEmptyLocation) {
-        alert('Please select a pickup location for all entries');
-        setSaving(false);
-        return;
-      }
-
-      // Just update the callback - the parent form will save everything
-      if (onUpdate) {
-        onUpdate({ ...clientAccount, pickup_location_fees: pickupLocationFees });
-      }
-      alert('Fees updated. Click Save in the form to persist changes.');
-    } catch (error) {
-      alert('Error: ' + error.message);
-    }
-    setSaving(false);
+    onChange(
+      fees.map((pf, i) => {
+        if (i !== pickupIndex) return pf;
+        return {
+          ...pf,
+          truck_type_fees: pf.truck_type_fees.map((ttf, j) =>
+            j === truckTypeIndex
+              ? { ...ttf, hidden_fee_percentage: parseFloat(percentage) || 0 }
+              : ttf
+          ),
+        };
+      })
+    );
   };
 
   return (
@@ -89,15 +59,18 @@ export default function PickupLocationFeesManager({ clientAccount, onUpdate }) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {pickupLocationFees.length === 0 ? (
+          {fees.length === 0 ? (
             <p className="text-gray-500 py-4">No pickup location fees configured. Click "Add Pickup Location" to start.</p>
           ) : (
-            pickupLocationFees.map((pf, pickupIndex) => (
+            fees.map((pf, pickupIndex) => (
               <div key={pickupIndex} className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex-1">
                     <Label className="text-sm font-semibold mb-2 block">Pickup Location</Label>
-                    <Select value={pf.pickup_location} onValueChange={(value) => updatePickupLocation(pickupIndex, value)}>
+                    <Select
+                      value={pf.pickup_location}
+                      onValueChange={(value) => updatePickupLocation(pickupIndex, value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select pickup location" />
                       </SelectTrigger>
@@ -146,10 +119,6 @@ export default function PickupLocationFeesManager({ clientAccount, onUpdate }) {
 
           <Button onClick={addPickupLocation} variant="outline" className="w-full">
             <Plus className="w-4 h-4 mr-2" /> Add Pickup Location
-          </Button>
-
-          <Button onClick={handleSave} disabled={saving} className="w-full">
-            <Save className="w-4 h-4 mr-2" /> {saving ? 'Updating...' : 'Update Fees'}
           </Button>
         </div>
       </CardContent>

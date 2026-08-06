@@ -110,7 +110,8 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
               }
             }))
           : [emptyRoute()],
-        sub_accounts: editData.sub_accounts || []
+        sub_accounts: editData.sub_accounts || [],
+        pickup_location_fees: editData.pickup_location_fees || []
       });
       // Set first pickup and first truck type as active when editing
       const pickups = [...new Set(editData.routes?.map(r => r.pickup_location).filter(Boolean) || [])];
@@ -611,12 +612,11 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
           </div>
 
           {/* Truck Type Hidden Fee Configuration */}
-          {editData && (
-            <PickupLocationFeesManager 
-              clientAccount={editData} 
-              onUpdate={(updated) => setForm({ ...form, pickup_location_fees: updated.pickup_location_fees })}
-            />
-          )}
+          <PickupLocationFeesManager
+            pickupLocationFees={form.pickup_location_fees || []}
+            availablePickupLocations={pickupTabs}
+            onChange={(updated) => set('pickup_location_fees', updated)}
+          />
 
         </div>
 
