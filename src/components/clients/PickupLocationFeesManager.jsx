@@ -1,9 +1,6 @@
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2 } from 'lucide-react';
 
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 const DEFAULT_TRUCK_FEE = 4;
@@ -17,47 +14,31 @@ const defaultFeeEntry = (pickupLocation) => ({
 });
 
 export default function PickupLocationFeesManager({ pickupLocationFees, availablePickupLocations, onChange }) {
-  const fees = Array.isArray(pickupLocationFees) ? pickupLocationFees : [];
-
-  // Auto-create a fee block for every pickup location defined in the client's routes,
-  // while preserving any previously customized values for matching pickups.
-  // Removes blocks for pickups that no longer exist in routes.
-  useEffect(() => {
-    const existing = new Map(
-      fees.map(f => [f.pickup_location?.toLowerCase(), f])
-    );
-    const synced = availablePickupLocations.map(loc =>
-      existing.get(loc.toLowerCase()) || defaultFeeEntry(loc)
-    );
-
-    const changed =
-      synced.length !== fees.length ||
-      synced.some((f, i) => f.pickup_location !== fees[i]?.pickup_location);
-
-    if (changed) {
-      onChange(synced);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [availablePickupLocations.join('||')]);
-
-  const removePickupLocation = (index) => {
-    onChange(fees.filter((_, i) => i !== index));
-  };
+  // Reuse any saved values for matching pickups; supply defaults for pickups with no record yet.
+  // We never call onChange on our own — only when the user actually edits a value — so the
+  // displayed blocks correspond 1:1 to pickup locations and edits always land on the right one.
+  const savedFees = Array.isArray(pickupLocationFees) ? pickupLocationFees : [];
+  const savedMap = new Map(
+    savedFees.map(f => [f.pickup_location?.toLowerCase(), f])
+  );
+  const displayFees = availablePickupLocations.map(loc => {
+    const saved = savedMap.get(loc.toLowerCase());
+    return saved ? { ...saved } : defaultFeeEntry(loc);
+  });
 
   const updateTruckTypeFee = (pickupIndex, truckType, percentage) => {
-    onChange(
-      fees.map((pf, i) => {
-        if (i !== pickupIndex) return pf;
-        return {
-          ...pf,
-          truck_type_fees: pf.truck_type_fees.map(ttf =>
-            ttf.truck_type === truckType
-              ? { ...ttf, hidden_fee_percentage: parseFloat(percentage) || 0 }
-              : ttf
-          ),
-        };
-      })
-    );
+    const next = displayFees.map((pf, i) => {
+      if (i !== pickupIndex) return pf;
+      return {
+        ...pf,
+        truck_type_fees: pf.truck_type_fees.map(ttf =>
+          ttf.truck_type === truckType
+            ? { ...ttf, hidden_fee_percentage: parseFloat(percentage) || 0 }
+            : ttf
+        ),
+      };
+    });
+    onChange(next);
   };
 
   return (
@@ -65,33 +46,21 @@ export default function PickupLocationFeesManager({ pickupLocationFees, availabl
       <CardHeader className="pb-4">
         <CardTitle className="text-lg">Truck Type Hidden Fee Configuration</CardTitle>
         <p className="text-sm text-gray-600 mt-2">
-          Each pickup location has its own hidden fee percentage per truck type. Changes to one pickup location do not affect the others.
+          Each pickup location has its own hidden fee percentage per truck type. Changing fees for one pickup location does not affect the others.
         </p>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {fees.length === 0 ? (
+          {displayFees.length === 0 ? (
             <p className="text-gray-500 py-4">
               No pickup locations available. Add a route with a pickup location first.
             </p>
           ) : (
-            fees.map((pf, pickupIndex) => (
+            displayFees.map((pf, pickupIndex) => (
               <div key={pf.pickup_location || pickupIndex} className="border rounded-lg p-4 bg-gray-50">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex-1">
-                    <Label className="text-sm font-semibold mb-2 block">
-                      Pickup Location: <span className="text-primary">{pf.pickup_location || '—'}</span>
-                    </Label>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removePickupLocation(pickupIndex)}
-                    className="ml-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                <Label className="text-sm font-semibold mb-4 block">
+                  Pickup Location: <span className="text-primary">{pf.pickup_location || '—'}</span>
+                </Label>
 
                 <div className="grid grid-cols-2 gap-4">
                   {pf.truck_type_fees.map((ttf) => (
