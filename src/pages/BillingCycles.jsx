@@ -342,30 +342,49 @@ const handleImport = async (event) => {
     setTripsOpen(true);
   };
 
-const getChequeAmountForDate = (date) => {
-  const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
+const getChequeAmountForDate = (date, clientId) => {
+  const cyclesForDate = displayCycles.filter(c =>
+    c.billing_received_date === date && (!clientId || c.client_account_id === clientId)
+  );
   const cycleIds = cyclesForDate.map(c => c.id);
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
+  const relevantPlates = new Set(relevantTrips.map(t => t.plate_number));
   const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
   const baseTripTaxTotal = relevantTrips.reduce((sum, t) => sum + (t.tax_deduction || 0), 0);
-  const relevantOtherCharges = otherCharges.filter(oc => oc.billing_received_date === date);
+  const relevantOtherCharges = otherCharges.filter(oc =>
+    oc.billing_received_date === date && (!clientId || oc.client_account_id === clientId)
+  );
   const chargeTotals = relevantOtherCharges.reduce((acc, oc) => {
     const amount = oc.amount || 0;
     const type = (oc.charge_type || '').toLowerCase();
-    if (type === 'demurrage' || type === 'fuel subsidy') {
-      acc.demurrage += amount;
-    } else {
-      acc.others += amount;
-    }
+    if (type === 'demurrage' || type === 'fuel subsidy') acc.demurrage += amount;
+    else acc.others += amount;
     return acc;
   }, { demurrage: 0, others: 0 });
-  const taxOnDemurrage = chargeTotals.demurrage * 0.02;
-  const totalTax = baseTripTaxTotal + taxOnDemurrage;
   const totalGrossAmount = baseTripGrossTotal + chargeTotals.demurrage + chargeTotals.others;
-  const relevantDeductions = deductions.filter(d => d.billing_received_date === date);
+  const totalTax = baseTripTaxTotal + (chargeTotals.demurrage * 0.02);
+  const relevantDeductions = deductions.filter(d =>
+    d.billing_received_date === date && (!clientId || relevantPlates.has(d.plate_number))
+  );
   const totalOtherDeductions = relevantDeductions.reduce((sum, d) => sum + (d.other_charges || 0), 0);
   return totalGrossAmount - totalTax - totalOtherDeductions;
 };
+
+function splitSummaryGroupsByClient(groups) {
+  return groups.flatMap(group =>
+    Object.entries(group.cycles.reduce((byClient, cycle) => {
+      const clientId = cycle.client_account_id || 'unassigned';
+      if (!byClient[clientId]) byClient[clientId] = [];
+      byClient[clientId].push(cycle);
+      return byClient;
+    }, {})).map(([clientId, clientCycles]) => ({
+      ...group,
+      cycles: clientCycles,
+      client_account_id: clientId === 'unassigned' ? null : clientId,
+      row_key: `${group.date}-${clientId}`,
+    }))
+  );
+}
 
   const stmtTabCycles = displayCycles
     .filter(cycle => stmtTab === 'archived' ? !!cycle.is_archived : !cycle.is_archived)
@@ -389,7 +408,9 @@ const getChequeAmountForDate = (date) => {
 const activeSummaryGroups = billingReceivedGroups
   .filter(g => !getSummaryRecord(g.date)?.is_archived)
   .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
-  .sort((a, b) => b.date.localeCompare(a.date)); 
+  .sort((a, b) => b.date.localeCompare(a.date));
+
+const activeSummaryRowCount = splitSummaryGroupsByClient(activeSummaryGroups).length;
 
 const archivedSummaryGroups = (() => {
   const archivedDates = displaySummaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
@@ -646,7 +667,7 @@ const archivedSummaryGroups = (() => {
           {/* Summary sub-tabs */}
           <div className="flex flex-wrap items-center gap-2 border-b mb-4 mt-0 bg-muted/30 px-2">
             {[
-              { key: 'active', label: `Active (${activeSummaryGroups.length})` },
+              { key: 'active', label: `Active (${activeSummaryRowCount})` },
               { key: 'archived', label: `Archived (${archivedSummaryGroups.length})` },
             ].map(t => (
               <button key={t.key} onClick={() => setSummaryTab(t.key)} className={tabClass(summaryTab === t.key)}>
@@ -665,6 +686,9 @@ const archivedSummaryGroups = (() => {
             const groups = summaryClientFilter === 'all'
               ? rawGroups
               : rawGroups.filter(g => g.cycles.some(c => getClientName(c.client_account_id) === summaryClientFilter));
+            const displayGroups = summaryTab === 'active' && summaryClientFilter === 'all'
+              ? splitSummaryGroupsByClient(groups)
+              : groups;
 
             return (
               <>
@@ -682,7 +706,7 @@ const archivedSummaryGroups = (() => {
                   </Select>
                 </div>
 
-                {groups.length === 0 ? (
+                {displayGroups.length === 0 ? (
                   <div className="text-center py-16">
                     <Calendar className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
                     <p className="text-muted-foreground text-sm">
@@ -700,14 +724,14 @@ const archivedSummaryGroups = (() => {
                         </tr>
                       </thead>
                       <tbody>
-                        {groups.slice((summaryPage - 1) * rowsPerPage, summaryPage * rowsPerPage).map(group => {
+                        {displayGroups.slice((summaryPage - 1) * rowsPerPage, summaryPage * rowsPerPage).map(group => {
                           const rec = getSummaryRecord(group.date);
                           const isPaid = rec?.is_paid || false;
                           const isPayroll = rec?.payroll_processed || false;
                           const isArchived = rec?.is_archived || false;
                           const groupClients = [...new Set(group.cycles.map(c => getClientName(c.client_account_id)).filter(n => n && n !== '—'))].join(', ');
                           return (
-                            <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                            <tr key={group.row_key || group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                               <td className="px-4 py-3 font-semibold">{formatDateDisplay(group.date)}</td>
                               <td className="px-4 py-3 text-sm text-muted-foreground">{groupClients || '—'}</td>
                               <td className="px-4 py-3 text-sm font-medium text-primary">
@@ -717,7 +741,7 @@ const archivedSummaryGroups = (() => {
                                 {group.cycles.map(c => c.cycle_name).join(', ')}
                               </td>
                               <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
-                              <td className="px-4 py-3 text-sm font-semibold text-amber-700">₱{getChequeAmountForDate(group.date).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-4 py-3 text-sm font-semibold text-amber-700">₱{getChequeAmountForDate(group.date, group.client_account_id).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="px-4 py-3">
                                 {isAdmin ? (
                                   <button
@@ -779,15 +803,15 @@ const archivedSummaryGroups = (() => {
                         })}
                       </tbody>
                     </table>
-                    {Math.ceil(groups.length / rowsPerPage) > 1 && (
+                    {Math.ceil(displayGroups.length / rowsPerPage) > 1 && (
                       <div className="flex items-center justify-between p-3 border-t">
-                        <span className="text-xs text-muted-foreground">Showing {(summaryPage - 1) * rowsPerPage + 1}–{Math.min(summaryPage * rowsPerPage, groups.length)} of {groups.length}</span>
+                        <span className="text-xs text-muted-foreground">Showing {(summaryPage - 1) * rowsPerPage + 1}–{Math.min(summaryPage * rowsPerPage, displayGroups.length)} of {displayGroups.length}</span>
                         <div className="flex items-center gap-1">
                           <Button variant="outline" size="sm" disabled={summaryPage === 1} onClick={() => setSummaryPage(1)} className="px-2.5">«</Button>
                           <Button variant="outline" size="sm" disabled={summaryPage === 1} onClick={() => setSummaryPage(p => p - 1)}>Previous</Button>
-                          <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{summaryPage} / {Math.ceil(groups.length / rowsPerPage)}</span>
-                          <Button variant="outline" size="sm" disabled={summaryPage === Math.ceil(groups.length / rowsPerPage)} onClick={() => setSummaryPage(p => p + 1)}>Next</Button>
-                          <Button variant="outline" size="sm" disabled={summaryPage === Math.ceil(groups.length / rowsPerPage)} onClick={() => setSummaryPage(Math.ceil(groups.length / rowsPerPage))} className="px-2.5">»</Button>
+                          <span className="text-xs text-muted-foreground px-3 py-1.5 border rounded-md bg-muted/40 font-medium">{summaryPage} / {Math.ceil(displayGroups.length / rowsPerPage)}</span>
+                          <Button variant="outline" size="sm" disabled={summaryPage === Math.ceil(displayGroups.length / rowsPerPage)} onClick={() => setSummaryPage(p => p + 1)}>Next</Button>
+                          <Button variant="outline" size="sm" disabled={summaryPage === Math.ceil(displayGroups.length / rowsPerPage)} onClick={() => setSummaryPage(Math.ceil(displayGroups.length / rowsPerPage))} className="px-2.5">»</Button>
                         </div>
                       </div>
                     )}
