@@ -45,6 +45,12 @@ export function AppDataProvider({ children }) {
     ...QUERY_CONFIG,
   });
 
+  const billingReceivedClientArchives = useQuery({
+    queryKey: ['billingReceivedClientArchives'],
+    queryFn: () => base44.entities.BillingReceivedClientArchive.list('-billing_received_date', 200),
+    ...QUERY_CONFIG,
+  });
+
   const fuelSubsidies = useQuery({
     queryKey: ['fuelSubsidies'],
     queryFn: () => base44.entities.FuelSubsidy.list('-created_date', 50),
@@ -89,6 +95,7 @@ export function AppDataProvider({ children }) {
     billingDeductions: billingDeductions.data ?? [],
     reimbursements: reimbursements.data ?? [],
     billingReceivedSummaries: billingReceivedSummaries.data ?? [],
+    billingReceivedClientArchives: billingReceivedClientArchives.data ?? [],
     fuelSubsidies: fuelSubsidies.data ?? [],
     otherCharges: otherCharges.data ?? [],
     isLoading: {
@@ -98,6 +105,7 @@ export function AppDataProvider({ children }) {
       billingDeductions: billingDeductions.isLoading,
       reimbursements: reimbursements.isLoading,
       billingReceivedSummaries: billingReceivedSummaries.isLoading,
+      billingReceivedClientArchives: billingReceivedClientArchives.isLoading,
       fuelSubsidies: fuelSubsidies.isLoading,
       otherCharges: otherCharges.isLoading,
     },

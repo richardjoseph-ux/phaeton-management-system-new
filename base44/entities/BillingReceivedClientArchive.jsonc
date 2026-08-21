@@ -1,0 +1,21 @@
+{
+  "name": "BillingReceivedClientArchive",
+  "type": "object",
+  "properties": {
+    "billing_received_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "client_account_id": {
+      "type": "string"
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "billing_received_date",
+    "client_account_id"
+  ]
+}

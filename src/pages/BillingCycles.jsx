@@ -23,6 +23,7 @@ export default function BillingCycles() {
     billingDeductions: deductions,
     otherCharges,
     billingReceivedSummaries: summaryRecords,
+    billingReceivedClientArchives,
     isLoading,
     invalidate,
     addCacheItem,
@@ -30,7 +31,7 @@ export default function BillingCycles() {
     removeCacheItem,
   } = useAppData();
 
-  const loading = isLoading.billingCycles || isLoading.clients || isLoading.fuelSubsidies || isLoading.billingDeductions || isLoading.otherCharges || isLoading.billingReceivedSummaries;
+  const loading = isLoading.billingCycles || isLoading.clients || isLoading.fuelSubsidies || isLoading.billingDeductions || isLoading.otherCharges || isLoading.billingReceivedSummaries || isLoading.billingReceivedClientArchives;
 
   // Local state for mutable copies that can be updated without invalidating the whole cache
   const [localCycles, setLocalCycles] = useState(null); // null = use cache
@@ -222,6 +223,9 @@ const billingReceivedGroups = (() => {
 })();
 
   const getSummaryRecord = (date) => displaySummaryRecords.find(r => r.billing_received_date === date);
+  const getClientArchive = (date, clientId) => billingReceivedClientArchives.find(record =>
+    record.billing_received_date === date && record.client_account_id === clientId
+  );
 
   const ensureSummaryRecord = async (date) => {
     let record = getSummaryRecord(date);
@@ -242,11 +246,20 @@ const billingReceivedGroups = (() => {
     }
   };
 
-  const toggleArchiveSummary = async (date) => {
-    const record = await ensureSummaryRecord(date);
-    const newVal = !record.is_archived;
-    await base44.entities.BillingReceivedSummary.update(record.id, { is_archived: newVal });
-    updateCacheItem('billingReceivedSummaries', record.id, { is_archived: newVal });
+  const toggleArchiveSummary = async (date, clientId) => {
+    const record = getClientArchive(date, clientId);
+    const newVal = !(record?.is_archived);
+    if (record) {
+      await base44.entities.BillingReceivedClientArchive.update(record.id, { is_archived: newVal });
+      updateCacheItem('billingReceivedClientArchives', record.id, { is_archived: newVal });
+    } else {
+      const created = await base44.entities.BillingReceivedClientArchive.create({
+        billing_received_date: date,
+        client_account_id: clientId,
+        is_archived: true,
+      });
+      addCacheItem('billingReceivedClientArchives', created, false);
+    }
   };
 
   const openSummary = (group) => {
@@ -405,26 +418,27 @@ function splitSummaryGroupsByClient(groups) {
   const filteredCyclesWithBrd = filteredCycles.filter(c => !!c.billing_received_date);
   const filteredCyclesNoBrd = filteredCycles.filter(c => !c.billing_received_date);
 
-const activeSummaryGroups = billingReceivedGroups
-  .filter(g => !getSummaryRecord(g.date)?.is_archived)
-  .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
+const activeSummaryGroups = splitSummaryGroupsByClient(billingReceivedGroups)
+  .filter(group => !getClientArchive(group.date, group.client_account_id)?.is_archived)
+  .map(group => ({ ...group, cycles: [...group.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
   .sort((a, b) => b.date.localeCompare(a.date));
 
-const activeSummaryRowCount = splitSummaryGroupsByClient(activeSummaryGroups).length;
+const activeSummaryRowCount = activeSummaryGroups.length;
 
-const archivedSummaryGroups = (() => {
-  const archivedDates = displaySummaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
-  const groups = {};
-  displayCycles.filter(c => c.is_archived || archivedDates.includes(c.billing_received_date)).forEach(cycle => {
-    if (cycle.billing_received_date && archivedDates.includes(cycle.billing_received_date)) {
-      if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
-      groups[cycle.billing_received_date].push(cycle);
-    }
-  });
-  return Object.entries(groups)
-    .map(([date, items]) => ({ date, cycles: items.sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-})();
+const archivedSummaryGroups = billingReceivedClientArchives
+  .filter(record => record.is_archived)
+  .map(record => {
+    const dateGroup = billingReceivedGroups.find(group => group.date === record.billing_received_date);
+    const clientCycles = dateGroup?.cycles.filter(cycle => cycle.client_account_id === record.client_account_id) || [];
+    return {
+      date: record.billing_received_date,
+      cycles: clientCycles.sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)),
+      client_account_id: record.client_account_id,
+      row_key: `${record.billing_received_date}-${record.client_account_id}`,
+    };
+  })
+  .filter(group => group.cycles.length > 0)
+  .sort((a, b) => b.date.localeCompare(a.date));
 
   useEffect(() => { setStmtPage(1); setStmtNoBrdPage(1); setStmtClientFilter('all'); }, [stmtTab]);
   useEffect(() => { setStmtPage(1); setStmtNoBrdPage(1); }, [stmtClientFilter]);
@@ -686,9 +700,7 @@ const archivedSummaryGroups = (() => {
             const groups = summaryClientFilter === 'all'
               ? rawGroups
               : rawGroups.filter(g => g.cycles.some(c => getClientName(c.client_account_id) === summaryClientFilter));
-            const displayGroups = summaryTab === 'active' && summaryClientFilter === 'all'
-              ? splitSummaryGroupsByClient(groups)
-              : groups;
+            const displayGroups = groups;
 
             return (
               <>
@@ -728,7 +740,7 @@ const archivedSummaryGroups = (() => {
                           const rec = getSummaryRecord(group.date);
                           const isPaid = rec?.is_paid || false;
                           const isPayroll = rec?.payroll_processed || false;
-                          const isArchived = rec?.is_archived || false;
+                          const isArchived = getClientArchive(group.date, group.client_account_id)?.is_archived || false;
                           const groupClients = [...new Set(group.cycles.map(c => getClientName(c.client_account_id)).filter(n => n && n !== '—'))].join(', ');
                           return (
                             <tr key={group.row_key || group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
@@ -788,7 +800,7 @@ const archivedSummaryGroups = (() => {
                                   </button>
                                   {isAdmin && (
                                     <button
-                                      onClick={() => toggleArchiveSummary(group.date)}
+                                      onClick={() => toggleArchiveSummary(group.date, group.client_account_id)}
                                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${isArchived ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
                                       title={isArchived ? 'Unarchive' : 'Archive'}
                                     >
