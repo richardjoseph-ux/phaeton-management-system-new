@@ -7,10 +7,6 @@
       "format": "date",
       "description": "The billing received date this summary represents"
     },
-    "client_account_id": {
-      "type": "string",
-      "description": "The client this summary record belongs to (keyed together with billing_received_date)"
-    },
     "is_paid": {
       "type": "boolean",
       "default": false,
