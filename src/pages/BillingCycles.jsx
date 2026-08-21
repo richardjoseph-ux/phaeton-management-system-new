@@ -209,16 +209,19 @@ const syncClientIds = async () => {
   };
 
 const billingReceivedGroups = (() => {
+  // Group by (billing_received_date + client_account_id) so two different
+  // clients that happen to share the same billing received date are NOT merged.
   const groups = {};
   displayCycles.forEach(cycle => {
     if (cycle.billing_received_date) {
-      if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
-      groups[cycle.billing_received_date].push(cycle);
+      const clientId = cycle.client_account_id || null;
+      const key = `${cycle.billing_received_date}__${clientId || 'unknown'}`;
+      if (!groups[key]) groups[key] = { date: cycle.billing_received_date, client_account_id: clientId, cycles: [] };
+      groups[key].cycles.push(cycle);
     }
   });
-  return Object.entries(groups)
-    .map(([date, items]) => ({ date, cycles: items }))
-    .sort((a, b) => b.date.localeCompare(a.date));
+  return Object.values(groups)
+    .sort((a, b) => b.date.localeCompare(a.date) || String(a.client_account_id || '').localeCompare(String(b.client_account_id || '')));
 })();
 
   const getSummaryRecord = (date) => displaySummaryRecords.find(r => r.billing_received_date === date);
@@ -389,7 +392,7 @@ const getChequeAmountForDate = (date) => {
 const activeSummaryGroups = billingReceivedGroups
   .filter(g => !getSummaryRecord(g.date)?.is_archived)
   .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
-  .sort((a, b) => b.date.localeCompare(a.date)); 
+  .sort((a, b) => b.date.localeCompare(a.date) || String(a.client_account_id || '').localeCompare(String(b.client_account_id || '')));
 
 const archivedSummaryGroups = (() => {
   const archivedDates = displaySummaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
@@ -705,11 +708,11 @@ const archivedSummaryGroups = (() => {
                           const isPaid = rec?.is_paid || false;
                           const isPayroll = rec?.payroll_processed || false;
                           const isArchived = rec?.is_archived || false;
-                          const groupClients = [...new Set(group.cycles.map(c => getClientName(c.client_account_id)).filter(n => n && n !== '—'))].join(', ');
+                          const groupClient = getClientName(group.client_account_id);
                           return (
-                            <tr key={group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                            <tr key={`${group.date}__${group.client_account_id || 'unknown'}`} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                               <td className="px-4 py-3 font-semibold">{formatDateDisplay(group.date)}</td>
-                              <td className="px-4 py-3 text-sm text-muted-foreground">{groupClients || '—'}</td>
+                              <td className="px-4 py-3 text-sm text-muted-foreground">{groupClient || '—'}</td>
                               <td className="px-4 py-3 text-sm font-medium text-primary">
                                 {formatDateDisplay(calculatePayoutDate(group.date))}
                               </td>
