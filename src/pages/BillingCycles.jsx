@@ -223,9 +223,10 @@ const billingReceivedGroups = (() => {
 })();
 
   const getSummaryRecord = (date) => displaySummaryRecords.find(r => r.billing_received_date === date);
-  const getClientArchive = (date, clientId) => billingReceivedClientArchives.find(record =>
+  const getClientArchives = (date, clientId) => billingReceivedClientArchives.filter(record =>
     record.billing_received_date === date && record.client_account_id === clientId
   );
+  const isClientArchived = (date, clientId) => getClientArchives(date, clientId).some(record => record.is_archived);
 
   const ensureSummaryRecord = async (date) => {
     let record = getSummaryRecord(date);
@@ -247,11 +248,13 @@ const billingReceivedGroups = (() => {
   };
 
   const toggleArchiveSummary = async (date, clientId) => {
-    const record = getClientArchive(date, clientId);
-    const newVal = !(record?.is_archived);
-    if (record) {
-      await base44.entities.BillingReceivedClientArchive.update(record.id, { is_archived: newVal });
-      updateCacheItem('billingReceivedClientArchives', record.id, { is_archived: newVal });
+    const records = getClientArchives(date, clientId);
+    const newVal = !isClientArchived(date, clientId);
+    if (records.length) {
+      await Promise.all(records.map(record =>
+        base44.entities.BillingReceivedClientArchive.update(record.id, { is_archived: newVal })
+      ));
+      records.forEach(record => updateCacheItem('billingReceivedClientArchives', record.id, { is_archived: newVal }));
     } else {
       const created = await base44.entities.BillingReceivedClientArchive.create({
         billing_received_date: date,
@@ -419,14 +422,19 @@ function splitSummaryGroupsByClient(groups) {
   const filteredCyclesNoBrd = filteredCycles.filter(c => !c.billing_received_date);
 
 const activeSummaryGroups = splitSummaryGroupsByClient(billingReceivedGroups)
-  .filter(group => !getClientArchive(group.date, group.client_account_id)?.is_archived)
+  .filter(group => !isClientArchived(group.date, group.client_account_id))
   .map(group => ({ ...group, cycles: [...group.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
   .sort((a, b) => b.date.localeCompare(a.date));
 
 const activeSummaryRowCount = activeSummaryGroups.length;
 
-const archivedSummaryGroups = billingReceivedClientArchives
-  .filter(record => record.is_archived)
+const archivedSummaryGroups = Array.from(
+  new Map(
+    billingReceivedClientArchives
+      .filter(record => record.is_archived)
+      .map(record => [`${record.billing_received_date}-${record.client_account_id}`, record])
+  ).values()
+)
   .map(record => {
     const dateGroup = billingReceivedGroups.find(group => group.date === record.billing_received_date);
     const clientCycles = dateGroup?.cycles.filter(cycle => cycle.client_account_id === record.client_account_id) || [];
@@ -740,7 +748,7 @@ const archivedSummaryGroups = billingReceivedClientArchives
                           const rec = getSummaryRecord(group.date);
                           const isPaid = rec?.is_paid || false;
                           const isPayroll = rec?.payroll_processed || false;
-                          const isArchived = getClientArchive(group.date, group.client_account_id)?.is_archived || false;
+                          const isArchived = isClientArchived(group.date, group.client_account_id);
                           const groupClients = [...new Set(group.cycles.map(c => getClientName(c.client_account_id)).filter(n => n && n !== '—'))].join(', ');
                           return (
                             <tr key={group.row_key || group.date} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
