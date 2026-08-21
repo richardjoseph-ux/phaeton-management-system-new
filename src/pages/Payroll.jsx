@@ -12,7 +12,6 @@ import { formatAmount } from '@/lib/dateUtils';
 export default function Payroll() {
   const {
     billingCycles,
-    clients,
     fuelSubsidies,
     billingDeductions,
     reimbursements,
@@ -23,7 +22,6 @@ export default function Payroll() {
   const loading = isLoading.billingCycles || isLoading.fuelSubsidies || isLoading.billingDeductions || isLoading.reimbursements || isLoading.billingReceivedSummaries;
 
   const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedClientAccount, setSelectedClientAccount] = useState(null);
   const [selectedOwner, setSelectedOwner] = useState(null);
 
   const [dateTrips, setDateTrips] = useState([]);
@@ -43,8 +41,8 @@ export default function Payroll() {
 
   const activeCycles = useMemo(() => {
     if (!selectedDate) return [];
-    return billingCycles.filter(c => c.billing_received_date === selectedDate && (c.client_account_id || null) === (selectedClientAccount || null));
-  }, [selectedDate, selectedClientAccount, billingCycles]);
+    return billingCycles.filter(c => c.billing_received_date === selectedDate);
+  }, [selectedDate, billingCycles]);
 
   const dateGroups = (() => {
     const groups = {};
@@ -58,56 +56,23 @@ export default function Payroll() {
       .map(([date, cycles]) => ({ date, cycles }))
       .sort((a, b) => b.date.localeCompare(a.date))
       .filter(g => {
-        // Keep the date as long as at least one client on it is NOT payroll-processed (per-client)
-        const clientIds = [...new Set(g.cycles.map(c => c.client_account_id).filter(Boolean))];
-        if (clientIds.length === 0) {
-          return !summaryRecords.find(r => r.billing_received_date === g.date && !r.client_account_id)?.payroll_processed;
-        }
-        return clientIds.some(cid =>
-          !summaryRecords.find(r => r.billing_received_date === g.date && (r.client_account_id || null) === cid)?.payroll_processed
-        );
+        const rec = summaryRecords.find(r => r.billing_received_date === g.date);
+        return !rec?.payroll_processed;
       });
   })();
-
-  const dateClients = useMemo(() => {
-    if (!selectedDate) return [];
-    const group = dateGroups.find(g => g.date === selectedDate);
-    if (!group) return [];
-    const ids = [...new Set(group.cycles.map(c => c.client_account_id).filter(Boolean))];
-    return ids.map(id => ({ id, name: clients.find(c => c.id === id)?.client_name || '—' }));
-  }, [selectedDate, dateGroups, clients]);
-
-  const loadTripsForClient = async (group, clientId) => {
-    setLoadingTrips(true);
-    const clientCycles = group.cycles.filter(c => (c.client_account_id || null) === (clientId || null));
-    const allTrips = await Promise.all(
-      clientCycles.map(c => base44.entities.TripRecord.filter({ billing_cycle_id: c.id }, '-delivery_date', 500))
-    );
-    setDateTrips(allTrips.flat());
-    setLoadingTrips(false);
-  };
 
   const selectDate = async (date) => {
     setSelectedDate(date);
     setSelectedOwner(null);
-    setTripsPage(1);
+    setDateTrips([]);
     const group = dateGroups.find(g => g.date === date);
-    if (!group) { setSelectedClientAccount(null); setDateTrips([]); return; }
-    const ids = [...new Set(group.cycles.map(c => c.client_account_id).filter(Boolean))];
-    const firstUnprocessed = ids.find(cid =>
-      !summaryRecords.find(r => r.billing_received_date === date && (r.client_account_id || null) === cid)?.payroll_processed
+    if (!group) return;
+    setLoadingTrips(true);
+    const allTrips = await Promise.all(
+      group.cycles.map(c => base44.entities.TripRecord.filter({ billing_cycle_id: c.id }, '-delivery_date', 500))
     );
-    const firstId = firstUnprocessed || ids[0] || null;
-    setSelectedClientAccount(firstId);
-    await loadTripsForClient(group, firstId);
-  };
-
-  const switchClient = async (clientId) => {
-    setSelectedClientAccount(clientId);
-    setSelectedOwner(null);
-    setTripsPage(1);
-    const group = dateGroups.find(g => g.date === selectedDate);
-    if (group) await loadTripsForClient(group, clientId);
+    setDateTrips(allTrips.flat());
+    setLoadingTrips(false);
   };
 
   const ownerList = (() => {
@@ -147,7 +112,7 @@ export default function Payroll() {
   const tripsTotalPages = Math.ceil(displayedTrips.length / rowsPerPage);
   const paginatedTrips = displayedTrips.slice((tripsPage - 1) * rowsPerPage, tripsPage * rowsPerPage);
 
-  useEffect(() => { setTripsPage(1); }, [selectedDate, selectedOwner, selectedClientAccount]);
+  useEffect(() => { setTripsPage(1); }, [selectedDate, selectedOwner]);
 
   const tripTotals = useMemo(() => {
     return displayedTrips.reduce((acc, trip) => {
@@ -163,20 +128,18 @@ export default function Payroll() {
     }, { gross: 0, tax: 0, afterTax: 0, hidden: 0, admin: 0, fuelSubsidy: 0, net: 0 });
   }, [displayedTrips]);
 
-  const clientPlates = useMemo(() => new Set(dateTrips.map(t => t.plate_number).filter(Boolean)), [dateTrips]);
-
   const applicableDeductions = (() => {
     if (!selectedDate) return [];
-    const forDate = billingDeductions.filter(d => d.billing_received_date === selectedDate && clientPlates.has(d.plate_number));
+    const forDate = billingDeductions.filter(d => d.billing_received_date === selectedDate);
     if (selectedOwner) return forDate.filter(d => d.plate_number === selectedOwner);
     return forDate;
   })();
 
   const applicableReimbursements = useMemo(() => {
     if (!selectedDate) return [];
-    const forDate = reimbursements.filter(r => r.billing_received_date === selectedDate && clientPlates.has(r.plate_number));
+    const forDate = reimbursements.filter(r => r.billing_received_date === selectedDate);
     return selectedOwner ? forDate.filter(r => r.plate_number === selectedOwner) : forDate;
-  }, [reimbursements, selectedDate, selectedOwner, clientPlates]);
+  }, [reimbursements, selectedDate, selectedOwner]);
 
   const flatInsurance = applicableDeductions.reduce((s, d) => s + (d.insurance_charge || 0), 0);
   const flatOther = applicableDeductions.reduce((s, d) => s + (d.other_charges || 0), 0);
@@ -206,7 +169,11 @@ export default function Payroll() {
     const periodStart = dates.length ? dates[0] : null;
     const periodEnd = dates.length ? dates[dates.length - 1] : null;
 
-    const clientName = selectedClientAccount ? (clients.find(c => c.id === selectedClientAccount)?.client_name || '—') : '—';
+    const clientCounts = {};
+    displayedTrips.forEach(t => {
+      if (t.client_name) clientCounts[t.client_name] = (clientCounts[t.client_name] || 0) + 1;
+    });
+    const clientName = Object.entries(clientCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
 
     const noteParts = [];
     applicableDeductions.forEach(d => {
@@ -279,7 +246,7 @@ export default function Payroll() {
     <div className="p-6">
       <PageHeader
         title="Payroll Report"
-        subtitle="Select a billing received date, then a client and owner / driver"
+        subtitle="Select a billing received date, then filter by owner / driver"
         actions={
           selectedDate && (
             <div className="flex gap-2">
@@ -314,22 +281,6 @@ export default function Payroll() {
                 </SelectContent>
               </Select>
             </div>
-
-            {selectedDate && dateClients.length > 1 && (
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Client</p>
-                <Select value={selectedClientAccount || '__all__'} onValueChange={v => switchClient(v === '__all__' ? null : v)} disabled={loadingTrips}>
-                  <SelectTrigger className="w-64">
-                    <SelectValue placeholder="Select client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dateClients.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             {selectedDate && (
               <div className="space-y-1">

@@ -7,19 +7,15 @@
       "format": "date",
       "description": "The billing received date this summary represents"
     },
-    "client_account_id": {
-      "type": "string",
-      "description": "Client account this summary is scoped to (per-client status)"
-    },
     "is_paid": {
       "type": "boolean",
       "default": false,
-      "description": "Whether this client's billing received date has been paid"
+      "description": "Whether this billing received date has been paid"
     },
     "payroll_processed": {
       "type": "boolean",
       "default": false,
-      "description": "Whether payroll has been processed for this client on this billing received date"
+      "description": "Whether payroll has been processed for this billing received date"
     },
     "is_archived": {
       "type": "boolean",

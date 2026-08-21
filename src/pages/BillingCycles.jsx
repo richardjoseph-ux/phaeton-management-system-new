@@ -224,27 +224,19 @@ const billingReceivedGroups = (() => {
     .sort((a, b) => b.date.localeCompare(a.date) || String(a.client_account_id || '').localeCompare(String(b.client_account_id || '')));
 })();
 
-  const getSummaryRecord = (date, clientId) => displaySummaryRecords.find(r =>
-    r.billing_received_date === date && (r.client_account_id || null) === (clientId || null)
-  );
+  const getSummaryRecord = (date) => displaySummaryRecords.find(r => r.billing_received_date === date);
 
-  const ensureSummaryRecord = async (date, clientId) => {
-    let record = getSummaryRecord(date, clientId);
+  const ensureSummaryRecord = async (date) => {
+    let record = getSummaryRecord(date);
     if (!record) {
-      record = await base44.entities.BillingReceivedSummary.create({
-        billing_received_date: date,
-        client_account_id: clientId || null,
-        is_paid: false,
-        payroll_processed: false,
-        is_archived: false,
-      });
+      record = await base44.entities.BillingReceivedSummary.create({ billing_received_date: date, is_paid: false, payroll_processed: false, is_archived: false });
       addCacheItem('billingReceivedSummaries', record, false);
     }
     return record;
   };
 
-  const toggleSummaryField = async (date, clientId, field) => {
-    const record = await ensureSummaryRecord(date, clientId);
+  const toggleSummaryField = async (date, field) => {
+    const record = await ensureSummaryRecord(date);
     const newValue = !record[field];
     await base44.entities.BillingReceivedSummary.update(record.id, { [field]: newValue });
     updateCacheItem('billingReceivedSummaries', record.id, { [field]: newValue });
@@ -253,8 +245,8 @@ const billingReceivedGroups = (() => {
     }
   };
 
-  const toggleArchiveSummary = async (date, clientId) => {
-    const record = await ensureSummaryRecord(date, clientId);
+  const toggleArchiveSummary = async (date) => {
+    const record = await ensureSummaryRecord(date);
     const newVal = !record.is_archived;
     await base44.entities.BillingReceivedSummary.update(record.id, { is_archived: newVal });
     updateCacheItem('billingReceivedSummaries', record.id, { is_archived: newVal });
@@ -353,11 +345,10 @@ const handleImport = async (event) => {
     setTripsOpen(true);
   };
 
-const getChequeAmountForDate = (date, clientId) => {
-  const cyclesForDate = cycles.filter(c => c.billing_received_date === date && (c.client_account_id || null) === (clientId || null));
+const getChequeAmountForDate = (date) => {
+  const cyclesForDate = cycles.filter(c => c.billing_received_date === date);
   const cycleIds = cyclesForDate.map(c => c.id);
   const relevantTrips = allTrips.filter(t => cycleIds.includes(t.billing_cycle_id));
-  const plates = new Set(relevantTrips.map(t => t.plate_number).filter(Boolean));
   const baseTripGrossTotal = relevantTrips.reduce((sum, t) => sum + (t.gross_rate || 0), 0);
   const baseTripTaxTotal = relevantTrips.reduce((sum, t) => sum + (t.tax_deduction || 0), 0);
   const relevantOtherCharges = otherCharges.filter(oc => oc.billing_received_date === date);
@@ -374,7 +365,7 @@ const getChequeAmountForDate = (date, clientId) => {
   const taxOnDemurrage = chargeTotals.demurrage * 0.02;
   const totalTax = baseTripTaxTotal + taxOnDemurrage;
   const totalGrossAmount = baseTripGrossTotal + chargeTotals.demurrage + chargeTotals.others;
-  const relevantDeductions = deductions.filter(d => d.billing_received_date === date && plates.has(d.plate_number));
+  const relevantDeductions = deductions.filter(d => d.billing_received_date === date);
   const totalOtherDeductions = relevantDeductions.reduce((sum, d) => sum + (d.other_charges || 0), 0);
   return totalGrossAmount - totalTax - totalOtherDeductions;
 };
@@ -399,25 +390,22 @@ const getChequeAmountForDate = (date, clientId) => {
   const filteredCyclesNoBrd = filteredCycles.filter(c => !c.billing_received_date);
 
 const activeSummaryGroups = billingReceivedGroups
-  .filter(g => !getSummaryRecord(g.date, g.client_account_id)?.is_archived)
+  .filter(g => !getSummaryRecord(g.date)?.is_archived)
   .map(g => ({ ...g, cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
   .sort((a, b) => b.date.localeCompare(a.date) || String(a.client_account_id || '').localeCompare(String(b.client_account_id || '')));
 
 const archivedSummaryGroups = (() => {
+  const archivedDates = displaySummaryRecords.filter(r => r.is_archived).map(r => r.billing_received_date);
   const groups = {};
-  billingReceivedGroups.forEach(g => {
-    const rec = getSummaryRecord(g.date, g.client_account_id);
-    if (rec?.is_archived) {
-      const key = `${g.date}__${g.client_account_id || 'unknown'}`;
-      groups[key] = {
-        date: g.date,
-        client_account_id: g.client_account_id,
-        cycles: [...g.cycles].sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)),
-      };
+  displayCycles.filter(c => c.is_archived || archivedDates.includes(c.billing_received_date)).forEach(cycle => {
+    if (cycle.billing_received_date && archivedDates.includes(cycle.billing_received_date)) {
+      if (!groups[cycle.billing_received_date]) groups[cycle.billing_received_date] = [];
+      groups[cycle.billing_received_date].push(cycle);
     }
   });
-  return Object.values(groups)
-    .sort((a, b) => b.date.localeCompare(a.date) || String(a.client_account_id || '').localeCompare(String(b.client_account_id || '')));
+  return Object.entries(groups)
+    .map(([date, items]) => ({ date, cycles: items.sort((a, b) => a.cycle_name.localeCompare(b.cycle_name)) }))
+    .sort((a, b) => b.date.localeCompare(a.date));
 })();
 
   useEffect(() => { setStmtPage(1); setStmtNoBrdPage(1); setStmtClientFilter('all'); }, [stmtTab]);
@@ -716,7 +704,7 @@ const archivedSummaryGroups = (() => {
                       </thead>
                       <tbody>
                         {groups.slice((summaryPage - 1) * rowsPerPage, summaryPage * rowsPerPage).map(group => {
-                          const rec = getSummaryRecord(group.date, group.client_account_id);
+                          const rec = getSummaryRecord(group.date);
                           const isPaid = rec?.is_paid || false;
                           const isPayroll = rec?.payroll_processed || false;
                           const isArchived = rec?.is_archived || false;
@@ -732,11 +720,11 @@ const archivedSummaryGroups = (() => {
                                 {group.cycles.map(c => c.cycle_name).join(', ')}
                               </td>
                               <td className="px-4 py-3 text-sm">{group.cycles.length}</td>
-                              <td className="px-4 py-3 text-sm font-semibold text-amber-700">₱{getChequeAmountForDate(group.date, group.client_account_id).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-4 py-3 text-sm font-semibold text-amber-700">₱{getChequeAmountForDate(group.date).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="px-4 py-3">
                                 {isAdmin ? (
                                   <button
-                                    onClick={() => !isArchived && toggleSummaryField(group.date, group.client_account_id, 'is_paid')}
+                                    onClick={() => !isArchived && toggleSummaryField(group.date, 'is_paid')}
                                     disabled={isArchived}
                                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPaid ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
                                     title={isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
@@ -754,7 +742,7 @@ const archivedSummaryGroups = (() => {
                               <td className="px-4 py-3">
                                 {isAdmin ? (
                                   <button
-                                    onClick={() => !isArchived && toggleSummaryField(group.date, group.client_account_id, 'payroll_processed')}
+                                    onClick={() => !isArchived && toggleSummaryField(group.date, 'payroll_processed')}
                                     disabled={isArchived}
                                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPayroll ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
                                     title={isPayroll ? 'Mark as Not Processed' : 'Mark as Processed'}
@@ -779,7 +767,7 @@ const archivedSummaryGroups = (() => {
                                   </button>
                                   {isAdmin && (
                                     <button
-                                      onClick={() => toggleArchiveSummary(group.date, group.client_account_id)}
+                                      onClick={() => toggleArchiveSummary(group.date)}
                                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${isArchived ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
                                       title={isArchived ? 'Unarchive' : 'Archive'}
                                     >
