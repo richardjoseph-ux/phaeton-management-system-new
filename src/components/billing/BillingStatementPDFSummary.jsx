@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useAppData } from '@/lib/AppDataContext';
 import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
 import { generateSummaryStatementPDF, LOGO_URL } from '@/lib/summaryStatementPdf';
+import { exportSummaryExcel } from '@/lib/accountingExcel';
 
 const COMPANY = {
   name: 'Phaeton Trucking Services',
@@ -96,6 +97,16 @@ export default function BillingStatementPDFSummary() {
         client: selectedClient,
         preparedBy: user?.full_name,
       });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleExcelExport = async () => {
+    if (!hasSelection) return;
+    setGenerating(true);
+    try {
+      exportSummaryExcel({ cycles: selectedCycles, trips: allTrips, client: selectedClient, soaDate, periodCovered });
     } finally {
       setGenerating(false);
     }
@@ -279,7 +290,11 @@ export default function BillingStatementPDFSummary() {
       </section>
 
       {/* Download */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={handleExcelExport} disabled={generating || !hasSelection} size="lg">
+          {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+          {generating ? 'Generating...' : 'Export to Excel'}
+        </Button>
         <Button onClick={handleDownload} disabled={generating || !hasSelection} size="lg">
           {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
           {generating ? 'Generating...' : 'Download PDF'}

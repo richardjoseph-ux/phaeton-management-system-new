@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useAppData } from '@/lib/AppDataContext';
 import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
 import { generateBillingStatementPDF, LOGO_URL } from '@/lib/billingStatementPdf';
+import { exportStatementExcel } from '@/lib/accountingExcel';
 
 const COMPANY = {
   name: 'Phaeton Trucking Services',
@@ -72,6 +73,16 @@ export default function BillingStatementPDF() {
         preparedBy: user?.full_name,
         warehouseLabel: 'Service Type',
       });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleExcelExport = async () => {
+    if (!selectedCycle) return;
+    setGenerating(true);
+    try {
+      exportStatementExcel({ title: 'Top Sheet (Shuttle)', cycle: selectedCycle, client: selectedClient, trips, soaDate, periodCovered, serviceLabel: 'Service Type', includeDr: false });
     } finally {
       setGenerating(false);
     }
@@ -211,7 +222,11 @@ export default function BillingStatementPDF() {
       </section>
 
       {/* Download */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={handleExcelExport} disabled={generating || !hasSelection || !selectedCycle} size="lg">
+          {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+          {generating ? 'Generating...' : 'Export to Excel'}
+        </Button>
         <Button onClick={handleDownload} disabled={generating || !hasSelection || !selectedCycle} size="lg">
           {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
           {generating ? 'Generating...' : 'Download PDF'}

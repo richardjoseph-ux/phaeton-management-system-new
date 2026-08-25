@@ -9,6 +9,7 @@ import { Download, Loader2, Plus, Trash2, FileText, ArrowLeft, Save } from 'luci
 import { useAuth } from '@/lib/AuthContext';
 import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
 import { generateQuotationPDF, LOGO_URL } from '@/lib/quotationPdf';
+import { exportQuotationExcel } from '@/lib/accountingExcel';
 
 const COMPANY = {
   name: 'Phaeton Trucking Services',
@@ -136,6 +137,15 @@ export default function Quotation() {
     }
   };
 
+  const handleExcelExport = async () => {
+    setExporting(true);
+    try {
+      exportQuotationExcel(form);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // ===== LIST VIEW =====
   if (view === 'list') {
     return (
@@ -201,6 +211,9 @@ export default function Quotation() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleSave} disabled={saving || !form.quote_number}>
             {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />} Save Draft
+          </Button>
+          <Button variant="outline" onClick={handleExcelExport} disabled={exporting || !form.quote_number}>
+            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />} Export to Excel
           </Button>
           <Button onClick={handleExport} disabled={exporting}>
             {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />} Export PDF
