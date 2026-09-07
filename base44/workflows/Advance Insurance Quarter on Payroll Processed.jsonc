@@ -1,0 +1,37 @@
+{
+  "name": "Advance Insurance Quarter on Payroll Processed",
+  "description": "",
+  "trigger": {
+    "condition": "${ ((.trigger.changed_fields | index(\"payroll_processed\") != null) and (.trigger.data.payroll_processed == true)) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "BillingReceivedSummary"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "advance_insurance_quarter_on_payroll_processed",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processInsuranceAfterPayroll",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "processInsuranceAfterPayroll"
+  }
+}
