@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Download, Loader2, Plus, Trash2, FileText, ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { formatDateDisplay, formatAmount } from '@/lib/dateUtils';
@@ -68,6 +69,7 @@ export default function Quotation() {
       line_items: [blankRow()],
       terms_and_conditions: '',
       prepared_by: user?.full_name || '',
+      show_grand_total: true,
       status: 'draft',
     });
     setView('edit');
@@ -77,6 +79,7 @@ export default function Quotation() {
     setForm({
       ...q,
       line_items: (q.line_items && q.line_items.length) ? q.line_items.map((it) => ({ ...it })) : [blankRow()],
+      show_grand_total: q.show_grand_total !== false,
     });
     setView('edit');
   };
@@ -112,6 +115,7 @@ export default function Quotation() {
         line_items: form.line_items,
         terms_and_conditions: form.terms_and_conditions,
         prepared_by: form.prepared_by,
+        show_grand_total: form.show_grand_total !== false,
         status: form.status,
       };
       if (form.id) {
@@ -382,11 +386,21 @@ export default function Quotation() {
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-4 border-t bg-muted/20 flex justify-end">
-          <div className="w-64 flex items-center justify-between bg-primary text-white px-4 py-2.5 rounded font-bold">
-            <span className="text-sm">GRAND TOTAL</span>
-            <span>₱{formatAmount(grandTotal)}</span>
+        <div className="px-5 py-4 border-t bg-muted/20 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-grand-total"
+              checked={form.show_grand_total !== false}
+              onCheckedChange={(checked) => update('show_grand_total', checked)}
+            />
+            <Label htmlFor="show-grand-total" className="text-sm">Show Grand Total</Label>
           </div>
+          {form.show_grand_total !== false && (
+            <div className="w-64 flex items-center justify-between bg-primary text-white px-4 py-2.5 rounded font-bold">
+              <span className="text-sm">GRAND TOTAL</span>
+              <span>₱{formatAmount(grandTotal)}</span>
+            </div>
+          )}
         </div>
       </section>
 

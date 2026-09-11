@@ -126,8 +126,12 @@ export function exportQuotationExcel(quote) {
   const rows = companyHeader(columns, 'QUOTATION');
   rows.push(['Quote No.', quote.quote_number || '—', '', 'Quote Date', formatDateDisplay(quote.quote_date)], ['Validity', quote.validity || '—'], [], ['QUOTED FOR'], [quote.quoted_for_name || '—'], [quote.quoted_for_address || '—'], [], ['SERVICE ITEMS'], ['Service / Route', 'Truck Type', 'Trip Type', 'Trips', 'Rate', 'Total']);
   items.forEach(item => rows.push([item.description || '—', item.truck_type || '—', item.trip_type || '—', money(item.num_trips), money(item.rate), money(item.row_total)]));
-  const totalRow = 16 + items.length;
-  rows.push([], ['GRAND TOTAL', '', '', '', '', items.reduce((sum, item) => sum + money(item.row_total), 0)], [], ['TERMS & CONDITIONS'], [quote.terms_and_conditions || '—'], [], ['Prepared & Certified By:', quote.prepared_by || '—', '', 'Confirmed By:'], ['____________________________', '', '', '____________________________'], ['Date:', '', '', 'Date: ______________']);
-  const merges = [...headerMerges(columns), { s: { r: 7, c: 1 }, e: { r: 7, c: 2 } }, { s: { r: 8, c: 1 }, e: { r: 8, c: 5 } }, ...[10, 11, 12].map(r => ({ s: { r, c: 0 }, e: { r, c: 5 } })), { s: { r: 14, c: 0 }, e: { r: 14, c: 5 } }, { s: { r: totalRow + 1, c: 0 }, e: { r: totalRow + 1, c: 4 } }, { s: { r: totalRow + 3, c: 0 }, e: { r: totalRow + 3, c: 5 } }, { s: { r: totalRow + 4, c: 0 }, e: { r: totalRow + 4, c: 5 } }];
+  const showGrandTotal = quote.show_grand_total !== false;
+  const afterItemsRow = 16 + items.length;
+  rows.push([]);
+  if (showGrandTotal) rows.push(['GRAND TOTAL', '', '', '', '', items.reduce((sum, item) => sum + money(item.row_total), 0)]);
+  rows.push([], ['TERMS & CONDITIONS'], [quote.terms_and_conditions || '—'], [], ['Prepared & Certified By:', quote.prepared_by || '—', '', 'Confirmed By:'], ['____________________________', '', '', '____________________________'], ['Date:', '', '', 'Date: ______________']);
+  const termsTitleRow = afterItemsRow + (showGrandTotal ? 3 : 2);
+  const merges = [...headerMerges(columns), { s: { r: 7, c: 1 }, e: { r: 7, c: 2 } }, { s: { r: 8, c: 1 }, e: { r: 8, c: 5 } }, ...[10, 11, 12].map(r => ({ s: { r, c: 0 }, e: { r, c: 5 } })), { s: { r: 14, c: 0 }, e: { r: 14, c: 5 } }, ...(showGrandTotal ? [{ s: { r: afterItemsRow + 1, c: 0 }, e: { r: afterItemsRow + 1, c: 4 } }] : []), { s: { r: termsTitleRow, c: 0 }, e: { r: termsTitleRow, c: 5 } }, { s: { r: termsTitleRow + 1, c: 0 }, e: { r: termsTitleRow + 1, c: 5 } }];
   makeSheet(rows, columns, [48, 18, 18, 12, 18, 18], merges, `Quotation_${safeName(quote.quote_number)}.xlsx`);
 }

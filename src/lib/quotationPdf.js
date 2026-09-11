@@ -57,6 +57,7 @@ export async function generateQuotationPDF(payload) {
     line_items = [],
     terms_and_conditions = '',
     prepared_by,
+    show_grand_total = true,
     status = 'draft',
   } = payload || {};
 
@@ -231,19 +232,21 @@ export async function generateQuotationPDF(payload) {
   y = rowY + 6;
 
   // ===== GRAND TOTAL =====
-  const grandTotal = line_items.reduce((s, it) => s + (Number(it.row_total) || 0), 0);
-  const gtW = 82;
-  const gtX = mR - gtW;
-  const gtH = 9;
-  if (y + gtH > PAGE.h - PAGE.margin - 30) { doc.addPage(); y = PAGE.margin; }
-  doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
-  doc.rect(gtX, y, gtW, gtH, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('GRAND TOTAL', gtX + 4, y + 6);
-  doc.text(peso(grandTotal), gtX + gtW - 4, y + 6, { align: 'right' });
-  y += gtH + 10;
+  if (show_grand_total !== false) {
+    const grandTotal = line_items.reduce((s, it) => s + (Number(it.row_total) || 0), 0);
+    const gtW = 82;
+    const gtX = mR - gtW;
+    const gtH = 9;
+    if (y + gtH > PAGE.h - PAGE.margin - 30) { doc.addPage(); y = PAGE.margin; }
+    doc.setFillColor(NAVY.r, NAVY.g, NAVY.b);
+    doc.rect(gtX, y, gtW, gtH, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('GRAND TOTAL', gtX + 4, y + 6);
+    doc.text(peso(grandTotal), gtX + gtW - 4, y + 6, { align: 'right' });
+    y += gtH + 10;
+  }
 
   // ===== TERMS & CONDITIONS =====
   if (terms_and_conditions && terms_and_conditions.trim()) {

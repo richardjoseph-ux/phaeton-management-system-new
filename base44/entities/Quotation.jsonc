@@ -69,6 +69,11 @@
       "type": "string",
       "description": "Name of the user who prepared the quotation"
     },
+    "show_grand_total": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to display the grand total in the quotation and exports"
+    },
     "status": {
       "type": "string",
       "enum": [
