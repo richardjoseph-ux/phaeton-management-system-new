@@ -12,6 +12,14 @@
     "is_archived": {
       "type": "boolean",
       "default": false
+    },
+    "is_paid": {
+      "type": "boolean",
+      "default": false
+    },
+    "payroll_processed": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

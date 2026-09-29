@@ -222,27 +222,31 @@ const billingReceivedGroups = (() => {
     .sort((a, b) => b.date.localeCompare(a.date));
 })();
 
-  const getSummaryRecord = (date) => displaySummaryRecords.find(r => r.billing_received_date === date);
   const getClientArchives = (date, clientId) => billingReceivedClientArchives.filter(record =>
     record.billing_received_date === date && record.client_account_id === clientId
   );
+  const getClientStatus = (date, clientId) => getClientArchives(date, clientId)[0];
   const isClientArchived = (date, clientId) => getClientArchives(date, clientId).some(record => record.is_archived);
 
-  const ensureSummaryRecord = async (date) => {
-    let record = getSummaryRecord(date);
-    if (!record) {
-      record = await base44.entities.BillingReceivedSummary.create({ billing_received_date: date, is_paid: false, payroll_processed: false, is_archived: false });
-      addCacheItem('billingReceivedSummaries', record, false);
-    }
-    return record;
-  };
+  const toggleClientSummaryField = async (date, clientId, field) => {
+    const record = getClientStatus(date, clientId);
+    const newValue = !(record?.[field] || false);
 
-  const toggleSummaryField = async (date, field) => {
-    const record = await ensureSummaryRecord(date);
-    const newValue = !record[field];
-    await base44.entities.BillingReceivedSummary.update(record.id, { [field]: newValue });
-    updateCacheItem('billingReceivedSummaries', record.id, { [field]: newValue });
-    if (field === 'payroll_processed' && newValue === true) {
+    if (record) {
+      await base44.entities.BillingReceivedClientArchive.update(record.id, { [field]: newValue });
+      updateCacheItem('billingReceivedClientArchives', record.id, { [field]: newValue });
+    } else {
+      const created = await base44.entities.BillingReceivedClientArchive.create({
+        billing_received_date: date,
+        client_account_id: clientId,
+        is_archived: false,
+        is_paid: field === 'is_paid' ? newValue : false,
+        payroll_processed: field === 'payroll_processed' ? newValue : false,
+      });
+      addCacheItem('billingReceivedClientArchives', created, false);
+    }
+
+    if (field === 'payroll_processed' && newValue) {
       await base44.functions.invoke('processInsuranceAfterPayroll', { billing_received_date: date });
     }
   };
@@ -745,9 +749,9 @@ const archivedSummaryGroups = Array.from(
                       </thead>
                       <tbody>
                         {displayGroups.slice((summaryPage - 1) * rowsPerPage, summaryPage * rowsPerPage).map(group => {
-                          const rec = getSummaryRecord(group.date);
-                          const isPaid = rec?.is_paid || false;
-                          const isPayroll = rec?.payroll_processed || false;
+                          const clientStatus = getClientStatus(group.date, group.client_account_id);
+                          const isPaid = clientStatus?.is_paid || false;
+                          const isPayroll = clientStatus?.payroll_processed || false;
                           const isArchived = isClientArchived(group.date, group.client_account_id);
                           const groupClients = [...new Set(group.cycles.map(c => getClientName(c.client_account_id)).filter(n => n && n !== '—'))].join(', ');
                           return (
@@ -765,7 +769,7 @@ const archivedSummaryGroups = Array.from(
                               <td className="px-4 py-3">
                                 {isAdmin ? (
                                   <button
-                                    onClick={() => !isArchived && toggleSummaryField(group.date, 'is_paid')}
+                                    onClick={() => !isArchived && toggleClientSummaryField(group.date, group.client_account_id, 'is_paid')}
                                     disabled={isArchived}
                                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPaid ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
                                     title={isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
@@ -783,7 +787,7 @@ const archivedSummaryGroups = Array.from(
                               <td className="px-4 py-3">
                                 {isAdmin ? (
                                   <button
-                                    onClick={() => !isArchived && toggleSummaryField(group.date, 'payroll_processed')}
+                                    onClick={() => !isArchived && toggleClientSummaryField(group.date, group.client_account_id, 'payroll_processed')}
                                     disabled={isArchived}
                                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${isPayroll ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-60 disabled:cursor-not-allowed`}
                                     title={isPayroll ? 'Mark as Not Processed' : 'Mark as Processed'}
