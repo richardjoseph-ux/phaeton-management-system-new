@@ -72,6 +72,7 @@ function ClientRouteTable({ client }) {
         'Code': route.delivery_code,
         'Gross (₱)': gross,
         'Tax (2%) (₱)': -tax,
+        'After Tax (₱)': afterTax,
         [`Hidden (${hiddenFeePercentage}%) (₱)`]: -hidden,
         'Admin (6%) (₱)': -admin,
         'Net (₱)': net
@@ -163,6 +164,7 @@ function ClientRouteTable({ client }) {
                 <th className="text-left px-2 py-2 font-semibold text-muted-foreground">Code</th>
                 <th className="text-right px-2 py-2 font-semibold text-muted-foreground">Gross</th>
                 <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-red-600">Tax(2%)</th>
+                <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-primary">After Tax</th>
                 <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-orange-600">Hidden({hiddenFeePercentage}%)</th>
                 <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-amber-600">Admin(6%)</th>
                 <th className="text-right px-2 py-2 font-semibold text-muted-foreground text-emerald-600">Net</th>
@@ -183,6 +185,7 @@ function ClientRouteTable({ client }) {
                     <td className="px-2 py-2 font-mono">{route.delivery_code}</td>
                     <td className="px-2 py-2 text-right font-medium">₱{gross.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     <td className="px-2 py-2 text-right text-red-600">-₱{tax.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    <td className="px-2 py-2 text-right font-medium text-primary">₱{afterTax.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     <td className="px-2 py-2 text-right text-orange-600">-₱{hidden.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     <td className="px-2 py-2 text-right text-amber-600">-₱{admin.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     <td className="px-2 py-2 text-right font-bold text-emerald-700">₱{net.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
