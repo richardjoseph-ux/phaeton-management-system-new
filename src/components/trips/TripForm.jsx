@@ -618,10 +618,11 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
             return (
               <div className="col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs font-semibold text-blue-800 mb-2">Rate Breakdown</p>
-                <div className="grid grid-cols-4 gap-2 text-xs text-blue-700">
+                <div className="grid grid-cols-5 gap-2 text-xs text-blue-700">
                   <div><span className="text-blue-500">Gross Rate</span><br />₱{gross.toFixed(2)}</div>
                   <div><span className="text-blue-500">Tax ({taxPercent}%)</span><br />-₱{breakdownFees.tax_deduction.toFixed(2)}</div>
                   <div><span className="text-blue-500">Hidden Fee ({hiddenPercent}%)</span><br />-₱{breakdownFees.hidden_fee.toFixed(2)}</div>
+                  <div><span className="text-blue-500">Admin Fee (6%)</span><br />-₱{breakdownFees.admin_fee.toFixed(2)}</div>
                   <div><span className="text-blue-800 font-semibold">Net Payroll ({netPercent.toFixed(0)}%)</span><br /><span className="font-bold">₱{breakdownFees.net_payroll.toFixed(2)}</span></div>
                 </div>
               </div>
