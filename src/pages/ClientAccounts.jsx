@@ -22,6 +22,8 @@ function ClientRouteTable({ client }) {
   const [activeTab, setActiveTab] = useState(pickupLocations[0] || '');
   const [activeTruck, setActiveTruck] = useState('AUV');
   const [routeSearch, setRouteSearch] = useState('');
+  const [routePage, setRoutePage] = useState(1);
+  const routesPerPage = 10;
 
   const processedRoutes = useMemo(() => {
     if (!activeTab) return [];
@@ -48,6 +50,13 @@ function ClientRouteTable({ client }) {
       a.delivery_location.localeCompare(b.delivery_location)
     );
   }, [client.routes, activeTab, activeTruck, routeSearch]);
+
+  const routePageCount = Math.max(1, Math.ceil(processedRoutes.length / routesPerPage));
+  const paginatedRoutes = processedRoutes.slice((routePage - 1) * routesPerPage, routePage * routesPerPage);
+
+  useEffect(() => {
+    setRoutePage(1);
+  }, [activeTab, activeTruck, routeSearch]);
 
   const hiddenFeePercentage = getTruckTypeFeePercentage(client, activeTab, activeTruck);
 
@@ -210,7 +219,7 @@ function ClientRouteTable({ client }) {
               </tr>
             </thead>
             <tbody>
-              {processedRoutes.map((route, idx) => {
+              {paginatedRoutes.map((route, idx) => {
                 const gross = Number(route.rates?.[activeTruck] || 0);
                 const tax = gross * 0.02;
                 const afterTax = gross - tax;
@@ -234,6 +243,29 @@ function ClientRouteTable({ client }) {
             </tbody>
           </table>
         </div>
+        {processedRoutes.length > routesPerPage && (
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={routePage === 1}
+              onClick={() => setRoutePage(page => page - 1)}
+            >
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">Page {routePage} of {routePageCount}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={routePage === routePageCount}
+              onClick={() => setRoutePage(page => page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
