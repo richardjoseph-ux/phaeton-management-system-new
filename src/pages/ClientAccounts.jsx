@@ -190,8 +190,8 @@ function ClientRouteTable({ client }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="standard">Export to {activeTab} ({activeTruck})</SelectItem>
-                <SelectItem value="subcon">Export Subcon</SelectItem>
+                <SelectItem value="standard">PHAETON RATE (EXCEL)</SelectItem>
+                <SelectItem value="subcon">SUBCON RATE (EXCEL)</SelectItem>
               </SelectContent>
             </Select>
             <Button
