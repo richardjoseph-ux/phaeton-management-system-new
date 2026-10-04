@@ -87,7 +87,7 @@ export default function UserManagement() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                {['User', 'Email', 'Role', 'Status', 'Joined'].map(h => (
+                {['User', 'Email', 'Role', 'Status', 'Joined', 'Last Access'].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -145,6 +145,9 @@ export default function UserManagement() {
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {user.created_date ? new Date(user.created_date).toLocaleDateString() : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                    {user.last_access ? new Date(user.last_access).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
                   </td>
                 </tr>
               ))}

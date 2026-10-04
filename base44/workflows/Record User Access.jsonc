@@ -1,0 +1,41 @@
+{
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "app_user_auth",
+      "events": [
+        "signup",
+        "login"
+      ]
+    }
+  },
+  "name": "Record User Access",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "record_user_access",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "record_access": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "recordUserAccess",
+            "args": {
+              "user_id": "${ .trigger.user_id }",
+              "occurred_at": "${ .trigger.occurred_at }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Record user access",
+            "description": "Save latest sign-in time"
+          }
+        }
+      }
+    ]
+  },
+  "description": "Stores the latest successful sign-in time for each app user"
+}

@@ -17,6 +17,10 @@
         "Inactive"
       ],
       "default": "Active"
+    },
+    "last_access": {
+      "type": "string",
+      "format": "date-time"
     }
   }
 }
