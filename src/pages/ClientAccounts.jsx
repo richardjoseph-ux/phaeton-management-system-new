@@ -93,6 +93,34 @@ function ClientRouteTable({ client }) {
     XLSX.writeFile(workbook, filename);
   };
 
+  const handleExportSubconExcel = () => {
+    if (processedRoutes.length === 0) return;
+
+    const excelRows = processedRoutes.map(route => {
+      const originalGross = Number(route.rates?.[activeTruck] || 0);
+      const afterTax = originalGross * 0.98;
+      const hidden = afterTax * (hiddenFeePercentage / 100);
+      const gross = afterTax - hidden;
+      const admin = afterTax * 0.06;
+      const net = gross - admin;
+
+      return {
+        'Destination': route.delivery_location,
+        'Code': route.delivery_code,
+        'Gross (₱)': gross,
+        'Admin Fee (₱)': -admin,
+        'Net (₱)': net
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `${activeTruck} Subcon`);
+    const sanitizedClientName = client.client_name?.replace(/[^a-z0-9]/gi, '_');
+    const sanitizedTabName = activeTab.replace(/[^a-z0-9]/gi, '_');
+    XLSX.writeFile(workbook, `${sanitizedClientName}_${sanitizedTabName}_${activeTruck}_Subcon.xlsx`);
+  };
+
   return (
     <div className="border-t bg-muted/20">
       <div className="px-5 py-4 border-b">
@@ -145,15 +173,26 @@ function ClientRouteTable({ client }) {
             />
           </div>
           
-          <Button 
-            onClick={handleExportExcel} 
-            variant="outline" 
-            size="sm" 
-            className="h-8 text-xs w-full sm:w-auto"
-            disabled={processedRoutes.length === 0}
-          >
-            <Download className="w-3.5 h-3.5 mr-1.5" /> Export {activeTab} ({activeTruck})
-          </Button>
+          <div className="flex w-full gap-2 sm:w-auto">
+            <Button 
+              onClick={handleExportExcel} 
+              variant="outline" 
+              size="sm" 
+              className="h-8 flex-1 text-xs sm:flex-none"
+              disabled={processedRoutes.length === 0}
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5" /> Export {activeTab} ({activeTruck})
+            </Button>
+            <Button 
+              onClick={handleExportSubconExcel} 
+              variant="outline" 
+              size="sm" 
+              className="h-8 flex-1 text-xs sm:flex-none"
+              disabled={processedRoutes.length === 0}
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5" /> Export Subcon
+            </Button>
+          </div>
         </div>
         
         <div className="overflow-x-auto">
