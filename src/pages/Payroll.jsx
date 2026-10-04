@@ -357,7 +357,7 @@ export default function Payroll() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-muted/50">
-                          {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Del. Code', 'Del. Date', 'Gross', 'Tax (2%)', 'After Tax', 'Hidden (4%)', 'Admin (6%)', 'Fuel Sub', 'Net Payroll'].map(h => (
+                          {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Del. Code', 'Del. Date', 'Gross', 'Tax', 'After Tax', 'Hidden', 'Admin', 'Fuel Sub', 'Net Payroll'].map(h => (
                             <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
