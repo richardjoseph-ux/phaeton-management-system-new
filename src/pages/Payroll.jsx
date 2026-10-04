@@ -357,7 +357,7 @@ export default function Payroll() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b bg-muted/50">
-                          {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Del. Code', 'Del. Date', 'Gross', 'Tax (2%)', 'Hidden (4%)', 'Admin (6%)', 'Fuel Sub', 'Net Payroll'].map(h => (
+                          {['Plate #', 'Owner / Driver', 'Truck', 'Client', 'Route', 'Del. Code', 'Del. Date', 'Gross', 'Tax (2%)', 'After Tax', 'Hidden (4%)', 'Admin (6%)', 'Fuel Sub', 'Net Payroll'].map(h => (
                             <th key={h} className="text-left px-3 py-3 font-semibold text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
@@ -381,6 +381,7 @@ export default function Payroll() {
                               <td className="px-3 py-3 text-sm whitespace-nowrap">{formatDateDisplay(trip.delivery_date)}</td>
                               <td className="px-3 py-3 text-right font-semibold whitespace-nowrap">₱{t.gross.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="px-3 py-3 text-right text-red-600 whitespace-nowrap">-₱{t.tax.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="px-3 py-3 text-right font-semibold text-blue-700 whitespace-nowrap">₱{(t.gross - t.tax).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="px-3 py-3 text-right text-orange-600 whitespace-nowrap">-₱{t.hidden.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="px-3 py-3 text-right text-amber-600 whitespace-nowrap">-₱{t.admin.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                               <td className="px-3 py-3 text-right text-green-600 whitespace-nowrap">{t.fuelSubsidy > 0 ? `+₱${t.fuelSubsidy.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
