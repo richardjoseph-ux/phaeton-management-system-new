@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useAppData } from '@/lib/AppDataContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Pencil, Building2, ChevronDown, ChevronUp, Trash2, Download } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -23,6 +24,7 @@ function ClientRouteTable({ client }) {
   const [activeTruck, setActiveTruck] = useState('AUV');
   const [routeSearch, setRouteSearch] = useState('');
   const [routePage, setRoutePage] = useState(1);
+  const [exportType, setExportType] = useState('standard');
   const routesPerPage = 10;
 
   const processedRoutes = useMemo(() => {
@@ -183,23 +185,23 @@ function ClientRouteTable({ client }) {
           </div>
           
           <div className="flex w-full gap-2 sm:w-auto">
-            <Button 
-              onClick={handleExportExcel} 
-              variant="outline" 
-              size="sm" 
+            <Select value={exportType} onValueChange={setExportType}>
+              <SelectTrigger className="h-8 flex-1 text-xs sm:w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">Export to {activeTab} ({activeTruck})</SelectItem>
+                <SelectItem value="subcon">Export Subcon</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={exportType === 'subcon' ? handleExportSubconExcel : handleExportExcel}
+              variant="outline"
+              size="sm"
               className="h-8 flex-1 text-xs sm:flex-none"
               disabled={processedRoutes.length === 0}
             >
-              <Download className="w-3.5 h-3.5 mr-1.5" /> Export {activeTab} ({activeTruck})
-            </Button>
-            <Button 
-              onClick={handleExportSubconExcel} 
-              variant="outline" 
-              size="sm" 
-              className="h-8 flex-1 text-xs sm:flex-none"
-              disabled={processedRoutes.length === 0}
-            >
-              <Download className="w-3.5 h-3.5 mr-1.5" /> Export Subcon
+              <Download className="w-3.5 h-3.5 mr-1.5" /> Export
             </Button>
           </div>
         </div>
