@@ -11,6 +11,7 @@ import ClientForm from '@/components/clients/ClientForm';
 import { useAuth } from '@/lib/AuthContext';
 import { getTruckTypeFeePercentage } from '@/lib/feeCalculator';
 import * as XLSX from 'xlsx'; // Import the Excel library
+import { generateSubconRatePDF } from '@/lib/subconRatePdf';
 
 // ==========================================
 // SUB-COMPONENT: CLIENT ROUTE TABLE
@@ -104,32 +105,51 @@ function ClientRouteTable({ client }) {
     XLSX.writeFile(workbook, filename);
   };
 
+  const getSubconRows = () => processedRoutes.map(route => {
+    const originalGross = Number(route.rates?.[activeTruck] || 0);
+    const afterTax = originalGross * 0.98;
+    const hidden = afterTax * (hiddenFeePercentage / 100);
+    const gross = afterTax - hidden;
+    const admin = afterTax * 0.06;
+    const net = gross - admin;
+
+    return {
+      destination: route.delivery_location,
+      code: route.delivery_code,
+      gross,
+      admin,
+      net
+    };
+  });
+
   const handleExportSubconExcel = () => {
     if (processedRoutes.length === 0) return;
-
-    const excelRows = processedRoutes.map(route => {
-      const originalGross = Number(route.rates?.[activeTruck] || 0);
-      const afterTax = originalGross * 0.98;
-      const hidden = afterTax * (hiddenFeePercentage / 100);
-      const gross = afterTax - hidden;
-      const admin = afterTax * 0.06;
-      const net = gross - admin;
-
-      return {
-        'Destination': route.delivery_location,
-        'Code': route.delivery_code,
-        'Gross (₱)': gross,
-        'Admin Fee (₱)': -admin,
-        'Net (₱)': net
-      };
-    });
-
+    const excelRows = getSubconRows().map(row => ({
+      'Destination': row.destination,
+      'Code': row.code,
+      'Gross (₱)': row.gross,
+      'Admin Fee (₱)': -row.admin,
+      'Net (₱)': row.net
+    }));
     const worksheet = XLSX.utils.json_to_sheet(excelRows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, `${activeTruck} Subcon`);
     const sanitizedClientName = client.client_name?.replace(/[^a-z0-9]/gi, '_');
     const sanitizedTabName = activeTab.replace(/[^a-z0-9]/gi, '_');
     XLSX.writeFile(workbook, `${sanitizedClientName}_${sanitizedTabName}_${activeTruck}_Subcon.xlsx`);
+  };
+
+  const handleExportSubconPdf = () => {
+    if (processedRoutes.length === 0) return;
+    const sanitizedClientName = client.client_name?.replace(/[^a-z0-9]/gi, '_');
+    const sanitizedTabName = activeTab.replace(/[^a-z0-9]/gi, '_');
+    generateSubconRatePDF({
+      clientName: client.client_name,
+      pickupLocation: activeTab,
+      truckType: activeTruck,
+      rows: getSubconRows(),
+      filename: `${sanitizedClientName}_${sanitizedTabName}_${activeTruck}_Subcon.pdf`
+    });
   };
 
   return (
@@ -192,10 +212,11 @@ function ClientRouteTable({ client }) {
               <SelectContent>
                 <SelectItem value="standard">PHAETON RATE (EXCEL)</SelectItem>
                 <SelectItem value="subcon">SUBCON RATE (EXCEL)</SelectItem>
+                <SelectItem value="subcon-pdf">SUBCON RATE (PDF)</SelectItem>
               </SelectContent>
             </Select>
             <Button
-              onClick={exportType === 'subcon' ? handleExportSubconExcel : handleExportExcel}
+              onClick={exportType === 'subcon-pdf' ? handleExportSubconPdf : exportType === 'subcon' ? handleExportSubconExcel : handleExportExcel}
               variant="outline"
               size="sm"
               className="h-8 flex-1 text-xs sm:flex-none"
