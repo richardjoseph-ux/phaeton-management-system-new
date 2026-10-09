@@ -63,6 +63,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const [activePickup, setActivePickup] = useState('__all__');
   const [activeTruck, setActiveTruck] = useState('__all__');
   const [routeSearch, setRouteSearch] = useState('');
+  const [routePage, setRoutePage] = useState(1);
   const [newRowIndices, setNewRowIndices] = useState(new Set());
   const [showAddPickup, setShowAddPickup] = useState(false);
   const fileInputRef = useRef(null);
@@ -84,6 +85,17 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     if (pickupMatch && truckMatch && searchMatch) acc.push(i);
     return acc;
   }, []);
+  const routesPerPage = 10;
+  const routePageCount = Math.max(1, Math.ceil(visibleIndices.length / routesPerPage));
+  const currentRoutePage = Math.min(routePage, routePageCount);
+  const paginatedIndices = visibleIndices.slice(
+    (currentRoutePage - 1) * routesPerPage,
+    currentRoutePage * routesPerPage
+  );
+
+  useEffect(() => {
+    setRoutePage(1);
+  }, [activePickup, activeTruck, routeSearch]);
 
   useEffect(() => {
     if (editData) {
@@ -128,6 +140,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
       setActiveTruck('__all__');
     }
     setRouteSearch('');
+    setRoutePage(1);
     setNewRowIndices(new Set());
   }, [editData?.id, open]);
 
@@ -160,6 +173,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const addRoute = () => {
     const newRoute = emptyRoute();
     if (activePickup !== '__all__') newRoute.pickup_location = activePickup;
+    setRoutePage(1);
     setNewRowIndices(prev => new Set([...prev].map(i => i + 1).concat([0])));
     setForm(p => ({ ...p, routes: [newRoute, ...p.routes] }));
   };
@@ -541,7 +555,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                         No routes found for this filter. {activeTruck !== '__all__' && 'Routes without a rate for this truck type are hidden.'}
                       </td>
                     </tr>
-                  ) : visibleIndices.map(idx => {
+                  ) : paginatedIndices.map(idx => {
                     const route = form.routes[idx];
                     return (
                       <tr key={idx} className="border-b last:border-b-0 hover:bg-muted/20">
@@ -603,6 +617,21 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                 </tbody>
               </table>
             </div>
+
+            {visibleIndices.length > routesPerPage && (
+              <div className="mt-2 flex items-center justify-end gap-2">
+                <span className="text-xs text-muted-foreground">Page {currentRoutePage} of {routePageCount}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentRoutePage === routePageCount}
+                  onClick={() => setRoutePage(currentRoutePage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
 
             <p className="text-xs text-muted-foreground mt-1.5">
               {activeTruck !== '__all__'
