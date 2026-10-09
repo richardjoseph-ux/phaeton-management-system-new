@@ -16,11 +16,12 @@ export default function Payroll() {
     fuelSubsidies,
     billingDeductions,
     reimbursements,
+    billingReceivedClientArchives,
     billingReceivedSummaries: summaryRecords,
     isLoading,
   } = useAppData();
 
-  const loading = isLoading.billingCycles || isLoading.fuelSubsidies || isLoading.billingDeductions || isLoading.reimbursements || isLoading.billingReceivedSummaries;
+  const loading = isLoading.billingCycles || isLoading.fuelSubsidies || isLoading.billingDeductions || isLoading.reimbursements || isLoading.billingReceivedClientArchives || isLoading.billingReceivedSummaries;
 
   const [selectedStatementKey, setSelectedStatementKey] = useState(null);
   const [selectedOwner, setSelectedOwner] = useState(null);
@@ -48,6 +49,11 @@ export default function Payroll() {
         const record = summaryRecords.find(summary => summary.billing_received_date === cycle.billing_received_date);
         return !record?.payroll_processed;
       })
+      .filter(cycle => !billingReceivedClientArchives.some(archive =>
+        archive.client_account_id === cycle.client_account_id &&
+        archive.billing_received_date === cycle.billing_received_date &&
+        archive.is_archived
+      ))
       .forEach(cycle => {
         const key = `${cycle.client_account_id}::${cycle.billing_received_date}`;
         if (!groups.has(key)) {
@@ -62,7 +68,7 @@ export default function Payroll() {
         groups.get(key).cycles.push(cycle);
       });
     return [...groups.values()].sort((a, b) => b.billingReceivedDate.localeCompare(a.billingReceivedDate));
-  }, [billingCycles, clients, summaryRecords]);
+  }, [billingCycles, clients, billingReceivedClientArchives, summaryRecords]);
 
   const selectedStatement = useMemo(
     () => statementOptions.find(option => option.key === selectedStatementKey) || null,
