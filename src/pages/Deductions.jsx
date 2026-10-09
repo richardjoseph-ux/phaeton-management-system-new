@@ -321,7 +321,7 @@ export default function Deductions() {
                   <div className="flex gap-2 pt-1">
                     <Button
                       onClick={handleSave}
-                      disabled={saving || !form.plate_number || (!editingId && selectedStatementId === '__unassigned__) || (editingId && !form.billing_cycle_id)}
+                      disabled={saving || !form.plate_number || (!editingId && selectedStatementId === '__unassigned__') || (editingId && !form.billing_cycle_id)}
                       className="flex-1"
                     >
                       <Plus className="w-4 h-4 mr-1" />
