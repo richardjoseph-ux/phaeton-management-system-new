@@ -11,30 +11,23 @@
  * @param {string} truckType - The truck type (AUV, Sub-4W, 6-Wheel, 10-Wheel)
  * @returns {number} The hidden fee percentage (e.g., 3, 4, 4.5) or 4 (default)
  */
-export const getTruckTypeFeePercentage = (clientData, pickupLocation, truckType) => {
+export const getTruckTypeFeeConfig = (clientData, pickupLocation, truckType) => {
   if (!clientData || !pickupLocation || !truckType) {
-    return 4; // Default 4% if any parameter is missing
+    return { hidden_fee_percentage: 4, effective_date: '' };
   }
 
-  // Find the pickup location fee configuration
-  const pickupFeeConfig = clientData?.pickup_location_fees?.find(
+  const pickupFeeConfig = clientData.pickup_location_fees?.find(
     pf => pf.pickup_location?.toLowerCase() === pickupLocation?.toLowerCase()
   );
-
-  if (!pickupFeeConfig) {
-    return 4; // Default 4% if pickup location not found
-  }
-
-  // Find the truck type fee within that pickup location
-  const truckTypeFee = pickupFeeConfig.truck_type_fees?.find(
+  const truckTypeFee = pickupFeeConfig?.truck_type_fees?.find(
     tf => tf.truck_type === truckType
   );
 
-  if (!truckTypeFee) {
-    return 4; // Default 4% if truck type not found
-  }
+  return truckTypeFee || { hidden_fee_percentage: 4, effective_date: '' };
+};
 
-  return truckTypeFee.hidden_fee_percentage || 4;
+export const getTruckTypeFeePercentage = (clientData, pickupLocation, truckType) => {
+  return Number(getTruckTypeFeeConfig(clientData, pickupLocation, truckType).hidden_fee_percentage) || 4;
 };
 
 /**
@@ -123,13 +116,11 @@ export const calculateTripFees = ({
   insuranceCharge = 0,
   otherCharges = 0,
   fuelSubsidy = 0,
+  deliveryDate = '',
 }) => {
-  // Get the hidden fee percentage for this client/pickup/truck combination
-  const hiddenFeePercentage = getTruckTypeFeePercentage(
-    clientData,
-    pickupLocation,
-    truckType
-  );
+  const feeConfig = getTruckTypeFeeConfig(clientData, pickupLocation, truckType);
+  const hiddenFeePercentage = Number(feeConfig.hidden_fee_percentage) || 4;
+  const isHiddenFeeEffective = !feeConfig.effective_date || !deliveryDate || deliveryDate >= feeConfig.effective_date;
 
   // Calculate all fees
   const fees = calculateFees(grossRate, hiddenFeePercentage, 2, 6);
@@ -148,6 +139,7 @@ export const calculateTripFees = ({
     tax_deduction: fees.tax,
     hidden_fee: fees.hiddenFee,
     hidden_fee_percentage: hiddenFeePercentage,
+    is_hidden_fee_effective: isHiddenFeeEffective,
     admin_fee: fees.adminFee,
     insurance_charge: insuranceCharge,
     other_charges: otherCharges,

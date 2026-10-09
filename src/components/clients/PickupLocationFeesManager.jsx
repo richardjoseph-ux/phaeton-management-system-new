@@ -12,6 +12,7 @@ const defaultFeeEntry = (pickupLocation) => ({
   truck_type_fees: TRUCK_TYPES.map(t => ({
     truck_type: t,
     hidden_fee_percentage: DEFAULT_TRUCK_FEE,
+    effective_date: '',
   })),
 });
 
@@ -35,6 +36,7 @@ export default function PickupLocationFeesManager({ pickupLocationFees, availabl
           return {
             truck_type: t,
             hidden_fee_percentage: match ? Number(match.hidden_fee_percentage) : DEFAULT_TRUCK_FEE,
+            effective_date: match?.effective_date || '',
           };
         }),
       };
@@ -51,17 +53,15 @@ export default function PickupLocationFeesManager({ pickupLocationFees, availabl
   // If the previously selected pickup no longer exists (removed), fall back to the first.
   const effectiveKey = selected ? selected.pickup_location : (displayFees[0]?.pickup_location || '');
 
-  const updateFee = (pickupLocation, truckType, percentage) => {
+  const updateFee = (pickupLocation, truckType, field, value) => {
     const targetKey = String(pickupLocation).toLowerCase();
     const next = displayFees.map(pf => {
-      if (String(pf.pickup_location).toLowerCase() !== targetKey) {
-        return pf;
-      }
+      if (String(pf.pickup_location).toLowerCase() !== targetKey) return pf;
       return {
         ...pf,
         truck_type_fees: pf.truck_type_fees.map(ttf =>
           ttf.truck_type === truckType
-            ? { ...ttf, hidden_fee_percentage: Number(percentage) || 0 }
+            ? { ...ttf, [field]: field === 'hidden_fee_percentage' ? Number(value) || 0 : value }
             : ttf
         ),
       };
@@ -113,19 +113,25 @@ export default function PickupLocationFeesManager({ pickupLocationFees, availabl
                   {selected.truck_type_fees.map((ttf) => (
                     <div key={`fee__${selected.pickup_location}__${ttf.truck_type}`}>
                       <Label className="text-sm">{ttf.truck_type}</Label>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="grid grid-cols-[1fr_auto] gap-2 mt-1">
                         <Input
                           type="number"
                           min="0"
                           max="100"
                           step="0.1"
                           value={ttf.hidden_fee_percentage}
-                          onChange={(e) => updateFee(selected.pickup_location, ttf.truck_type, e.target.value)}
-                          className="flex-1"
-                          placeholder="0"
+                          onChange={(e) => updateFee(selected.pickup_location, ttf.truck_type, 'hidden_fee_percentage', e.target.value)}
+                          placeholder="Hidden fee %"
                         />
-                        <span className="text-sm text-gray-600">%</span>
+                        <Input
+                          type="date"
+                          value={ttf.effective_date}
+                          onChange={(e) => updateFee(selected.pickup_location, ttf.truck_type, 'effective_date', e.target.value)}
+                          className="w-36"
+                          aria-label={`${ttf.truck_type} hidden fee effective date`}
+                        />
                       </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Applies to delivery dates on or after this date.</p>
                     </div>
                   ))}
                 </div>

@@ -205,29 +205,32 @@ export default function TripEncoding() {
             insuranceCharge: trip.insurance_charge || 0,
             otherCharges: trip.other_charges || 0,
             fuelSubsidy: 0,
+            deliveryDate: trip.delivery_date,
           });
 
           const needsSubcontractorUpdate = trip.subcontractor_id !== (subcontractor?.id || trip.subcontractor_id);
-          
-          const hasFeeChanges = 
+          const hasFeeChanges = feeBreakdown.is_hidden_fee_effective && (
             trip.gross_rate !== feeBreakdown.gross_rate ||
             trip.tax_deduction !== feeBreakdown.tax_deduction ||
             trip.hidden_fee !== feeBreakdown.hidden_fee ||
             trip.admin_fee !== feeBreakdown.admin_fee ||
-            trip.net_payroll !== feeBreakdown.net_payroll ||
-            trip.trip_route_code !== (route?.trip_route_code || trip.trip_route_code);
+            trip.net_payroll !== feeBreakdown.net_payroll
+          );
+          const routeCodeChanged = trip.trip_route_code !== (route?.trip_route_code || trip.trip_route_code);
 
-          if (hasFeeChanges || needsSubcontractorUpdate) {
+          if (hasFeeChanges || needsSubcontractorUpdate || routeCodeChanged) {
             await base44.entities.TripRecord.update(trip.id, {
               client_account_id: client.id,
               client_name: client.client_name,
               subcontractor_id: subcontractor?.id || trip.subcontractor_id,
-              gross_rate: feeBreakdown.gross_rate,
-              tax_deduction: feeBreakdown.tax_deduction,
-              hidden_fee: feeBreakdown.hidden_fee,
-              admin_fee: feeBreakdown.admin_fee,
-              net_payroll: feeBreakdown.net_payroll,
-              trip_route_code: route?.trip_route_code || trip.trip_route_code
+              trip_route_code: route?.trip_route_code || trip.trip_route_code,
+              ...(feeBreakdown.is_hidden_fee_effective ? {
+                gross_rate: feeBreakdown.gross_rate,
+                tax_deduction: feeBreakdown.tax_deduction,
+                hidden_fee: feeBreakdown.hidden_fee,
+                admin_fee: feeBreakdown.admin_fee,
+                net_payroll: feeBreakdown.net_payroll,
+              } : {})
             });
             updated++;
           }
