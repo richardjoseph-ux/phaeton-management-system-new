@@ -37,6 +37,8 @@ export default function Deductions() {
   const [selectedStatementId, setSelectedStatementId] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
+    billing_cycle_id: '',
+    billing_cycle_name: '',
     plate_number: '',
     owner_name: '',
     insurance_charge: '',
@@ -59,6 +61,7 @@ export default function Deductions() {
     reimbursement_type: '',
     notes: '',
   });
+  const [selectedReimbursementStatementId, setSelectedReimbursementStatementId] = useState('');
   const [editingReimbursementId, setEditingReimbursementId] = useState(null);
   const [savingReimbursement, setSavingReimbursement] = useState(false);
 
@@ -116,7 +119,8 @@ export default function Deductions() {
 
   // Deductions for the selected billing statement
   const filteredDeductions = displayDeductions.filter(d =>
-    d.billing_received_date === selectedDate && d.billing_cycle_id === selectedStatementId
+    d.billing_received_date === selectedDate &&
+    (selectedStatementId === '__unassigned__' ? !d.billing_cycle_id : d.billing_cycle_id === selectedStatementId)
   );
 
   // Plate numbers already assigned for this date (for validation)
@@ -132,6 +136,8 @@ export default function Deductions() {
   const handleEdit = (deduction) => {
     setEditingId(deduction.id);
     setForm({
+      billing_cycle_id: deduction.billing_cycle_id || '',
+      billing_cycle_name: deduction.billing_cycle_name || '',
       plate_number: deduction.plate_number,
       owner_name: deduction.owner_name,
       insurance_charge: deduction.insurance_charge?.toString() || '',
@@ -142,16 +148,17 @@ export default function Deductions() {
 
   const handleCancel = () => {
     setEditingId(null);
-    setForm({ plate_number: '', owner_name: '', insurance_charge: '', other_charges: '', notes: '' });
+    setForm({ billing_cycle_id: '', billing_cycle_name: '', plate_number: '', owner_name: '', insurance_charge: '', other_charges: '', notes: '' });
   };
 
   const handleSave = async () => {
-    if (!selectedDate || !form.plate_number) return;
+    const statementId = editingId ? form.billing_cycle_id : selectedStatementId;
+    if (!selectedDate || !form.plate_number || !statementId || statementId === '__unassigned__') return;
     setSaving(true);
-    const statement = billingCycles.find(cycle => cycle.id === selectedStatementId);
+    const statement = billingCycles.find(cycle => cycle.id === statementId);
     const data = {
       billing_received_date: selectedDate,
-      billing_cycle_id: selectedStatementId,
+      billing_cycle_id: statementId,
       billing_cycle_name: statement?.cycle_name || '',
       plate_number: form.plate_number,
       owner_name: form.owner_name,
@@ -219,9 +226,10 @@ export default function Deductions() {
               {selectedDate && (
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Statement</p>
-                  <Select value={selectedStatementId} onValueChange={v => { setSelectedStatementId(v); handleCancel(); loadOwnersForDate(selectedDate, v); }}>
+                  <Select value={selectedStatementId} onValueChange={v => { setSelectedStatementId(v); handleCancel(); v === '__unassigned__' ? setDateOwners([]) : loadOwnersForDate(selectedDate, v); }}>
                     <SelectTrigger className="w-72"><SelectValue placeholder="Select statement..." /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__unassigned__">Unassigned</SelectItem>
                       {statementsForDate(selectedDate).map(statement => (
                         <SelectItem key={statement.id} value={statement.id}>{statement.cycle_name}</SelectItem>
                       ))}
@@ -238,6 +246,23 @@ export default function Deductions() {
                   <h3 className="font-semibold text-sm">
                     {editingId ? 'Edit Deduction' : 'Add Deduction'}
                   </h3>
+
+                  {editingId && (
+                    <div className="space-y-1.5">
+                      <Label>Assign to Statement</Label>
+                      <Select value={form.billing_cycle_id} onValueChange={v => {
+                        const statement = billingCycles.find(cycle => cycle.id === v);
+                        setForm(f => ({ ...f, billing_cycle_id: v, billing_cycle_name: statement?.cycle_name || '' }));
+                      }}>
+                        <SelectTrigger><SelectValue placeholder="Select statement..." /></SelectTrigger>
+                        <SelectContent>
+                          {statementsForDate(selectedDate).map(statement => (
+                            <SelectItem key={statement.id} value={statement.id}>{statement.cycle_name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div className="space-y-1.5">
                     <Label>Owner / Driver</Label>
@@ -296,7 +321,7 @@ export default function Deductions() {
                   <div className="flex gap-2 pt-1">
                     <Button
                       onClick={handleSave}
-                      disabled={saving || !selectedStatementId || !form.plate_number}
+                      disabled={saving || !form.plate_number || (!editingId && selectedStatementId === '__unassigned__) || (editingId && !form.billing_cycle_id)}
                       className="flex-1"
                     >
                       <Plus className="w-4 h-4 mr-1" />
@@ -378,7 +403,8 @@ export default function Deductions() {
                 <Select 
                   value={reimbursementForm.billing_received_date} 
                   onValueChange={v => { 
-  setReimbursementForm(f => ({ ...f, billing_received_date: v, billing_cycle_id: '', billing_cycle_name: '', plate_number: '', owner_name: '' }));
+                  setSelectedReimbursementStatementId('');
+                  setReimbursementForm(f => ({ ...f, billing_received_date: v, billing_cycle_id: '', billing_cycle_name: '', plate_number: '', owner_name: '' }));
   
   // 1. Find billing cycles for this date
   const cycles = billingCycles.filter(c => c.billing_received_date === v);
@@ -418,15 +444,17 @@ export default function Deductions() {
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Statement</p>
                   <Select
-                    value={reimbursementForm.billing_cycle_id}
+                    value={selectedReimbursementStatementId}
                     onValueChange={v => {
+                      setSelectedReimbursementStatementId(v);
                       const statement = billingCycles.find(cycle => cycle.id === v);
-                      setReimbursementForm(f => ({ ...f, billing_cycle_id: v, billing_cycle_name: statement?.cycle_name || '', plate_number: '', owner_name: '' }));
-                      loadOwnersForDate(reimbursementForm.billing_received_date, v);
+                      setReimbursementForm(f => ({ ...f, billing_cycle_id: v === '__unassigned__' ? '' : v, billing_cycle_name: statement?.cycle_name || '', plate_number: '', owner_name: '' }));
+                      v === '__unassigned__' ? setDateOwners([]) : loadOwnersForDate(reimbursementForm.billing_received_date, v);
                     }}
                   >
                     <SelectTrigger className="w-72"><SelectValue placeholder="Select statement..." /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__unassigned__">Unassigned</SelectItem>
                       {statementsForDate(reimbursementForm.billing_received_date).map(statement => (
                         <SelectItem key={statement.id} value={statement.id}>{statement.cycle_name}</SelectItem>
                       ))}
@@ -435,7 +463,7 @@ export default function Deductions() {
                 </div>
               )}
 
-              {reimbursementForm.billing_received_date && reimbursementForm.billing_cycle_id && (
+              {reimbursementForm.billing_received_date && selectedReimbursementStatementId && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Reimbursement Form Panel */}
                   <div className="lg:col-span-1">
@@ -443,6 +471,23 @@ export default function Deductions() {
                       <h3 className="font-semibold text-sm">
                         {editingReimbursementId ? 'Edit Reimbursement' : 'Add Reimbursement'}
                       </h3>
+
+                      {editingReimbursementId && (
+                        <div className="space-y-1.5">
+                          <Label>Assign to Statement</Label>
+                          <Select value={reimbursementForm.billing_cycle_id} onValueChange={v => {
+                            const statement = billingCycles.find(cycle => cycle.id === v);
+                            setReimbursementForm(f => ({ ...f, billing_cycle_id: v, billing_cycle_name: statement?.cycle_name || '' }));
+                          }}>
+                            <SelectTrigger><SelectValue placeholder="Select statement..." /></SelectTrigger>
+                            <SelectContent>
+                              {statementsForDate(reimbursementForm.billing_received_date).map(statement => (
+                                <SelectItem key={statement.id} value={statement.id}>{statement.cycle_name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
 
                       <div className="space-y-1.5">
                         <Label>Subcontractor / Owner</Label>
@@ -571,7 +616,9 @@ export default function Deductions() {
                     {(() => {
                       const filteredReimbursements = displayReimbursements.filter(r =>
                         r.billing_received_date === reimbursementForm.billing_received_date &&
-                        r.billing_cycle_id === reimbursementForm.billing_cycle_id
+                        (selectedReimbursementStatementId === '__unassigned__'
+                          ? !r.billing_cycle_id
+                          : r.billing_cycle_id === selectedReimbursementStatementId)
                       );
                       const totalAmount = filteredReimbursements.reduce((s, r) => s + (r.reimbursement_amount || 0), 0);
                       
