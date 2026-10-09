@@ -12,6 +12,7 @@ import { formatAmount } from '@/lib/dateUtils';
 export default function Payroll() {
   const {
     billingCycles,
+    clients,
     fuelSubsidies,
     billingDeductions,
     reimbursements,
@@ -21,7 +22,7 @@ export default function Payroll() {
 
   const loading = isLoading.billingCycles || isLoading.fuelSubsidies || isLoading.billingDeductions || isLoading.reimbursements || isLoading.billingReceivedSummaries;
 
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedStatementId, setSelectedStatementId] = useState(null);
   const [selectedOwner, setSelectedOwner] = useState(null);
 
   const [dateTrips, setDateTrips] = useState([]);
@@ -39,39 +40,39 @@ export default function Payroll() {
     }
   }, [fuelSubsidies]);
 
-  const activeCycles = useMemo(() => {
-    if (!selectedDate) return [];
-    return billingCycles.filter(c => c.billing_received_date === selectedDate);
-  }, [selectedDate, billingCycles]);
+  const selectedStatement = useMemo(
+    () => billingCycles.find(c => c.id === selectedStatementId) || null,
+    [billingCycles, selectedStatementId]
+  );
+  const selectedDate = selectedStatement?.billing_received_date || null;
+  const activeCycles = selectedStatement ? [selectedStatement] : [];
 
-  const dateGroups = (() => {
-    const groups = {};
-    billingCycles.forEach(c => {
-      if (c.billing_received_date) {
-        if (!groups[c.billing_received_date]) groups[c.billing_received_date] = [];
-        groups[c.billing_received_date].push(c);
-      }
-    });
-    return Object.entries(groups)
-      .map(([date, cycles]) => ({ date, cycles }))
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .filter(g => {
-        const rec = summaryRecords.find(r => r.billing_received_date === g.date);
-        return !rec?.payroll_processed;
-      });
-  })();
+  const statementOptions = useMemo(() => billingCycles
+    .filter(c => c.billing_received_date)
+    .filter(c => {
+      const rec = summaryRecords.find(r => r.billing_received_date === c.billing_received_date);
+      return !rec?.payroll_processed;
+    })
+    .map(c => ({
+      ...c,
+      clientName: clients.find(client => client.id === c.client_account_id)?.client_name || 'Unknown Client',
+    }))
+    .sort((a, b) => b.billing_received_date.localeCompare(a.billing_received_date)),
+  [billingCycles, clients, summaryRecords]);
 
-  const selectDate = async (date) => {
-    setSelectedDate(date);
+  const selectStatement = async (statementId) => {
+    const statement = statementOptions.find(option => option.id === statementId);
+    setSelectedStatementId(statementId);
     setSelectedOwner(null);
     setDateTrips([]);
-    const group = dateGroups.find(g => g.date === date);
-    if (!group) return;
+    if (!statement) return;
     setLoadingTrips(true);
-    const allTrips = await Promise.all(
-      group.cycles.map(c => base44.entities.TripRecord.filter({ billing_cycle_id: c.id }, '-delivery_date', 500))
+    const trips = await base44.entities.TripRecord.filter(
+      { billing_cycle_id: statement.id, client_account_id: statement.client_account_id },
+      '-delivery_date',
+      500
     );
-    setDateTrips(allTrips.flat());
+    setDateTrips(trips);
     setLoadingTrips(false);
   };
 
@@ -112,7 +113,7 @@ export default function Payroll() {
   const tripsTotalPages = Math.ceil(displayedTrips.length / rowsPerPage);
   const paginatedTrips = displayedTrips.slice((tripsPage - 1) * rowsPerPage, tripsPage * rowsPerPage);
 
-  useEffect(() => { setTripsPage(1); }, [selectedDate, selectedOwner]);
+  useEffect(() => { setTripsPage(1); }, [selectedStatementId, selectedOwner]);
 
   const tripTotals = useMemo(() => {
     return displayedTrips.reduce((acc, trip) => {
@@ -246,7 +247,7 @@ export default function Payroll() {
     <div className="p-6">
       <PageHeader
         title="Payroll Report"
-        subtitle="Select a billing received date, then filter by owner / driver"
+        subtitle="Select a client statement, then filter by owner / driver"
         actions={
           selectedDate && (
             <div className="flex gap-2">
@@ -267,15 +268,15 @@ export default function Payroll() {
         <div>
           <div className="flex flex-wrap items-end gap-4 mb-5">
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Received Date</p>
-              <Select value={selectedDate || ''} onValueChange={v => selectDate(v)}>
-                <SelectTrigger className="w-56">
-                  <SelectValue placeholder="Select date..." />
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Client Statement</p>
+              <Select value={selectedStatementId || ''} onValueChange={selectStatement}>
+                <SelectTrigger className="w-96">
+                  <SelectValue placeholder="Select client statement..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {dateGroups.map(g => (
-                    <SelectItem key={g.date} value={g.date}>
-                      {formatDateDisplay(g.date)} ({g.cycles.length} stmt{g.cycles.length > 1 ? 's' : ''})
+                  {statementOptions.map(statement => (
+                    <SelectItem key={statement.id} value={statement.id}>
+                      {statement.clientName} · {formatDateDisplay(statement.billing_received_date)} · {statement.cycle_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -312,7 +313,7 @@ export default function Payroll() {
           <div>
             {!selectedDate ? (
               <div className="text-center py-24 text-muted-foreground">
-                <p className="text-sm">Select a billing received date to view payroll</p>
+                <p className="text-sm">Select a client statement to view payroll</p>
               </div>
             ) : loadingTrips ? (
               <div className="text-center py-24 text-muted-foreground">Loading trips...</div>
@@ -327,8 +328,8 @@ export default function Payroll() {
                   <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-center gap-3">
                     <Info className="w-5 h-5 text-blue-600 shrink-0" />
                     <div className="text-sm">
-                      <p className="font-semibold text-blue-900">Statements included:</p>
-                      <p className="text-blue-700">{activeCycles.map(c => c.cycle_name).join(', ')}</p>
+                      <p className="font-semibold text-blue-900">Selected statement:</p>
+                      <p className="text-blue-700">{selectedStatement?.cycle_name}</p>
                     </div>
                   </div>
                 )}
