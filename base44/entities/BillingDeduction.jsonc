@@ -7,6 +7,14 @@
       "format": "date",
       "description": "Billing received date this deduction belongs to"
     },
+    "billing_cycle_id": {
+      "type": "string",
+      "description": "Billing statement this deduction applies to"
+    },
+    "billing_cycle_name": {
+      "type": "string",
+      "description": "Billing statement name saved for display"
+    },
     "plate_number": {
       "type": "string",
       "description": "Vehicle plate number (owner/driver identifier)"
@@ -18,12 +26,12 @@
     "insurance_charge": {
       "type": "number",
       "default": 0,
-      "description": "Flat total insurance deduction for this billing date"
+      "description": "Flat total insurance deduction for this billing statement"
     },
     "other_charges": {
       "type": "number",
       "default": 0,
-      "description": "Flat total other/miscellaneous deduction for this billing date"
+      "description": "Flat total other/miscellaneous deduction for this billing statement"
     },
     "notes": {
       "type": "string",

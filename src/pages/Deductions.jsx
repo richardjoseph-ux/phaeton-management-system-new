@@ -34,6 +34,7 @@ export default function Deductions() {
   const [loadingOwners, setLoadingOwners] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedStatementId, setSelectedStatementId] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     plate_number: '',
@@ -50,6 +51,8 @@ export default function Deductions() {
   const [activeTab, setActiveTab] = useState('all');
   const [reimbursementForm, setReimbursementForm] = useState({
     billing_received_date: '',
+    billing_cycle_id: '',
+    billing_cycle_name: '',
     plate_number: '',
     owner_name: '',
     reimbursement_amount: '',
@@ -68,11 +71,12 @@ export default function Deductions() {
   const [editingOtherChargeId, setEditingOtherChargeId] = useState(null);
   const [savingOtherCharge, setSavingOtherCharge] = useState(false);
 
-  const loadOwnersForDate = async (date) => {
+  const loadOwnersForDate = async (date, statementId) => {
     setLoadingOwners(true);
     setDateOwners([]);
-    // Find billing cycles for this date
-    const cycles = billingCycles.filter(c => c.billing_received_date === date);
+    const cycles = billingCycles.filter(c =>
+      c.billing_received_date === date && c.id === statementId
+    );
     if (cycles.length === 0) { setLoadingOwners(false); return; }
     // Fetch all trips for those cycles
     const allTrips = await Promise.all(
@@ -106,8 +110,14 @@ export default function Deductions() {
     return result.sort((a, b) => b.localeCompare(a));
   })();
 
-  // Deductions for the selected date
-  const filteredDeductions = displayDeductions.filter(d => d.billing_received_date === selectedDate);
+  const statementsForDate = (date) => billingCycles
+    .filter(cycle => cycle.billing_received_date === date)
+    .sort((a, b) => (a.cycle_name || '').localeCompare(b.cycle_name || ''));
+
+  // Deductions for the selected billing statement
+  const filteredDeductions = displayDeductions.filter(d =>
+    d.billing_received_date === selectedDate && d.billing_cycle_id === selectedStatementId
+  );
 
   // Plate numbers already assigned for this date (for validation)
   const assignedPlates = filteredDeductions
@@ -138,8 +148,11 @@ export default function Deductions() {
   const handleSave = async () => {
     if (!selectedDate || !form.plate_number) return;
     setSaving(true);
+    const statement = billingCycles.find(cycle => cycle.id === selectedStatementId);
     const data = {
       billing_received_date: selectedDate,
+      billing_cycle_id: selectedStatementId,
+      billing_cycle_name: statement?.cycle_name || '',
       plate_number: form.plate_number,
       owner_name: form.owner_name,
       insurance_charge: parseFloat(form.insurance_charge) || 0,
@@ -191,7 +204,7 @@ export default function Deductions() {
               {/* Date Selector */}
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Received Date</p>
-                <Select value={selectedDate} onValueChange={v => { setSelectedDate(v); handleCancel(); loadOwnersForDate(v); }}>
+                <Select value={selectedDate} onValueChange={v => { setSelectedDate(v); setSelectedStatementId(''); handleCancel(); setDateOwners([]); }}>
                   <SelectTrigger className="w-56">
                     <SelectValue placeholder="Select date..." />
                   </SelectTrigger>
@@ -203,7 +216,21 @@ export default function Deductions() {
                 </Select>
               </div>
 
-          {selectedDate && (
+              {selectedDate && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Statement</p>
+                  <Select value={selectedStatementId} onValueChange={v => { setSelectedStatementId(v); handleCancel(); loadOwnersForDate(selectedDate, v); }}>
+                    <SelectTrigger className="w-72"><SelectValue placeholder="Select statement..." /></SelectTrigger>
+                    <SelectContent>
+                      {statementsForDate(selectedDate).map(statement => (
+                        <SelectItem key={statement.id} value={statement.id}>{statement.cycle_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+          {selectedDate && selectedStatementId && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Form Panel */}
               <div className="lg:col-span-1">
@@ -269,7 +296,7 @@ export default function Deductions() {
                   <div className="flex gap-2 pt-1">
                     <Button
                       onClick={handleSave}
-                      disabled={saving || !form.plate_number}
+                      disabled={saving || !selectedStatementId || !form.plate_number}
                       className="flex-1"
                     >
                       <Plus className="w-4 h-4 mr-1" />
@@ -286,7 +313,7 @@ export default function Deductions() {
               <div className="lg:col-span-2">
                 {filteredDeductions.length === 0 ? (
                   <div className="text-center py-16 text-muted-foreground border rounded-lg bg-card">
-                    <p className="text-sm">No deductions declared for {selectedDate} yet.</p>
+                    <p className="text-sm">No deductions declared for this statement yet.</p>
                   </div>
                 ) : (
                   <div className="bg-card border rounded-lg overflow-x-auto">
@@ -351,7 +378,7 @@ export default function Deductions() {
                 <Select 
                   value={reimbursementForm.billing_received_date} 
                   onValueChange={v => { 
-  setReimbursementForm(f => ({ ...f, billing_received_date: v }));
+  setReimbursementForm(f => ({ ...f, billing_received_date: v, billing_cycle_id: '', billing_cycle_name: '', plate_number: '', owner_name: '' }));
   
   // 1. Find billing cycles for this date
   const cycles = billingCycles.filter(c => c.billing_received_date === v);
@@ -388,6 +415,27 @@ export default function Deductions() {
               </div>
 
               {reimbursementForm.billing_received_date && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing Statement</p>
+                  <Select
+                    value={reimbursementForm.billing_cycle_id}
+                    onValueChange={v => {
+                      const statement = billingCycles.find(cycle => cycle.id === v);
+                      setReimbursementForm(f => ({ ...f, billing_cycle_id: v, billing_cycle_name: statement?.cycle_name || '', plate_number: '', owner_name: '' }));
+                      loadOwnersForDate(reimbursementForm.billing_received_date, v);
+                    }}
+                  >
+                    <SelectTrigger className="w-72"><SelectValue placeholder="Select statement..." /></SelectTrigger>
+                    <SelectContent>
+                      {statementsForDate(reimbursementForm.billing_received_date).map(statement => (
+                        <SelectItem key={statement.id} value={statement.id}>{statement.cycle_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {reimbursementForm.billing_received_date && reimbursementForm.billing_cycle_id && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Reimbursement Form Panel */}
                   <div className="lg:col-span-1">
@@ -465,6 +513,8 @@ export default function Deductions() {
                             setSavingReimbursement(true);
                             const data = {
                               billing_received_date: reimbursementForm.billing_received_date,
+                              billing_cycle_id: reimbursementForm.billing_cycle_id,
+                              billing_cycle_name: reimbursementForm.billing_cycle_name,
                               plate_number: reimbursementForm.plate_number,
                               owner_name: reimbursementForm.owner_name,
                               reimbursement_amount: parseFloat(reimbursementForm.reimbursement_amount) || 0,
@@ -480,6 +530,8 @@ export default function Deductions() {
                             }
                             setReimbursementForm({
                               billing_received_date: reimbursementForm.billing_received_date,
+                              billing_cycle_id: reimbursementForm.billing_cycle_id,
+                              billing_cycle_name: reimbursementForm.billing_cycle_name,
                               plate_number: '',
                               owner_name: '',
                               reimbursement_amount: '',
@@ -489,7 +541,7 @@ export default function Deductions() {
                             setEditingReimbursementId(null);
                             setSavingReimbursement(false);
                           }}
-                          disabled={savingReimbursement || !reimbursementForm.plate_number || !reimbursementForm.reimbursement_amount}
+                          disabled={savingReimbursement || !reimbursementForm.billing_cycle_id || !reimbursementForm.plate_number || !reimbursementForm.reimbursement_amount}
                           className="flex-1"
                         >
                           <DollarSign className="w-4 h-4 mr-1" />
@@ -500,6 +552,8 @@ export default function Deductions() {
                             setEditingReimbursementId(null);
                             setReimbursementForm({
                               billing_received_date: reimbursementForm.billing_received_date,
+                              billing_cycle_id: reimbursementForm.billing_cycle_id,
+                              billing_cycle_name: reimbursementForm.billing_cycle_name,
                               plate_number: '',
                               owner_name: '',
                               reimbursement_amount: '',
@@ -515,14 +569,17 @@ export default function Deductions() {
                   {/* Reimbursements Table */}
                   <div className="lg:col-span-2">
                     {(() => {
-                      const filteredReimbursements = displayReimbursements.filter(r => r.billing_received_date === reimbursementForm.billing_received_date);
+                      const filteredReimbursements = displayReimbursements.filter(r =>
+                        r.billing_received_date === reimbursementForm.billing_received_date &&
+                        r.billing_cycle_id === reimbursementForm.billing_cycle_id
+                      );
                       const totalAmount = filteredReimbursements.reduce((s, r) => s + (r.reimbursement_amount || 0), 0);
                       
                       if (filteredReimbursements.length === 0) {
                         return (
                           <div className="text-center py-16 text-muted-foreground border rounded-lg bg-card">
                             <Receipt className="w-10 h-10 mx-auto mb-2 opacity-20" />
-                            <p className="text-sm">No reimbursements filed for this date yet.</p>
+                            <p className="text-sm">No reimbursements filed for this statement yet.</p>
                           </div>
                         );
                       }
@@ -568,6 +625,8 @@ export default function Deductions() {
                                         setEditingReimbursementId(r.id);
                                         setReimbursementForm({
                                           billing_received_date: r.billing_received_date,
+                                          billing_cycle_id: r.billing_cycle_id,
+                                          billing_cycle_name: r.billing_cycle_name || '',
                                           plate_number: r.plate_number,
                                           owner_name: r.owner_name,
                                           reimbursement_amount: r.reimbursement_amount?.toString() || '',

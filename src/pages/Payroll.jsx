@@ -148,18 +148,25 @@ export default function Payroll() {
     }, { gross: 0, tax: 0, afterTax: 0, hidden: 0, admin: 0, fuelSubsidy: 0, net: 0 });
   }, [displayedTrips]);
 
+  const activeCycleIds = activeCycles.map(cycle => cycle.id);
+
   const applicableDeductions = (() => {
     if (!selectedDate) return [];
-    const forDate = billingDeductions.filter(d => d.billing_received_date === selectedDate);
-    if (selectedOwner) return forDate.filter(d => d.plate_number === selectedOwner);
-    return forDate;
+    const forStatement = billingDeductions.filter(d =>
+      d.billing_received_date === selectedDate &&
+      (!d.billing_cycle_id || activeCycleIds.includes(d.billing_cycle_id))
+    );
+    return selectedOwner ? forStatement.filter(d => d.plate_number === selectedOwner) : forStatement;
   })();
 
   const applicableReimbursements = useMemo(() => {
     if (!selectedDate) return [];
-    const forDate = reimbursements.filter(r => r.billing_received_date === selectedDate);
-    return selectedOwner ? forDate.filter(r => r.plate_number === selectedOwner) : forDate;
-  }, [reimbursements, selectedDate, selectedOwner]);
+    const forStatement = reimbursements.filter(r =>
+      r.billing_received_date === selectedDate &&
+      (!r.billing_cycle_id || activeCycleIds.includes(r.billing_cycle_id))
+    );
+    return selectedOwner ? forStatement.filter(r => r.plate_number === selectedOwner) : forStatement;
+  }, [reimbursements, selectedDate, selectedOwner, activeCycles]);
 
   const flatInsurance = applicableDeductions.reduce((s, d) => s + (d.insurance_charge || 0), 0);
   const flatOther = applicableDeductions.reduce((s, d) => s + (d.other_charges || 0), 0);
