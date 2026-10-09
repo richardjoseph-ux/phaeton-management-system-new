@@ -22,7 +22,7 @@ export default function Payroll() {
 
   const loading = isLoading.billingCycles || isLoading.fuelSubsidies || isLoading.billingDeductions || isLoading.reimbursements || isLoading.billingReceivedSummaries;
 
-  const [selectedStatementId, setSelectedStatementId] = useState(null);
+  const [selectedStatementKey, setSelectedStatementKey] = useState(null);
   const [selectedOwner, setSelectedOwner] = useState(null);
 
   const [dateTrips, setDateTrips] = useState([]);
@@ -40,39 +40,52 @@ export default function Payroll() {
     }
   }, [fuelSubsidies]);
 
+  const statementOptions = useMemo(() => {
+    const groups = new Map();
+    billingCycles
+      .filter(cycle => cycle.billing_received_date)
+      .filter(cycle => {
+        const record = summaryRecords.find(summary => summary.billing_received_date === cycle.billing_received_date);
+        return !record?.payroll_processed;
+      })
+      .forEach(cycle => {
+        const key = `${cycle.client_account_id}::${cycle.billing_received_date}`;
+        if (!groups.has(key)) {
+          groups.set(key, {
+            key,
+            clientAccountId: cycle.client_account_id,
+            clientName: clients.find(client => client.id === cycle.client_account_id)?.client_name || 'Unknown Client',
+            billingReceivedDate: cycle.billing_received_date,
+            cycles: [],
+          });
+        }
+        groups.get(key).cycles.push(cycle);
+      });
+    return [...groups.values()].sort((a, b) => b.billingReceivedDate.localeCompare(a.billingReceivedDate));
+  }, [billingCycles, clients, summaryRecords]);
+
   const selectedStatement = useMemo(
-    () => billingCycles.find(c => c.id === selectedStatementId) || null,
-    [billingCycles, selectedStatementId]
+    () => statementOptions.find(option => option.key === selectedStatementKey) || null,
+    [statementOptions, selectedStatementKey]
   );
-  const selectedDate = selectedStatement?.billing_received_date || null;
-  const activeCycles = selectedStatement ? [selectedStatement] : [];
+  const selectedDate = selectedStatement?.billingReceivedDate || null;
+  const activeCycles = selectedStatement?.cycles || [];
 
-  const statementOptions = useMemo(() => billingCycles
-    .filter(c => c.billing_received_date)
-    .filter(c => {
-      const rec = summaryRecords.find(r => r.billing_received_date === c.billing_received_date);
-      return !rec?.payroll_processed;
-    })
-    .map(c => ({
-      ...c,
-      clientName: clients.find(client => client.id === c.client_account_id)?.client_name || 'Unknown Client',
-    }))
-    .sort((a, b) => b.billing_received_date.localeCompare(a.billing_received_date)),
-  [billingCycles, clients, summaryRecords]);
-
-  const selectStatement = async (statementId) => {
-    const statement = statementOptions.find(option => option.id === statementId);
-    setSelectedStatementId(statementId);
+  const selectStatement = async (statementKey) => {
+    const statement = statementOptions.find(option => option.key === statementKey);
+    setSelectedStatementKey(statementKey);
     setSelectedOwner(null);
     setDateTrips([]);
     if (!statement) return;
     setLoadingTrips(true);
-    const trips = await base44.entities.TripRecord.filter(
-      { billing_cycle_id: statement.id, client_account_id: statement.client_account_id },
-      '-delivery_date',
-      500
-    );
-    setDateTrips(trips);
+    const trips = await Promise.all(statement.cycles.map(cycle =>
+      base44.entities.TripRecord.filter(
+        { billing_cycle_id: cycle.id, client_account_id: statement.clientAccountId },
+        '-delivery_date',
+        500
+      )
+    ));
+    setDateTrips(trips.flat());
     setLoadingTrips(false);
   };
 
@@ -113,7 +126,7 @@ export default function Payroll() {
   const tripsTotalPages = Math.ceil(displayedTrips.length / rowsPerPage);
   const paginatedTrips = displayedTrips.slice((tripsPage - 1) * rowsPerPage, tripsPage * rowsPerPage);
 
-  useEffect(() => { setTripsPage(1); }, [selectedStatementId, selectedOwner]);
+  useEffect(() => { setTripsPage(1); }, [selectedStatementKey, selectedOwner]);
 
   const tripTotals = useMemo(() => {
     return displayedTrips.reduce((acc, trip) => {
@@ -269,14 +282,14 @@ export default function Payroll() {
           <div className="flex flex-wrap items-end gap-4 mb-5">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Client Statement</p>
-              <Select value={selectedStatementId || ''} onValueChange={selectStatement}>
+              <Select value={selectedStatementKey || ''} onValueChange={selectStatement}>
                 <SelectTrigger className="w-96">
                   <SelectValue placeholder="Select client statement..." />
                 </SelectTrigger>
                 <SelectContent>
                   {statementOptions.map(statement => (
-                    <SelectItem key={statement.id} value={statement.id}>
-                      {statement.clientName} · {formatDateDisplay(statement.billing_received_date)} · {statement.cycle_name}
+                    <SelectItem key={statement.key} value={statement.key}>
+                      {statement.clientName} · {formatDateDisplay(statement.billingReceivedDate)} · {statement.cycles.map(cycle => cycle.cycle_name).join(', ')}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -328,8 +341,8 @@ export default function Payroll() {
                   <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-center gap-3">
                     <Info className="w-5 h-5 text-blue-600 shrink-0" />
                     <div className="text-sm">
-                      <p className="font-semibold text-blue-900">Selected statement:</p>
-                      <p className="text-blue-700">{selectedStatement?.cycle_name}</p>
+                      <p className="font-semibold text-blue-900">Statements included:</p>
+                      <p className="text-blue-700">{activeCycles.map(cycle => cycle.cycle_name).join(', ')}</p>
                     </div>
                   </div>
                 )}
