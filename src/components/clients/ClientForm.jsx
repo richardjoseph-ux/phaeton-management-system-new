@@ -620,6 +620,15 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
 
             {visibleIndices.length > routesPerPage && (
               <div className="mt-2 flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentRoutePage === 1}
+                  onClick={() => setRoutePage(currentRoutePage - 1)}
+                >
+                  Previous
+                </Button>
                 <span className="text-xs text-muted-foreground">Page {currentRoutePage} of {routePageCount}</span>
                 <Button
                   type="button"
