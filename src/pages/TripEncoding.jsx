@@ -29,6 +29,7 @@ export default function TripEncoding() {
   const [editData, setEditData] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncingData, setSyncingData] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
   
@@ -174,6 +175,8 @@ export default function TripEncoding() {
 
   const handleSyncTripData = async () => {
     setSyncingData(true);
+    setSyncResult({ type: 'progress', message: 'Syncing trip data…' });
+
     try {
       const [tripsToUpdate, allClients, allSubcontractors] = await Promise.all([
         base44.entities.TripRecord.list(),
@@ -186,17 +189,15 @@ export default function TripEncoding() {
       for (const trip of tripsToUpdate) {
         const client = allClients.find(c => c.id === trip.client_account_id || c.client_name === trip.client_name);
         const subcontractor = allSubcontractors.find(s => s.plate_number === trip.plate_number);
-        
+
         if (client) {
-          const route = client.routes?.find(r => 
-            r.pickup_location === trip.pickup_location && 
+          const route = client.routes?.find(r =>
+            r.pickup_location === trip.pickup_location &&
             r.delivery_location === trip.delivery_location &&
             r.delivery_code === trip.delivery_code
           );
-
           const newRate = route?.rates?.[trip.truck_type] || 0;
           const newGross = newRate || trip.gross_rate || 0;
-
           const feeBreakdown = calculateTripFees({
             grossRate: newGross,
             clientData: client,
@@ -207,7 +208,6 @@ export default function TripEncoding() {
             fuelSubsidy: 0,
             deliveryDate: trip.delivery_date,
           });
-
           const needsSubcontractorUpdate = trip.subcontractor_id !== (subcontractor?.id || trip.subcontractor_id);
           const hasFeeChanges = feeBreakdown.is_hidden_fee_effective && (
             trip.gross_rate !== feeBreakdown.gross_rate ||
@@ -236,12 +236,14 @@ export default function TripEncoding() {
           }
         }
       }
-      alert(`Synced ${updated} trip records with updated route, rate, and subcontractor data.`);
+
       await loadTrips();
+      setSyncResult({ type: 'success', message: `Synced ${updated} trip record${updated === 1 ? '' : 's'}.` });
     } catch (error) {
-      alert('Error syncing trip data: ' + error.message);
+      setSyncResult({ type: 'error', message: `Trip sync failed: ${error?.message || 'Please try again.'}` });
+    } finally {
+      setSyncingData(false);
     }
-    setSyncingData(false);
   };
 
   const handleImportTrips = async (event) => {
@@ -331,7 +333,8 @@ export default function TripEncoding() {
             {isAdmin && (
               <>
                 <Button onClick={handleSyncTripData} size="sm" variant="outline" disabled={syncingData}>
-                  <RefreshCcw className={`w-4 h-4 mr-1.5 ${syncingData ? 'animate-spin' : ''}`} /> Sync Trip Data
+                  <RefreshCcw className={`w-4 h-4 mr-1.5 ${syncingData ? 'animate-spin' : ''}`} />
+                  {syncingData ? 'Syncing Trip Data…' : 'Sync Trip Data'}
                 </Button>
                 <Button onClick={handleSyncBillingDates} size="sm" variant="outline" disabled={syncing}>
                   <RefreshCw className={`w-4 h-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} /> Sync Billing Dates
@@ -346,6 +349,17 @@ export default function TripEncoding() {
           </div>
         }
       />
+      {syncResult && (
+        <div className={`mb-4 rounded-md border px-4 py-3 text-sm ${
+          syncResult.type === 'error'
+            ? 'border-destructive/30 bg-destructive/10 text-destructive'
+            : syncResult.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-primary/20 bg-primary/5 text-primary'
+        }`}>
+          {syncResult.message}
+        </div>
+      )}
       {/* Dashboard Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-card border rounded-lg p-4 shadow-sm text-center">
