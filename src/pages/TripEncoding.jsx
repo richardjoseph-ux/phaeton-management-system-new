@@ -10,20 +10,7 @@ import ExcelImportExport from '@/components/ui/ExcelImportExport';
 import { useAuth } from '@/lib/AuthContext';
 import { useAppData } from '@/lib/AppDataContext';
 import { formatDateDisplay } from '@/lib/dateUtils';
-import { calculateTripFees } from '@/lib/feeCalculator';
 import * as XLSX from 'xlsx';
-
-const loadAllRecords = async (entity, sort) => {
-  const records = [];
-  const limit = 5000;
-  let skip = 0;
-  while (true) {
-    const batch = await entity.list(sort, limit, skip);
-    records.push(...batch);
-    if (batch.length < limit) return records;
-    skip += limit;
-  }
-};
 
 export default function TripEncoding() {
   const { user: currentUser } = useAuth();
@@ -190,69 +177,11 @@ export default function TripEncoding() {
     setSyncResult({ type: 'progress', message: 'Syncing trip data…' });
 
     try {
-      const [tripsToUpdate, allClients, allSubcontractors] = await Promise.all([
-        loadAllRecords(base44.entities.TripRecord, '-created_date'),
-        loadAllRecords(base44.entities.ClientAccount, 'client_name'),
-        loadAllRecords(base44.entities.Subcontractor, 'plate_number')
-      ]);
-
-      let updated = 0;
-
-      for (const trip of tripsToUpdate) {
-        const client = allClients.find(c => c.id === trip.client_account_id || c.client_name === trip.client_name);
-        const subcontractor = allSubcontractors.find(s => s.plate_number === trip.plate_number);
-
-        if (client) {
-          const route = client.routes?.find(r =>
-            r.pickup_location?.trim().toLowerCase() === trip.pickup_location?.trim().toLowerCase() &&
-            r.delivery_location?.trim().toLowerCase() === trip.delivery_location?.trim().toLowerCase() &&
-            r.delivery_code?.trim().toLowerCase() === trip.delivery_code?.trim().toLowerCase()
-          );
-          const newRate = route?.rates?.[trip.truck_type] || 0;
-          const newGross = newRate || trip.gross_rate || 0;
-          const feeBreakdown = calculateTripFees({
-            grossRate: newGross,
-            clientData: client,
-            pickupLocation: trip.pickup_location,
-            truckType: trip.truck_type,
-            insuranceCharge: trip.insurance_charge || 0,
-            otherCharges: trip.other_charges || 0,
-            fuelSubsidy: 0,
-            deliveryDate: trip.delivery_date,
-          });
-          const needsSubcontractorUpdate = trip.subcontractor_id !== (subcontractor?.id || trip.subcontractor_id);
-          const hasFeeChanges = feeBreakdown.is_hidden_fee_effective && (
-            trip.gross_rate !== feeBreakdown.gross_rate ||
-            trip.tax_deduction !== feeBreakdown.tax_deduction ||
-            trip.hidden_fee !== feeBreakdown.hidden_fee ||
-            trip.admin_fee !== feeBreakdown.admin_fee ||
-            trip.net_payroll !== feeBreakdown.net_payroll
-          );
-          const routeCodeChanged = trip.trip_route_code !== (route?.trip_route_code || trip.trip_route_code);
-
-          if (hasFeeChanges || needsSubcontractorUpdate || routeCodeChanged) {
-            await base44.entities.TripRecord.update(trip.id, {
-              client_account_id: client.id,
-              client_name: client.client_name,
-              subcontractor_id: subcontractor?.id || trip.subcontractor_id,
-              trip_route_code: route?.trip_route_code || trip.trip_route_code,
-              ...(feeBreakdown.is_hidden_fee_effective ? {
-                gross_rate: feeBreakdown.gross_rate,
-                tax_deduction: feeBreakdown.tax_deduction,
-                hidden_fee: feeBreakdown.hidden_fee,
-                admin_fee: feeBreakdown.admin_fee,
-                net_payroll: feeBreakdown.net_payroll,
-              } : {})
-            });
-            updated++;
-          }
-        }
-      }
-
+      const response = await base44.functions.invoke('syncTripData', {});
       await loadTrips();
-      setSyncResult({ type: 'success', message: `Synced ${updated} trip record${updated === 1 ? '' : 's'}.` });
+      setSyncResult({ type: 'success', message: response.data.message });
     } catch (error) {
-      setSyncResult({ type: 'error', message: `Trip sync failed: ${error?.message || 'Please try again.'}` });
+      setSyncResult({ type: 'error', message: `Trip sync failed: ${error?.response?.data?.error || error?.message || 'Please try again.'}` });
     } finally {
       setSyncingData(false);
     }
