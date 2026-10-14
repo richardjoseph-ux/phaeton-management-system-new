@@ -99,7 +99,7 @@
           },
           "truck_type_fees": {
             "type": "array",
-            "description": "Hidden fee percentage and effective date for each truck type at this pickup location",
+            "description": "Current hidden fee and its effective-date history for each truck type",
             "items": {
               "type": "object",
               "properties": {
@@ -121,6 +121,27 @@
                   "type": "string",
                   "format": "date",
                   "description": "Delivery date from which this hidden fee applies"
+                },
+                "fee_history": {
+                  "type": "array",
+                  "description": "Prior hidden-fee versions retained for earlier delivery dates",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "hidden_fee_percentage": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "effective_date": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    },
+                    "required": [
+                      "hidden_fee_percentage"
+                    ]
+                  }
                 }
               },
               "required": [

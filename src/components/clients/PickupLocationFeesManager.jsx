@@ -37,6 +37,7 @@ export default function PickupLocationFeesManager({ pickupLocationFees, availabl
             truck_type: t,
             hidden_fee_percentage: match ? Number(match.hidden_fee_percentage) : DEFAULT_TRUCK_FEE,
             effective_date: match?.effective_date || '',
+            fee_history: match?.fee_history || [],
           };
         }),
       };

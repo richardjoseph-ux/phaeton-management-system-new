@@ -299,7 +299,29 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         rates: Object.fromEntries(
           Object.entries(r.rates).map(([k, v]) => [k, v === '' ? null : parseFloat(v)])
         )
-      }))
+      })),
+      pickup_location_fees: (form.pickup_location_fees || []).map(pickupFee => {
+        const previousPickupFee = editData?.pickup_location_fees?.find(previous =>
+          previous.pickup_location?.toLowerCase() === pickupFee.pickup_location?.toLowerCase()
+        );
+        return {
+          ...pickupFee,
+          truck_type_fees: (pickupFee.truck_type_fees || []).map(fee => {
+            const previousFee = previousPickupFee?.truck_type_fees?.find(previous => previous.truck_type === fee.truck_type);
+            const effectiveDateChanged = previousFee &&
+              (previousFee.effective_date || '') !== (fee.effective_date || '');
+            return {
+              ...fee,
+              fee_history: effectiveDateChanged
+                ? [...(previousFee.fee_history || []), {
+                    hidden_fee_percentage: Number(previousFee.hidden_fee_percentage) || 4,
+                    effective_date: previousFee.effective_date || ''
+                  }]
+                : (fee.fee_history || previousFee?.fee_history || [])
+            };
+          })
+        };
+      })
     };
 
     setSaving(true);

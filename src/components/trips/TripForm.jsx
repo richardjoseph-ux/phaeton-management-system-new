@@ -267,6 +267,7 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       insuranceCharge: form.insurance_charge || 0,
       otherCharges: form.other_charges || 0,
       fuelSubsidy: 0,
+      deliveryDate: form.delivery_date,
     });
 
     const data = { 
