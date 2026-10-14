@@ -23,7 +23,14 @@ export const getTruckTypeFeeConfig = (clientData, pickupLocation, truckType, del
   );
   if (!truckTypeFee) return defaultConfig;
 
-  const versions = [...(truckTypeFee.fee_history || []), truckTypeFee];
+  // The active entry wins over a history entry with the same effective date.
+  // This lets an administrator correct a fee without leaving an older value active.
+  const versionsByDate = new Map();
+  (truckTypeFee.fee_history || []).forEach(version => {
+    versionsByDate.set(version.effective_date || '', version);
+  });
+  versionsByDate.set(truckTypeFee.effective_date || '', truckTypeFee);
+  const versions = [...versionsByDate.values()];
   if (!deliveryDate) return { ...truckTypeFee, is_effective: true, is_current_effective: true };
 
   const applicableVersions = versions.filter(version =>

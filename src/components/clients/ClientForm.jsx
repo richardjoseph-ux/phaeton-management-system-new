@@ -312,14 +312,18 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
               Number(previousFee.hidden_fee_percentage) !== Number(fee.hidden_fee_percentage) ||
               (previousFee.effective_date || '') !== (fee.effective_date || '')
             );
+            const existingHistory = fee.fee_history || previousFee?.fee_history || [];
+            const historyWithoutCurrentDate = existingHistory.filter(version =>
+              (version.effective_date || '') !== (fee.effective_date || '')
+            );
             return {
               ...fee,
-              fee_history: feeChanged
-                ? [...(previousFee.fee_history || []), {
+              fee_history: feeChanged && (previousFee.effective_date || '') !== (fee.effective_date || '')
+                ? [...historyWithoutCurrentDate, {
                     hidden_fee_percentage: Number(previousFee.hidden_fee_percentage) || 4,
                     effective_date: previousFee.effective_date || ''
                   }]
-                : (fee.fee_history || previousFee?.fee_history || [])
+                : historyWithoutCurrentDate
             };
           })
         };

@@ -179,9 +179,9 @@ export default function TripEncoding() {
 
     try {
       const [tripsToUpdate, allClients, allSubcontractors] = await Promise.all([
-        base44.entities.TripRecord.list(),
-        base44.entities.ClientAccount.list('client_name', 100),
-        base44.entities.Subcontractor.list('plate_number', 200)
+        base44.entities.TripRecord.list('-created_date', 5000),
+        base44.entities.ClientAccount.list('client_name', 5000),
+        base44.entities.Subcontractor.list('plate_number', 5000)
       ]);
 
       let updated = 0;
@@ -192,9 +192,9 @@ export default function TripEncoding() {
 
         if (client) {
           const route = client.routes?.find(r =>
-            r.pickup_location === trip.pickup_location &&
-            r.delivery_location === trip.delivery_location &&
-            r.delivery_code === trip.delivery_code
+            r.pickup_location?.trim().toLowerCase() === trip.pickup_location?.trim().toLowerCase() &&
+            r.delivery_location?.trim().toLowerCase() === trip.delivery_location?.trim().toLowerCase() &&
+            r.delivery_code?.trim().toLowerCase() === trip.delivery_code?.trim().toLowerCase()
           );
           const newRate = route?.rates?.[trip.truck_type] || 0;
           const newGross = newRate || trip.gross_rate || 0;
@@ -209,7 +209,7 @@ export default function TripEncoding() {
             deliveryDate: trip.delivery_date,
           });
           const needsSubcontractorUpdate = trip.subcontractor_id !== (subcontractor?.id || trip.subcontractor_id);
-          const hasFeeChanges = feeBreakdown.is_current_hidden_fee_effective && (
+          const hasFeeChanges = feeBreakdown.is_hidden_fee_effective && (
             trip.gross_rate !== feeBreakdown.gross_rate ||
             trip.tax_deduction !== feeBreakdown.tax_deduction ||
             trip.hidden_fee !== feeBreakdown.hidden_fee ||
@@ -224,7 +224,7 @@ export default function TripEncoding() {
               client_name: client.client_name,
               subcontractor_id: subcontractor?.id || trip.subcontractor_id,
               trip_route_code: route?.trip_route_code || trip.trip_route_code,
-              ...(feeBreakdown.is_current_hidden_fee_effective ? {
+              ...(feeBreakdown.is_hidden_fee_effective ? {
                 gross_rate: feeBreakdown.gross_rate,
                 tax_deduction: feeBreakdown.tax_deduction,
                 hidden_fee: feeBreakdown.hidden_fee,
