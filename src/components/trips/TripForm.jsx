@@ -608,23 +608,33 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
               r.delivery_code?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanFormCode
             );
             
-            const gross = getDirectRouteRate(matchedRoute, form.truck_type);
+            const routeGross = getDirectRouteRate(matchedRoute, form.truck_type);
+            const keepSavedFinancials = Boolean(editData && !isDuplicate);
+            const gross = keepSavedFinancials ? Number(editData.gross_rate || 0) : routeGross;
             if (!gross) return null;
-            
-            // Calculate fees to show accurate breakdown
-            const breakdownFees = calculateTripFees({
-              grossRate: gross,
-              clientData: client,
-              pickupLocation: form.pickup_location,
-              truckType: form.truck_type,
-              insuranceCharge: 0,
-              otherCharges: 0,
-              fuelSubsidy: 0,
-              deliveryDate: form.delivery_date,
-              });
-            
+
+            // Existing trips show their saved payroll until Sync Trip Data is run.
+            const breakdownFees = keepSavedFinancials
+              ? {
+                  tax_deduction: Number(editData.tax_deduction || 0),
+                  hidden_fee: Number(editData.hidden_fee || 0),
+                  admin_fee: Number(editData.admin_fee || 0),
+                  net_payroll: Number(editData.net_payroll || 0),
+                }
+              : calculateTripFees({
+                  grossRate: gross,
+                  clientData: client,
+                  pickupLocation: form.pickup_location,
+                  truckType: form.truck_type,
+                  insuranceCharge: 0,
+                  otherCharges: 0,
+                  fuelSubsidy: 0,
+                  deliveryDate: form.delivery_date,
+                });
+
             const taxPercent = 2;
-            const hiddenPercent = breakdownFees.hidden_fee_percentage;
+            const afterTax = gross - breakdownFees.tax_deduction;
+            const hiddenPercent = afterTax ? (breakdownFees.hidden_fee / afterTax) * 100 : 0;
             const netPercent = 100 - taxPercent - hiddenPercent - 6; // 100 - tax - hidden - admin
             
             return (

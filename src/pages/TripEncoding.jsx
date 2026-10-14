@@ -13,6 +13,18 @@ import { formatDateDisplay } from '@/lib/dateUtils';
 import { calculateTripFees } from '@/lib/feeCalculator';
 import * as XLSX from 'xlsx';
 
+const loadAllRecords = async (entity, sort) => {
+  const records = [];
+  const limit = 5000;
+  let skip = 0;
+  while (true) {
+    const batch = await entity.list(sort, limit, skip);
+    records.push(...batch);
+    if (batch.length < limit) return records;
+    skip += limit;
+  }
+};
+
 export default function TripEncoding() {
   const { user: currentUser } = useAuth();
   const { clients, subcontractors, billingCycles } = useAppData();
@@ -179,9 +191,9 @@ export default function TripEncoding() {
 
     try {
       const [tripsToUpdate, allClients, allSubcontractors] = await Promise.all([
-        base44.entities.TripRecord.list('-created_date', 5000),
-        base44.entities.ClientAccount.list('client_name', 5000),
-        base44.entities.Subcontractor.list('plate_number', 5000)
+        loadAllRecords(base44.entities.TripRecord, '-created_date'),
+        loadAllRecords(base44.entities.ClientAccount, 'client_name'),
+        loadAllRecords(base44.entities.Subcontractor, 'plate_number')
       ]);
 
       let updated = 0;
