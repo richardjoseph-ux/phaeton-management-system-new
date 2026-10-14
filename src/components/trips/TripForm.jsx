@@ -270,13 +270,23 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       deliveryDate: form.delivery_date,
     });
 
-    const data = { 
-      ...form, 
-      gross_rate: feeBreakdown.gross_rate, 
-      tax_deduction: feeBreakdown.tax_deduction, 
-      hidden_fee: feeBreakdown.hidden_fee, 
-      admin_fee: feeBreakdown.admin_fee, 
-      net_payroll: feeBreakdown.net_payroll 
+    const calculatedFinancials = {
+      gross_rate: feeBreakdown.gross_rate,
+      tax_deduction: feeBreakdown.tax_deduction,
+      hidden_fee: feeBreakdown.hidden_fee,
+      admin_fee: feeBreakdown.admin_fee,
+      net_payroll: feeBreakdown.net_payroll
+    };
+    const existingFinancials = {
+      gross_rate: editData?.gross_rate,
+      tax_deduction: editData?.tax_deduction,
+      hidden_fee: editData?.hidden_fee,
+      admin_fee: editData?.admin_fee,
+      net_payroll: editData?.net_payroll
+    };
+    const data = {
+      ...form,
+      ...(editData && !isDuplicate ? existingFinancials : calculatedFinancials)
     };
 
     if (editData && !isDuplicate) {
@@ -610,7 +620,8 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
               insuranceCharge: 0,
               otherCharges: 0,
               fuelSubsidy: 0,
-            });
+              deliveryDate: form.delivery_date,
+              });
             
             const taxPercent = 2;
             const hiddenPercent = breakdownFees.hidden_fee_percentage;
