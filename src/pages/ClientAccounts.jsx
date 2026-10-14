@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { getTruckTypeFeePercentage } from '@/lib/feeCalculator';
 import * as XLSX from 'xlsx'; // Import the Excel library
 import { generateSubconRatePDF } from '@/lib/subconRatePdf';
+import { exportGrossOnlyExcel, exportGrossOnlyPdf } from '@/lib/grossOnlyRateExports';
 
 // ==========================================
 // SUB-COMPONENT: CLIENT ROUTE TABLE
@@ -152,6 +153,27 @@ function ClientRouteTable({ client }) {
     });
   };
 
+  const getGrossOnlyRows = () => processedRoutes.map(route => ({
+    destination: route.delivery_location,
+    code: route.delivery_code,
+    gross: Number(route.rates?.[activeTruck] || 0),
+  }));
+
+  const handleExportGrossOnly = (format) => {
+    if (processedRoutes.length === 0) return;
+    const sanitizedClientName = client.client_name?.replace(/[^a-z0-9]/gi, '_');
+    const sanitizedTabName = activeTab.replace(/[^a-z0-9]/gi, '_');
+    const options = {
+      clientName: client.client_name,
+      pickupLocation: activeTab,
+      truckType: activeTruck,
+      rows: getGrossOnlyRows(),
+      filename: `${sanitizedClientName}_${sanitizedTabName}_${activeTruck}_Gross_Only.${format}`,
+    };
+    if (format === 'pdf') exportGrossOnlyPdf(options);
+    else exportGrossOnlyExcel(options);
+  };
+
   return (
     <div className="border-t bg-muted/20">
       <div className="px-5 py-4 border-b">
@@ -213,10 +235,12 @@ function ClientRouteTable({ client }) {
                 <SelectItem value="standard">PHAETON RATE (EXCEL)</SelectItem>
                 <SelectItem value="subcon">SUBCON RATE (EXCEL)</SelectItem>
                 <SelectItem value="subcon-pdf">SUBCON RATE (PDF)</SelectItem>
+                <SelectItem value="gross-excel">GROSS ONLY (EXCEL)</SelectItem>
+                <SelectItem value="gross-pdf">GROSS ONLY (PDF)</SelectItem>
               </SelectContent>
             </Select>
             <Button
-              onClick={exportType === 'subcon-pdf' ? handleExportSubconPdf : exportType === 'subcon' ? handleExportSubconExcel : handleExportExcel}
+              onClick={exportType === 'gross-pdf' ? () => handleExportGrossOnly('pdf') : exportType === 'gross-excel' ? () => handleExportGrossOnly('xlsx') : exportType === 'subcon-pdf' ? handleExportSubconPdf : exportType === 'subcon' ? handleExportSubconExcel : handleExportExcel}
               variant="outline"
               size="sm"
               className="h-8 flex-1 text-xs sm:flex-none"
