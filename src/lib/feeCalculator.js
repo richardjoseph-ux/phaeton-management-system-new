@@ -12,7 +12,7 @@
  * @returns {number} The hidden fee percentage (e.g., 3, 4, 4.5) or 4 (default)
  */
 export const getTruckTypeFeeConfig = (clientData, pickupLocation, truckType, deliveryDate = '') => {
-  const defaultConfig = { hidden_fee_percentage: 4, effective_date: '', is_effective: false };
+  const defaultConfig = { hidden_fee_percentage: 4, effective_date: '', is_effective: false, is_current_effective: false };
   if (!clientData || !pickupLocation || !truckType) return defaultConfig;
 
   const pickupFeeConfig = clientData.pickup_location_fees?.find(
@@ -24,7 +24,7 @@ export const getTruckTypeFeeConfig = (clientData, pickupLocation, truckType, del
   if (!truckTypeFee) return defaultConfig;
 
   const versions = [...(truckTypeFee.fee_history || []), truckTypeFee];
-  if (!deliveryDate) return { ...truckTypeFee, is_effective: true };
+  if (!deliveryDate) return { ...truckTypeFee, is_effective: true, is_current_effective: true };
 
   const applicableVersions = versions.filter(version =>
     !version.effective_date || version.effective_date <= deliveryDate
@@ -34,7 +34,11 @@ export const getTruckTypeFeeConfig = (clientData, pickupLocation, truckType, del
   const applicableConfig = applicableVersions.sort((a, b) =>
     String(b.effective_date || '').localeCompare(String(a.effective_date || ''))
   )[0];
-  return { ...applicableConfig, is_effective: true };
+  return {
+    ...applicableConfig,
+    is_effective: true,
+    is_current_effective: !truckTypeFee.effective_date || truckTypeFee.effective_date <= deliveryDate,
+  };
 };
 
 export const getTruckTypeFeePercentage = (clientData, pickupLocation, truckType, deliveryDate = '') => {
@@ -151,6 +155,7 @@ export const calculateTripFees = ({
     hidden_fee: fees.hiddenFee,
     hidden_fee_percentage: hiddenFeePercentage,
     is_hidden_fee_effective: isHiddenFeeEffective,
+    is_current_hidden_fee_effective: feeConfig.is_current_effective,
     admin_fee: fees.adminFee,
     insurance_charge: insuranceCharge,
     other_charges: otherCharges,

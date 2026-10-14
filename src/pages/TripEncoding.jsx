@@ -209,7 +209,7 @@ export default function TripEncoding() {
             deliveryDate: trip.delivery_date,
           });
           const needsSubcontractorUpdate = trip.subcontractor_id !== (subcontractor?.id || trip.subcontractor_id);
-          const hasFeeChanges = feeBreakdown.is_hidden_fee_effective && (
+          const hasFeeChanges = feeBreakdown.is_current_hidden_fee_effective && (
             trip.gross_rate !== feeBreakdown.gross_rate ||
             trip.tax_deduction !== feeBreakdown.tax_deduction ||
             trip.hidden_fee !== feeBreakdown.hidden_fee ||
@@ -224,7 +224,7 @@ export default function TripEncoding() {
               client_name: client.client_name,
               subcontractor_id: subcontractor?.id || trip.subcontractor_id,
               trip_route_code: route?.trip_route_code || trip.trip_route_code,
-              ...(feeBreakdown.is_hidden_fee_effective ? {
+              ...(feeBreakdown.is_current_hidden_fee_effective ? {
                 gross_rate: feeBreakdown.gross_rate,
                 tax_deduction: feeBreakdown.tax_deduction,
                 hidden_fee: feeBreakdown.hidden_fee,

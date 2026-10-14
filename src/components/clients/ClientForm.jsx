@@ -308,11 +308,13 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
           ...pickupFee,
           truck_type_fees: (pickupFee.truck_type_fees || []).map(fee => {
             const previousFee = previousPickupFee?.truck_type_fees?.find(previous => previous.truck_type === fee.truck_type);
-            const effectiveDateChanged = previousFee &&
-              (previousFee.effective_date || '') !== (fee.effective_date || '');
+            const feeChanged = previousFee && (
+              Number(previousFee.hidden_fee_percentage) !== Number(fee.hidden_fee_percentage) ||
+              (previousFee.effective_date || '') !== (fee.effective_date || '')
+            );
             return {
               ...fee,
-              fee_history: effectiveDateChanged
+              fee_history: feeChanged
                 ? [...(previousFee.fee_history || []), {
                     hidden_fee_percentage: Number(previousFee.hidden_fee_percentage) || 4,
                     effective_date: previousFee.effective_date || ''
