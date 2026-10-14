@@ -456,8 +456,15 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                 <Label>Delivery Location *</Label>
                 <Popover open={deliveryOpen} onOpenChange={setDeliveryOpen}>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" aria-expanded={deliveryOpen} className="w-full justify-between h-9" disabled={!form.pickup_location}>
-                      {form.delivery_location || 'Select delivery...'}
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={deliveryOpen}
+                      className="w-full min-w-0 justify-between h-9"
+                      disabled={!form.pickup_location}
+                      title={form.delivery_location || 'Select delivery...'}
+                    >
+                      <span className="min-w-0 flex-1 truncate text-left">{form.delivery_location || 'Select delivery...'}</span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
@@ -492,8 +499,15 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
                 <Label>Delivery Code *</Label>
                 <Popover open={codeOpen} onOpenChange={setCodeOpen}>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" aria-expanded={codeOpen} className="w-full justify-between h-9" disabled={!form.delivery_location}>
-                      {form.delivery_code || 'Select code...'}
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={codeOpen}
+                      className="w-full min-w-0 justify-between h-9"
+                      disabled={!form.delivery_location}
+                      title={form.delivery_code || 'Select code...'}
+                    >
+                      <span className="min-w-0 flex-1 truncate text-left">{form.delivery_code || 'Select code...'}</span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
