@@ -284,9 +284,17 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
       admin_fee: editData?.admin_fee,
       net_payroll: editData?.net_payroll
     };
+    const rateInputsChanged = editData && [
+      'client_account_id',
+      'pickup_location',
+      'delivery_location',
+      'delivery_code',
+      'truck_type',
+      'delivery_date',
+    ].some(field => form[field] !== editData[field]);
     const data = {
       ...form,
-      ...(editData && !isDuplicate ? existingFinancials : calculatedFinancials)
+      ...(editData && !isDuplicate && !rateInputsChanged ? existingFinancials : calculatedFinancials)
     };
 
     if (editData && !isDuplicate) {
@@ -609,11 +617,18 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
             );
             
             const routeGross = getDirectRouteRate(matchedRoute, form.truck_type);
-            const keepSavedFinancials = Boolean(editData && !isDuplicate);
+            const rateInputsChanged = editData && [
+              'client_account_id',
+              'pickup_location',
+              'delivery_location',
+              'delivery_code',
+              'truck_type',
+              'delivery_date',
+            ].some(field => form[field] !== editData[field]);
+            const keepSavedFinancials = Boolean(editData && !isDuplicate && !rateInputsChanged);
             const gross = keepSavedFinancials ? Number(editData.gross_rate || 0) : routeGross;
             if (!gross) return null;
 
-            // Existing trips show their saved payroll until Sync Trip Data is run.
             const breakdownFees = keepSavedFinancials
               ? {
                   tax_deduction: Number(editData.tax_deduction || 0),
@@ -634,8 +649,8 @@ export default function TripForm({ open, onClose, onSaved, editData, isDuplicate
 
             const taxPercent = 2;
             const afterTax = gross - breakdownFees.tax_deduction;
-            const hiddenPercent = afterTax ? (breakdownFees.hidden_fee / afterTax) * 100 : 0;
-            const netPercent = 100 - taxPercent - hiddenPercent - 6; // 100 - tax - hidden - admin
+            const hiddenPercent = Number((afterTax ? (breakdownFees.hidden_fee / afterTax) * 100 : 0).toFixed(2));
+            const netPercent = Number((100 - taxPercent - hiddenPercent - 6).toFixed(2));
             
             return (
               <div className="col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
