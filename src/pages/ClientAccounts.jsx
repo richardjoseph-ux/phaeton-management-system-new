@@ -153,11 +153,17 @@ function ClientRouteTable({ client }) {
     });
   };
 
-  const getGrossOnlyRows = () => processedRoutes.map(route => ({
-    destination: route.delivery_location,
-    code: route.delivery_code,
-    gross: Number(route.rates?.[activeTruck] || 0),
-  }));
+  const getGrossOnlyRows = () => processedRoutes.map(route => {
+    const originalGross = Number(route.rates?.[activeTruck] || 0);
+    const afterTax = originalGross * 0.98;
+    const hiddenFee = afterTax * (hiddenFeePercentage / 100);
+
+    return {
+      destination: route.delivery_location,
+      code: route.delivery_code,
+      gross: afterTax - hiddenFee,
+    };
+  });
 
   const handleExportGrossOnly = (format) => {
     if (processedRoutes.length === 0) return;
