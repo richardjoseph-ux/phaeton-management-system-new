@@ -33,6 +33,24 @@
       ],
       "default": "Active"
     },
+    "pickup_locations": {
+      "type": "array",
+      "description": "Warehouse addresses maintained per pickup location",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pickup_location": {
+            "type": "string"
+          },
+          "warehouse_address": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pickup_location"
+        ]
+      }
+    },
     "routes": {
       "type": "array",
       "description": "Route configurations for this client, each with its own rates",
@@ -41,10 +59,6 @@
         "properties": {
           "pickup_location": {
             "type": "string"
-          },
-          "pickup_address": {
-            "type": "string",
-            "description": "Pickup address for this individual route"
           },
           "delivery_location": {
             "type": "string"

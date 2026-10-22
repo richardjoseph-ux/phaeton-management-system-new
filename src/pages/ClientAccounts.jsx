@@ -63,6 +63,7 @@ function ClientRouteTable({ client }) {
   }, [activeTab, activeTruck, routeSearch]);
 
   const hiddenFeePercentage = getTruckTypeFeePercentage(client, activeTab, activeTruck);
+  const warehouseAddress = client.pickup_locations?.find(location => location.pickup_location === activeTab)?.warehouse_address || '';
 
   // ==========================================
   // EXCEL EXPORT ENGINE
@@ -81,7 +82,7 @@ function ClientRouteTable({ client }) {
       const net = gross - tax - hidden - admin;
 
       return {
-        'Pickup Address': route.pickup_address || '',
+        'Warehouse Address': warehouseAddress,
         'Destination': route.delivery_location,
         'Code': route.delivery_code,
         'Gross (₱)': gross,
@@ -116,7 +117,7 @@ function ClientRouteTable({ client }) {
     const net = gross - admin;
 
     return {
-      pickupAddress: route.pickup_address || '',
+      pickupAddress: warehouseAddress,
       destination: route.delivery_location,
       code: route.delivery_code,
       gross,
@@ -162,7 +163,7 @@ function ClientRouteTable({ client }) {
     const hiddenFee = afterTax * (hiddenFeePercentage / 100);
 
     return {
-      pickupAddress: route.pickup_address || '',
+      pickupAddress: warehouseAddress,
       destination: route.delivery_location,
       code: route.delivery_code,
       gross: afterTax - hiddenFee,

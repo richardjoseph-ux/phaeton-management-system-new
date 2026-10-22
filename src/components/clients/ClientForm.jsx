@@ -13,7 +13,7 @@ import AddPickupLocationDialog from './AddPickupLocationDialog';
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
 const emptyRoute = () => ({
-  pickup_location: '', pickup_address: '', delivery_location: '', delivery_code: '', trip_route_code: '',
+  pickup_location: '', delivery_location: '', delivery_code: '', trip_route_code: '',
   rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
 });
 
@@ -57,6 +57,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     client_name: '', client_code: '', address: '', contact_person: '',
     contact_number: '', status: 'Active', credit_terms: '',
     routes: [emptyRoute()],
+    pickup_locations: [],
     sub_accounts: []
   });
   const [saving, setSaving] = useState(false);
@@ -111,7 +112,6 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         routes: editData.routes?.length
           ? editData.routes.map(r => ({
               pickup_location: r.pickup_location || '',
-              pickup_address: r.pickup_address || '',
               delivery_location: r.delivery_location || '',
               delivery_code: r.delivery_code || '',
               trip_route_code: r.trip_route_code || '',
@@ -124,6 +124,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             }))
           : [emptyRoute()],
         sub_accounts: editData.sub_accounts || [],
+        pickup_locations: editData.pickup_locations || [],
         pickup_location_fees: editData.pickup_location_fees || []
       });
       // Set first pickup and first truck type as active when editing
@@ -171,6 +172,14 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     return { ...p, routes };
   });
 
+  const setWarehouseAddress = (pickupLocation, warehouseAddress) => setForm(p => {
+    const found = p.pickup_locations.some(location => location.pickup_location === pickupLocation);
+    const pickup_locations = found
+      ? p.pickup_locations.map(location => location.pickup_location === pickupLocation ? { ...location, warehouse_address: warehouseAddress } : location)
+      : [...p.pickup_locations, { pickup_location: pickupLocation, warehouse_address: warehouseAddress }];
+    return { ...p, pickup_locations };
+  });
+
   const addRoute = () => {
     const newRoute = emptyRoute();
     if (activePickup !== '__all__') newRoute.pickup_location = activePickup;
@@ -187,7 +196,11 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
       `Delete pickup location "${pickup}"?\n\nThis will remove all ${count} route(s) under this pickup. This cannot be undone.`
     );
     if (!confirmed) return;
-    setForm(p => ({ ...p, routes: p.routes.filter(r => r.pickup_location !== pickup) }));
+    setForm(p => ({
+      ...p,
+      routes: p.routes.filter(r => r.pickup_location !== pickup),
+      pickup_locations: p.pickup_locations.filter(location => location.pickup_location !== pickup)
+    }));
     setActivePickup('__all__');
     setActiveTruck('__all__');
   };
@@ -200,7 +213,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         .filter(r => r.rates?.[truckType] !== '' && r.rates?.[truckType] != null)
         .map(r => ({
           'Pickup Location': r.pickup_location,
-          'Pickup Address': r.pickup_address,
+          'Warehouse Address': form.pickup_locations.find(location => location.pickup_location === r.pickup_location)?.warehouse_address || '',
           'Delivery Location': r.delivery_location,
           'Delivery Code': r.delivery_code,
           'Trip Route Code': r.trip_route_code,
@@ -208,7 +221,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         }));
       // Always add the sheet even if empty so template is preserved
       const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [
-        { 'Pickup Location': '', 'Pickup Address': '', 'Delivery Location': '', 'Delivery Code': '', 'Trip Route Code': '', 'Rate': '' }
+        { 'Pickup Location': '', 'Warehouse Address': '', 'Delivery Location': '', 'Delivery Code': '', 'Trip Route Code': '', 'Rate': '' }
       ]);
       XLSX.utils.book_append_sheet(wb, ws, truckType);
     });
@@ -240,7 +253,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
           if (!excelRouteMap[key]) {
             excelRouteMap[key] = {
               pickup_location: pickup,
-              pickup_address: String(row['Pickup Address'] || '').trim(),
+              warehouse_address: String(row['Warehouse Address'] || row['Pickup Address'] || '').trim(),
               delivery_location: delivery,
               delivery_code: code,
               trip_route_code: tripRoute,
@@ -252,6 +265,14 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
       });
 
       const importedRoutes = Object.values(excelRouteMap);
+      const importedPickupLocations = Object.values(excelRouteMap).reduce((locations, route) => {
+        const sourceRow = Object.values(excelRouteMap).find(item => item.pickup_location === route.pickup_location);
+        const address = String(sourceRow?.warehouse_address || '').trim();
+        if (route.pickup_location && !locations.some(location => location.pickup_location === route.pickup_location)) {
+          locations.push({ pickup_location: route.pickup_location, warehouse_address: address });
+        }
+        return locations;
+      }, []);
       
       // If editing existing client, sync imported routes with current form routes
       if (editData && form.routes.length > 0) {
@@ -278,10 +299,18 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
           }
         });
 
-        setForm(p => ({ ...p, routes: routesToKeep.length ? routesToKeep : [emptyRoute()] }));
+        setForm(p => ({
+          ...p,
+          routes: routesToKeep.length ? routesToKeep : [emptyRoute()],
+          pickup_locations: importedPickupLocations
+        }));
       } else {
         // For new clients or empty routes, just use imported data
-        setForm(p => ({ ...p, routes: importedRoutes.length ? importedRoutes : [emptyRoute()] }));
+        setForm(p => ({
+          ...p,
+          routes: importedRoutes.length ? importedRoutes : [emptyRoute()],
+          pickup_locations: importedPickupLocations
+        }));
       }
       
       setActivePickup('__all__');
@@ -421,7 +450,13 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
   const rateColumns = activeTruck === '__all__' ? TRUCK_TYPES : [activeTruck];
 
   const onPickupAdded = (loc, newRoutes) => {
-    setForm(p => ({ ...p, routes: [...p.routes, ...newRoutes] }));
+    setForm(p => ({
+      ...p,
+      routes: [...p.routes, ...newRoutes],
+      pickup_locations: p.pickup_locations.some(location => location.pickup_location === loc)
+        ? p.pickup_locations
+        : [...p.pickup_locations, { pickup_location: loc, warehouse_address: '' }]
+    }));
     setActivePickup(loc);
     setActiveTruck(TRUCK_TYPES[0]);
     setShowAddPickup(false);
@@ -537,6 +572,20 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
             {/* Level 1: Pickup Tabs */}
             <TabBar tabs={pickupTabList} active={activePickup} onSelect={(v) => { setActivePickup(v); setActiveTruck(editData ? TRUCK_TYPES[0] : '__all__'); setRouteSearch(''); }} onDeletePickup={deletePickupLocation} />
 
+            {activePickup !== '__all__' && (
+              <div className="border-x border-border bg-muted/20 px-3 py-2.5">
+                <div className="flex items-center gap-3">
+                  <Label className="shrink-0 text-xs font-semibold">Warehouse Address</Label>
+                  <Input
+                    className="h-8 text-xs"
+                    value={form.pickup_locations.find(location => location.pickup_location === activePickup)?.warehouse_address || ''}
+                    onChange={e => setWarehouseAddress(activePickup, e.target.value)}
+                    placeholder={`Address for ${activePickup}`}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Level 2: Truck Type Sub-Tabs + Add Route inline */}
             <div className="bg-muted/30 px-2 pt-1 pb-0 border-x border-border flex items-end justify-between">
               <TabBar tabs={truckTabList} active={activeTruck} onSelect={setActiveTruck} />
@@ -570,7 +619,6 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                     {activePickup === '__all__' && (
                       <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Pick Up</th>
                     )}
-                    <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Pickup Address</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Destination</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Route Code</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Trip Route</th>
@@ -601,14 +649,6 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                             />
                           </td>
                         )}
-                        <td className="px-2 py-1.5 border-r">
-                          <Input
-                            className="h-7 text-xs min-w-[180px]"
-                            value={route.pickup_address || ''}
-                            onChange={e => setRoute(idx, 'pickup_address', e.target.value)}
-                            placeholder="Pickup address"
-                          />
-                        </td>
                         <td className="px-2 py-1.5 border-r">
                           <Input
                             className="h-7 text-xs min-w-[120px]"
