@@ -13,7 +13,7 @@ import AddPickupLocationDialog from './AddPickupLocationDialog';
 const TRUCK_TYPES = ['AUV', 'Sub-4W', '6-Wheel', '10-Wheel'];
 
 const emptyRoute = () => ({
-  pickup_location: '', delivery_location: '', delivery_code: '', trip_route_code: '',
+  pickup_location: '', pickup_address: '', delivery_location: '', delivery_code: '', trip_route_code: '',
   rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
 });
 
@@ -111,6 +111,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         routes: editData.routes?.length
           ? editData.routes.map(r => ({
               pickup_location: r.pickup_location || '',
+              pickup_address: r.pickup_address || '',
               delivery_location: r.delivery_location || '',
               delivery_code: r.delivery_code || '',
               trip_route_code: r.trip_route_code || '',
@@ -199,6 +200,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         .filter(r => r.rates?.[truckType] !== '' && r.rates?.[truckType] != null)
         .map(r => ({
           'Pickup Location': r.pickup_location,
+          'Pickup Address': r.pickup_address,
           'Delivery Location': r.delivery_location,
           'Delivery Code': r.delivery_code,
           'Trip Route Code': r.trip_route_code,
@@ -206,7 +208,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         }));
       // Always add the sheet even if empty so template is preserved
       const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [
-        { 'Pickup Location': '', 'Delivery Location': '', 'Delivery Code': '', 'Trip Route Code': '', 'Rate': '' }
+        { 'Pickup Location': '', 'Pickup Address': '', 'Delivery Location': '', 'Delivery Code': '', 'Trip Route Code': '', 'Rate': '' }
       ]);
       XLSX.utils.book_append_sheet(wb, ws, truckType);
     });
@@ -238,6 +240,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
           if (!excelRouteMap[key]) {
             excelRouteMap[key] = {
               pickup_location: pickup,
+              pickup_address: String(row['Pickup Address'] || '').trim(),
               delivery_location: delivery,
               delivery_code: code,
               trip_route_code: tripRoute,
@@ -567,6 +570,7 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                     {activePickup === '__all__' && (
                       <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Pick Up</th>
                     )}
+                    <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Pickup Address</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Destination</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Route Code</th>
                     <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground border-r">Trip Route</th>
@@ -597,6 +601,14 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
                             />
                           </td>
                         )}
+                        <td className="px-2 py-1.5 border-r">
+                          <Input
+                            className="h-7 text-xs min-w-[180px]"
+                            value={route.pickup_address || ''}
+                            onChange={e => setRoute(idx, 'pickup_address', e.target.value)}
+                            placeholder="Pickup address"
+                          />
+                        </td>
                         <td className="px-2 py-1.5 border-r">
                           <Input
                             className="h-7 text-xs min-w-[120px]"

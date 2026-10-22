@@ -81,6 +81,7 @@ function ClientRouteTable({ client }) {
       const net = gross - tax - hidden - admin;
 
       return {
+        'Pickup Address': route.pickup_address || '',
         'Destination': route.delivery_location,
         'Code': route.delivery_code,
         'Gross (₱)': gross,
@@ -115,6 +116,7 @@ function ClientRouteTable({ client }) {
     const net = gross - admin;
 
     return {
+      pickupAddress: route.pickup_address || '',
       destination: route.delivery_location,
       code: route.delivery_code,
       gross,
@@ -126,6 +128,7 @@ function ClientRouteTable({ client }) {
   const handleExportSubconExcel = () => {
     if (processedRoutes.length === 0) return;
     const excelRows = getSubconRows().map(row => ({
+      'Pickup Address': row.pickupAddress,
       'Destination': row.destination,
       'Code': row.code,
       'Gross (₱)': row.gross,
@@ -159,6 +162,7 @@ function ClientRouteTable({ client }) {
     const hiddenFee = afterTax * (hiddenFeePercentage / 100);
 
     return {
+      pickupAddress: route.pickup_address || '',
       destination: route.delivery_location,
       code: route.delivery_code,
       gross: afterTax - hiddenFee,

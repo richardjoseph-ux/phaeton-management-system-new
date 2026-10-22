@@ -42,6 +42,10 @@
           "pickup_location": {
             "type": "string"
           },
+          "pickup_address": {
+            "type": "string",
+            "description": "Pickup address for this individual route"
+          },
           "delivery_location": {
             "type": "string"
           },
