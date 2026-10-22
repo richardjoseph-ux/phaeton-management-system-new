@@ -2,11 +2,11 @@ import jsPDF from 'jspdf';
 
 const peso = (amount) => `P${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function generateSubconRatePDF({ clientName, pickupLocation, truckType, rows, filename }) {
+export function generateSubconRatePDF({ clientName, pickupLocation, warehouseAddress, truckType, rows, filename }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const margin = 15;
   const right = 195;
-  const columns = [15, 55, 85, 110, 140, 166, 195];
+  const columns = [15, 78, 103, 130, 162, 195];
   const headerHeight = 8;
   const rowHeight = 7;
   let y = 15;
@@ -16,9 +16,9 @@ export function generateSubconRatePDF({ clientName, pickupLocation, truckType, r
     doc.rect(margin, y, right - margin, headerHeight, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    ['PICKUP ADDRESS', 'DESTINATION', 'CODE', 'GROSS', 'ADMIN FEE', 'NET'].forEach((label, index) => {
-      const align = index < 3 ? 'left' : 'right';
+    doc.setFontSize(7.5);
+    ['DESTINATION', 'CODE', 'GROSS', 'ADMIN FEE', 'NET'].forEach((label, index) => {
+      const align = index < 2 ? 'left' : 'right';
       doc.text(label, align === 'left' ? columns[index] + 2 : columns[index + 1] - 2, y + 5, { align });
     });
     y += headerHeight;
@@ -39,6 +39,8 @@ export function generateSubconRatePDF({ clientName, pickupLocation, truckType, r
   doc.text(`Pickup: ${pickupLocation || '—'}`, 105, y);
   y += 5;
   doc.text(`Truck Type: ${truckType || '—'}`, margin, y);
+  y += 5;
+  doc.text(`Warehouse Address: ${warehouseAddress || '—'}`, margin, y);
   y += 7;
   drawTableHeader();
 
@@ -54,14 +56,13 @@ export function generateSubconRatePDF({ clientName, pickupLocation, truckType, r
     for (let index = 1; index < columns.length - 1; index += 1) doc.line(columns[index], y, columns[index], y + rowHeight);
     doc.setTextColor(30, 41, 59);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.text(String(row.pickupAddress || '—'), columns[0] + 2, y + 4.5);
-    doc.text(String(row.destination || '—'), columns[1] + 2, y + 4.5);
-    doc.text(String(row.code || '—'), columns[2] + 2, y + 4.5);
-    doc.text(peso(row.gross), columns[4] - 2, y + 4.5, { align: 'right' });
-    doc.text(`-${peso(row.admin)}`, columns[5] - 2, y + 4.5, { align: 'right' });
+    doc.setFontSize(8);
+    doc.text(String(row.destination || '—'), columns[0] + 2, y + 4.5);
+    doc.text(String(row.code || '—'), columns[1] + 2, y + 4.5);
+    doc.text(peso(row.gross), columns[3] - 2, y + 4.5, { align: 'right' });
+    doc.text(`-${peso(row.admin)}`, columns[4] - 2, y + 4.5, { align: 'right' });
     doc.setFont('helvetica', 'bold');
-    doc.text(peso(row.net), columns[6] - 2, y + 4.5, { align: 'right' });
+    doc.text(peso(row.net), columns[5] - 2, y + 4.5, { align: 'right' });
     y += rowHeight;
   });
 

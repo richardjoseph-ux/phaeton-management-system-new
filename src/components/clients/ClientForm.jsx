@@ -213,7 +213,6 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         .filter(r => r.rates?.[truckType] !== '' && r.rates?.[truckType] != null)
         .map(r => ({
           'Pickup Location': r.pickup_location,
-          'Warehouse Address': form.pickup_locations.find(location => location.pickup_location === r.pickup_location)?.warehouse_address || '',
           'Delivery Location': r.delivery_location,
           'Delivery Code': r.delivery_code,
           'Trip Route Code': r.trip_route_code,
@@ -221,8 +220,10 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
         }));
       // Always add the sheet even if empty so template is preserved
       const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [
-        { 'Pickup Location': '', 'Warehouse Address': '', 'Delivery Location': '', 'Delivery Code': '', 'Trip Route Code': '', 'Rate': '' }
-      ]);
+        { 'Pickup Location': '', 'Delivery Location': '', 'Delivery Code': '', 'Trip Route Code': '', 'Rate': '' }
+      ], { origin: 'A3' });
+      const warehouseAddress = form.pickup_locations.find(location => location.pickup_location === activePickup)?.warehouse_address || '';
+      XLSX.utils.sheet_add_aoa(ws, [[`Warehouse Address: ${warehouseAddress || '—'}`]], { origin: 'A1' });
       XLSX.utils.book_append_sheet(wb, ws, truckType);
     });
     XLSX.writeFile(wb, `${form.client_name || 'client'}_routes.xlsx`);

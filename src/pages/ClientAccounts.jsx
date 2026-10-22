@@ -82,7 +82,6 @@ function ClientRouteTable({ client }) {
       const net = gross - tax - hidden - admin;
 
       return {
-        'Warehouse Address': warehouseAddress,
         'Destination': route.delivery_location,
         'Code': route.delivery_code,
         'Gross (₱)': gross,
@@ -95,7 +94,8 @@ function ClientRouteTable({ client }) {
     });
 
     // Create worksheet and workbook structure
-    const worksheet = XLSX.utils.json_to_sheet(excelRows);
+    const worksheet = XLSX.utils.json_to_sheet(excelRows, { origin: 'A3' });
+    XLSX.utils.sheet_add_aoa(worksheet, [[`Warehouse Address: ${warehouseAddress || '—'}`]], { origin: 'A1' });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, `${activeTruck} Rates`);
 
@@ -129,14 +129,14 @@ function ClientRouteTable({ client }) {
   const handleExportSubconExcel = () => {
     if (processedRoutes.length === 0) return;
     const excelRows = getSubconRows().map(row => ({
-      'Pickup Address': row.pickupAddress,
       'Destination': row.destination,
       'Code': row.code,
       'Gross (₱)': row.gross,
       'Admin Fee (₱)': -row.admin,
       'Net (₱)': row.net
     }));
-    const worksheet = XLSX.utils.json_to_sheet(excelRows);
+    const worksheet = XLSX.utils.json_to_sheet(excelRows, { origin: 'A3' });
+    XLSX.utils.sheet_add_aoa(worksheet, [[`Warehouse Address: ${warehouseAddress || '—'}`]], { origin: 'A1' });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, `${activeTruck} Subcon`);
     const sanitizedClientName = client.client_name?.replace(/[^a-z0-9]/gi, '_');
@@ -151,6 +151,7 @@ function ClientRouteTable({ client }) {
     generateSubconRatePDF({
       clientName: client.client_name,
       pickupLocation: activeTab,
+      warehouseAddress,
       truckType: activeTruck,
       rows: getSubconRows(),
       filename: `${sanitizedClientName}_${sanitizedTabName}_${activeTruck}_Subcon.pdf`
@@ -177,6 +178,7 @@ function ClientRouteTable({ client }) {
     const options = {
       clientName: client.client_name,
       pickupLocation: activeTab,
+      warehouseAddress,
       truckType: activeTruck,
       rows: getGrossOnlyRows(),
       filename: `${sanitizedClientName}_${sanitizedTabName}_${activeTruck}_Gross_Only.${format}`,
