@@ -21,7 +21,7 @@ export function exportGrossOnlyPdf({ clientName, pickupLocation, warehouseAddres
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const margin = 15;
   const right = 195;
-  const columns = [15, 108, 142, 195];
+  const columns = [15, 90, 135, 195];
   const rowHeight = 7;
   let y = 15;
 

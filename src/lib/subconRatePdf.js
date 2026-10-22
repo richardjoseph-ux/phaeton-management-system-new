@@ -6,7 +6,7 @@ export function generateSubconRatePDF({ clientName, pickupLocation, warehouseAdd
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const margin = 15;
   const right = 195;
-  const columns = [15, 78, 103, 130, 162, 195];
+  const columns = [15, 72, 112, 140, 168, 195];
   const headerHeight = 8;
   const rowHeight = 7;
   let y = 15;
