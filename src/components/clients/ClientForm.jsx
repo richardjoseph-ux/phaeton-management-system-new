@@ -229,93 +229,110 @@ export default function ClientForm({ open, onClose, onSaved, editData }) {
     XLSX.writeFile(wb, `${form.client_name || 'client'}_routes.xlsx`);
   };
 
-  // ── Excel Import — reads each truck type sheet ────────────────────────────
+  // ── Excel Import — merges matching routes from each truck type sheet ──────
   const handleImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const normalize = (value) => String(value || '').trim().toLowerCase();
+    const routeKey = (route) => [route.pickup_location, route.delivery_location, route.delivery_code]
+      .map(normalize)
+      .join('||');
     const reader = new FileReader();
+
     reader.onload = (evt) => {
-      const wb = XLSX.read(evt.target.result, { type: 'array' });
+      const workbook = XLSX.read(evt.target.result, { type: 'array' });
+      const importedRoutes = new Map();
+      const importedAddresses = new Map();
 
-      // Build a map from Excel: "pickup+delivery+code+tripRoute" -> route object
-      const excelRouteMap = {};
+      TRUCK_TYPES.forEach((truckType) => {
+        const worksheet = workbook.Sheets[truckType];
+        if (!worksheet) return;
+        const sheetRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+        const headerIndex = sheetRows.findIndex((row) => row.some((cell) => normalize(cell) === 'pickup location'));
+        if (headerIndex === -1) return;
 
-      TRUCK_TYPES.forEach(truckType => {
-        const ws = wb.Sheets[truckType];
-        if (!ws) return;
-        const rows = XLSX.utils.sheet_to_json(ws);
-        rows.forEach(row => {
-          const pickup = String(row['Pickup Location'] || '').trim();
-          const delivery = String(row['Delivery Location'] || '').trim();
-          const code = String(row['Delivery Code'] || '').trim();
-          const tripRoute = String(row['Trip Route Code'] || '').trim();
-          if (!pickup && !delivery) return;
-          const key = `${pickup}||${delivery}||${code}||${tripRoute}`;
-          if (!excelRouteMap[key]) {
-            excelRouteMap[key] = {
-              pickup_location: pickup,
-              warehouse_address: String(row['Warehouse Address'] || row['Pickup Address'] || '').trim(),
-              delivery_location: delivery,
-              delivery_code: code,
-              trip_route_code: tripRoute,
-              rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' }
-            };
-          }
-          excelRouteMap[key].rates[truckType] = row['Rate'] ?? '';
+        const header = sheetRows[headerIndex].map(normalize);
+        const pickupIndex = header.indexOf('pickup location');
+        const deliveryIndex = header.indexOf('delivery location');
+        const codeIndex = header.indexOf('delivery code');
+        const tripRouteIndex = header.indexOf('trip route code');
+        const rateIndex = header.indexOf('rate');
+        const addressCell = sheetRows
+          .slice(0, headerIndex)
+          .flat()
+          .find((cell) => normalize(cell).startsWith('warehouse address:'));
+        const warehouseAddress = String(addressCell || '').replace(/^warehouse address:\s*/i, '').trim();
+
+        sheetRows.slice(headerIndex + 1).forEach((row) => {
+          const pickup = String(row[pickupIndex] || '').trim();
+          const delivery = String(row[deliveryIndex] || '').trim();
+          const code = String(row[codeIndex] || '').trim();
+          if (!pickup || !delivery) return;
+
+          const incomingRoute = {
+            pickup_location: pickup,
+            delivery_location: delivery,
+            delivery_code: code,
+            trip_route_code: String(row[tripRouteIndex] || '').trim(),
+          };
+          const key = routeKey(incomingRoute);
+          const existingImport = importedRoutes.get(key) || {
+            ...incomingRoute,
+            rates: { AUV: '', 'Sub-4W': '', '6-Wheel': '', '10-Wheel': '' },
+          };
+          existingImport.rates[truckType] = rateIndex === -1 ? '' : row[rateIndex];
+          importedRoutes.set(key, existingImport);
+          if (warehouseAddress) importedAddresses.set(normalize(pickup), { pickup_location: pickup, warehouse_address: warehouseAddress });
         });
       });
 
-      const importedRoutes = Object.values(excelRouteMap);
-      const importedPickupLocations = Object.values(excelRouteMap).reduce((locations, route) => {
-        const sourceRow = Object.values(excelRouteMap).find(item => item.pickup_location === route.pickup_location);
-        const address = String(sourceRow?.warehouse_address || '').trim();
-        if (route.pickup_location && !locations.some(location => location.pickup_location === route.pickup_location)) {
-          locations.push({ pickup_location: route.pickup_location, warehouse_address: address });
-        }
-        return locations;
-      }, []);
-      
-      // If editing existing client, sync imported routes with current form routes
-      if (editData && form.routes.length > 0) {
-        // Build a map of current routes
-        const currentRouteMap = {};
-        form.routes.forEach((r, idx) => {
-          const key = `${r.pickup_location}||${r.delivery_location}||${r.delivery_code}||${r.trip_route_code}`;
-          currentRouteMap[key] = { ...r, originalIndex: idx };
-        });
-
-        // Determine which routes to keep (exist in Excel) and which to remove (don't exist in Excel)
-        const routesToKeep = [];
-        const excelKeys = new Set(Object.keys(excelRouteMap));
-
-        // Add routes from Excel (update existing or add new)
-        Object.values(excelRouteMap).forEach(excelRoute => {
-          const key = `${excelRoute.pickup_location}||${excelRoute.delivery_location}||${excelRoute.delivery_code}||${excelRoute.trip_route_code}`;
-          if (currentRouteMap[key]) {
-            // Update existing route with Excel data
-            routesToKeep.push(excelRoute);
-          } else {
-            // Add new route from Excel
-            routesToKeep.push(excelRoute);
-          }
-        });
-
-        setForm(p => ({
-          ...p,
-          routes: routesToKeep.length ? routesToKeep : [emptyRoute()],
-          pickup_locations: importedPickupLocations
-        }));
-      } else {
-        // For new clients or empty routes, just use imported data
-        setForm(p => ({
-          ...p,
-          routes: importedRoutes.length ? importedRoutes : [emptyRoute()],
-          pickup_locations: importedPickupLocations
-        }));
+      if (importedRoutes.size === 0) {
+        alert('No valid route rows were found. Please import an Excel route export with Pickup Location and Delivery Location columns.');
+        return;
       }
-      
+
+      setForm((currentForm) => {
+        const currentRoutes = currentForm.routes.filter((route) => route.pickup_location || route.delivery_location || route.delivery_code);
+        const currentRouteIndex = new Map(currentRoutes.map((route, index) => [routeKey(route), index]));
+        const mergedRoutes = [...currentRoutes];
+
+        importedRoutes.forEach((incomingRoute, key) => {
+          const matchingIndex = currentRouteIndex.get(key);
+          if (matchingIndex === undefined) {
+            mergedRoutes.push(incomingRoute);
+            return;
+          }
+          const existingRoute = mergedRoutes[matchingIndex];
+          mergedRoutes[matchingIndex] = {
+            ...existingRoute,
+            delivery_location: incomingRoute.delivery_location,
+            delivery_code: incomingRoute.delivery_code,
+            trip_route_code: incomingRoute.trip_route_code || existingRoute.trip_route_code,
+            rates: {
+              ...existingRoute.rates,
+              ...Object.fromEntries(TRUCK_TYPES
+                .filter((truckType) => incomingRoute.rates[truckType] !== '')
+                .map((truckType) => [truckType, incomingRoute.rates[truckType]])),
+            },
+          };
+        });
+
+        const pickupLocations = [...(currentForm.pickup_locations || [])];
+        importedAddresses.forEach((location, key) => {
+          const index = pickupLocations.findIndex((item) => normalize(item.pickup_location) === key);
+          if (index === -1) pickupLocations.push(location);
+          else if (location.warehouse_address) pickupLocations[index] = { ...pickupLocations[index], warehouse_address: location.warehouse_address };
+        });
+
+        return {
+          ...currentForm,
+          routes: mergedRoutes.length ? mergedRoutes : [emptyRoute()],
+          pickup_locations: pickupLocations,
+        };
+      });
       setActivePickup('__all__');
       setActiveTruck('__all__');
+      setRoutePage(1);
     };
     reader.readAsArrayBuffer(file);
     e.target.value = '';
