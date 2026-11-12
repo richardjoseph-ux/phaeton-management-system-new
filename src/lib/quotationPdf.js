@@ -255,18 +255,30 @@ export async function generateQuotationPDF(payload) {
     doc.setFontSize(9);
     doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
     doc.text('TERMS & CONDITIONS', mL, y);
-    y += 5;
+    y += 4.5;
     setDraw(doc, RULE, 0.2);
     doc.line(mL, y, mR, y);
-    y += 5;
+    y += 6;
+
+    const paragraphs = terms_and_conditions
+      .replace(/\r\n?/g, '\n')
+      .split(/\n+/)
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    const lineH = 3.9;
+    const paraGap = 2.4;
+
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(MUTED.r, MUTED.g, MUTED.b);
-    const tcLines = doc.splitTextToSize(terms_and_conditions, contentW - 4);
-    tcLines.forEach((l) => {
-      if (y > PAGE.h - PAGE.margin - 15) { doc.addPage(); y = PAGE.margin; }
-      doc.text(l, mL, y);
-      y += 4.2;
+    doc.setFontSize(8.2);
+    doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
+    paragraphs.forEach((paragraph, index) => {
+      const lines = doc.splitTextToSize(paragraph, contentW);
+      lines.forEach((line) => {
+        if (y > PAGE.h - PAGE.margin - 12) { doc.addPage(); y = PAGE.margin; }
+        doc.text(line, mL, y);
+        y += lineH;
+      });
+      if (index !== paragraphs.length - 1) y += paraGap;
     });
     y += 8;
   }
