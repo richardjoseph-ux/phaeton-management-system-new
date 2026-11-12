@@ -42,6 +42,30 @@ const loadImageDataUrl = (url) =>
     img.src = url;
   });
 
+// Word-wrap that never lets a line exceed the available width
+const wrapText = (doc, text, maxWidth) => {
+  const lines = [];
+  let line = '';
+  const flush = () => { if (line) { lines.push(line); line = ''; } };
+  String(text || '').split(' ').filter(Boolean).forEach((word) => {
+    if (doc.getTextWidth(word) > maxWidth) {
+      flush();
+      let chunk = '';
+      Array.from(word).forEach((ch) => {
+        if (doc.getTextWidth(chunk + ch) > maxWidth) { lines.push(chunk); chunk = ch; }
+        else chunk += ch;
+      });
+      line = chunk;
+      return;
+    }
+    const candidate = line ? `${line} ${word}` : word;
+    if (doc.getTextWidth(candidate) <= maxWidth) line = candidate;
+    else { flush(); line = word; }
+  });
+  flush();
+  return lines;
+};
+
 const setDraw = (doc, c, w = 0.2) => {
   doc.setDrawColor(c.r, c.g, c.b);
   doc.setLineWidth(w);
@@ -262,6 +286,7 @@ export async function generateQuotationPDF(payload) {
 
     const paragraphs = terms_and_conditions
       .replace(/\r\n?/g, '\n')
+      .replace(/[\u00a0\u2007\u202f\t]/g, ' ')
       .split(/\n+/)
       .map((line) => line.replace(/\s+/g, ' ').trim())
       .filter(Boolean);
@@ -272,8 +297,7 @@ export async function generateQuotationPDF(payload) {
     doc.setFontSize(8.2);
     doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
     paragraphs.forEach((paragraph, index) => {
-      const lines = doc.splitTextToSize(paragraph, contentW);
-      lines.forEach((line) => {
+      wrapText(doc, paragraph, contentW).forEach((line) => {
         if (y > PAGE.h - PAGE.margin - 12) { doc.addPage(); y = PAGE.margin; }
         doc.text(line, mL, y);
         y += lineH;
