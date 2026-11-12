@@ -42,6 +42,18 @@ const loadImageDataUrl = (url) =>
     img.src = url;
   });
 
+// Strip invisible characters and normalize smart punctuation. Pasted terms often
+// carry zero-width spaces, which force jsPDF into UTF-16 mode where the measured
+// width no longer matches the drawn width and lines run off the page.
+const plainText = (value) =>
+  String(value || '')
+    .replace(/[\u200b-\u200f\u2060\ufeff\u00ad]/g, '')
+    .replace(/[\u2018\u2019\u201a\u201b\u2032]/g, "'")
+    .replace(/[\u201c\u201d\u201e\u2033]/g, '"')
+    .replace(/[\u2013\u2014\u2212]/g, '-')
+    .replace(/[\u2022\u25cf\u00b7]/g, '- ')
+    .replace(/[\u00a0\u2007\u202f\t]/g, ' ');
+
 // Word-wrap that never lets a line exceed the available width
 const wrapText = (doc, text, maxWidth) => {
   const lines = [];
@@ -284,9 +296,8 @@ export async function generateQuotationPDF(payload) {
     doc.line(mL, y, mR, y);
     y += 6;
 
-    const paragraphs = terms_and_conditions
+    const paragraphs = plainText(terms_and_conditions)
       .replace(/\r\n?/g, '\n')
-      .replace(/[\u00a0\u2007\u202f\t]/g, ' ')
       .split(/\n+/)
       .map((line) => line.replace(/\s+/g, ' ').trim())
       .filter(Boolean);
