@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Download, Loader2, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { useAppData } from '@/lib/AppDataContext';
@@ -29,6 +30,7 @@ export default function BillingStatementPDF() {
   const [trips, setTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [applyTax, setApplyTax] = useState(true);
 
   const selectedCycle = useMemo(() => cycles.find(c => c.id === selectedId) || null, [cycles, selectedId]);
   const selectedClient = useMemo(() => clients.find(c => c.id === selectedCycle?.client_account_id) || null, [clients, selectedCycle]);
@@ -58,7 +60,7 @@ export default function BillingStatementPDF() {
 
   const totalGross = trips.reduce((s, t) => s + (t.gross_rate || 0), 0);
   const totalTax = totalGross * 0.02;
-  const amountDue = totalGross - totalTax;
+  const amountDue = applyTax ? totalGross - totalTax : totalGross;
 
   const handleDownload = async () => {
     if (!selectedCycle) return;
@@ -72,6 +74,7 @@ export default function BillingStatementPDF() {
         creditTerms: selectedClient?.credit_terms,
         preparedBy: user?.full_name,
         warehouseLabel: 'Service Type',
+        applyTax,
       });
     } finally {
       setGenerating(false);
@@ -82,7 +85,7 @@ export default function BillingStatementPDF() {
     if (!selectedCycle) return;
     setGenerating(true);
     try {
-      exportStatementExcel({ title: 'Top Sheet (Shuttle)', cycle: selectedCycle, client: selectedClient, trips, soaDate, periodCovered, serviceLabel: 'Service Type', includeDr: false });
+      exportStatementExcel({ title: 'Top Sheet (Shuttle)', cycle: selectedCycle, client: selectedClient, trips, soaDate, periodCovered, serviceLabel: 'Service Type', includeDr: false, applyTax });
     } finally {
       setGenerating(false);
     }
@@ -186,8 +189,8 @@ export default function BillingStatementPDF() {
         <div className="px-5 py-4 border-t bg-muted/20 flex justify-end">
           <div className="w-72 space-y-1.5 text-sm">
             <TotalLine label="Total Gross ex VAT" value={totalGross} />
-            <TotalLine label="Total Due" value={totalGross} />
-            <TotalLine label="2% Withholding Tax" value={totalTax} className="text-red-600" />
+            <TotalLine label="Total Due" value={applyTax ? totalGross : amountDue} />
+            {applyTax && <TotalLine label="2% Withholding Tax" value={totalTax} className="text-red-600" />}
             <div className="border-t pt-1.5">
               <div className="flex items-center justify-between bg-primary text-white px-3 py-2 rounded font-bold">
                 <span>AMOUNT DUE</span>
@@ -218,6 +221,17 @@ export default function BillingStatementPDF() {
             <div className="border-b pb-1">&nbsp;</div>
             <div className="text-xs text-muted-foreground">Date Received: ____________________</div>
           </div>
+        </div>
+      </section>
+
+      {/* Tax Option */}
+      <section className="bg-card border rounded-lg p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Deduct 2% Withholding Tax</p>
+            <p className="text-xs text-muted-foreground">When off, the full gross amount is shown as the total due.</p>
+          </div>
+          <Switch checked={applyTax} onCheckedChange={setApplyTax} />
         </div>
       </section>
 

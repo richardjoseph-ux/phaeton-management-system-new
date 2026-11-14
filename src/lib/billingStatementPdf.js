@@ -63,7 +63,7 @@ const drawLogo = (doc, cx, y, imgData) => {
   }
 };
 
-export async function generateBillingStatementPDF({ cycle, client, trips = [], soaDate, creditTerms, preparedBy, warehouseLabel = 'Warehouse' }) {
+export async function generateBillingStatementPDF({ cycle, client, trips = [], soaDate, creditTerms, preparedBy, warehouseLabel = 'Warehouse', applyTax = true }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   doc.setFont('helvetica');
   doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
@@ -82,7 +82,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
 
   const totalGross = trips.reduce((s, t) => s + (t.gross_rate || 0), 0);
   const totalTax = totalGross * 0.02;
-  const amountDue = totalGross - totalTax;
+  const amountDue = applyTax ? totalGross - totalTax : totalGross;
 
   // ===== HEADER =====
   const logoData = await loadImageDataUrl(LOGO_URL);
@@ -305,7 +305,7 @@ export async function generateBillingStatementPDF({ cycle, client, trips = [], s
 
   totalRow('TOTAL GROSS EX VAT', totalGross);
   totalRow('TOTAL DUE', totalGross);
-  totalRow('2% WITHHOLDING TAX', totalTax);
+  if (applyTax) totalRow('2% WITHHOLDING TAX', totalTax);
   totalRow('AMOUNT DUE', amountDue, true);
 
   // ===== SIGNATURE BLOCK =====

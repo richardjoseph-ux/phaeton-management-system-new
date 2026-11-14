@@ -42,7 +42,7 @@ function headerMerges(columns) {
   ];
 }
 
-function statementRows({ cycle, client, trips, soaDate, periodCovered, serviceLabel, includeDr }) {
+function statementRows({ cycle, client, trips, soaDate, periodCovered, serviceLabel, includeDr, applyTax = true }) {
   const columns = includeDr ? 5 : 4;
   const rows = companyHeader(columns, 'BILLING STATEMENT / STATEMENT OF ACCOUNT');
   const infoRows = includeDr
@@ -70,13 +70,19 @@ function statementRows({ cycle, client, trips, soaDate, periodCovered, serviceLa
   });
   const gross = trips.reduce((sum, trip) => sum + money(trip.gross_rate), 0);
   const tax = gross * 0.02;
-  rows.push(['NOTHING FOLLOWS'], [], [], ['TOTAL GROSS EX VAT', gross], ['TOTAL DUE', gross], ['2% WITHHOLDING TAX', tax], ['AMOUNT DUE', gross - tax], [], ['Prepared By:', '', '', 'Received By:'], ['____________________________', '', '', '____________________________'], ['Date Prepared:', formatDateDisplay(new Date().toISOString().slice(0, 10)), '', 'Date Received: ______________']);
+  rows.push(
+    ['NOTHING FOLLOWS'], [], [],
+    ['TOTAL GROSS EX VAT', gross],
+    ['TOTAL DUE', gross],
+    applyTax ? ['2% WITHHOLDING TAX', tax] : ['', ''],
+    ['AMOUNT DUE', applyTax ? gross - tax : gross],
+    [], ['Prepared By:', '', '', 'Received By:'], ['____________________________', '', '', '____________________________'], ['Date Prepared:', formatDateDisplay(new Date().toISOString().slice(0, 10)), '', 'Date Received: ______________']);
   return rows;
 }
 
-export function exportStatementExcel({ title, cycle, client, trips, soaDate, periodCovered, serviceLabel, includeDr }) {
+export function exportStatementExcel({ title, cycle, client, trips, soaDate, periodCovered, serviceLabel, includeDr, applyTax = true }) {
   const columns = includeDr ? 5 : 4;
-  const rows = statementRows({ cycle, client, trips, soaDate, periodCovered, serviceLabel, includeDr });
+  const rows = statementRows({ cycle, client, trips, soaDate, periodCovered, serviceLabel, includeDr, applyTax });
   const infoStart = 7;
   const billToStart = 10;
   const tableTitle = 16;
