@@ -101,7 +101,7 @@ export function exportStatementExcel({ title, cycle, client, trips, soaDate, per
   makeSheet(rows, columns, includeDr ? [22, 18, 48, 18, 18] : [22, 52, 18, 18], merges, `${title.includes('Delivery') ? 'TopSheet_Delivery' : 'TopSheet_Shuttle'}_${safeName(cycle?.cycle_name)}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-export function exportSummaryExcel({ cycles, trips, client, soaDate, periodCovered }) {
+export function exportSummaryExcel({ cycles, trips, client, soaDate, periodCovered, applyTax = true }) {
   const columns = 5;
   const rows = companyHeader(columns, 'BILLING STATEMENT / STATEMENT OF ACCOUNT');
   rows.push(['Statements', cycles.map(c => c.cycle_name).join(', '), '', 'SOA / Billing Date', soaDate || '—'], ['Period Covered', periodCovered || '—'], [], ['BILL TO'], [client?.client_name || '—'], [client?.address || '—'], [`TIN: ${client?.tin || '—'}`], [], ['DESCRIPTION OF SERVICES RENDERED'], ['Date', 'Billing Statement', 'DR No.', 'Route', 'Amount']);
@@ -109,9 +109,14 @@ export function exportSummaryExcel({ cycles, trips, client, soaDate, periodCover
   rows.push(['NOTHING FOLLOWS'], []);
   cycles.forEach(cycle => {
     const gross = trips.filter(trip => trip.billing_cycle_id === cycle.id).reduce((sum, trip) => sum + money(trip.gross_rate), 0);
-    rows.push([cycle.cycle_name, gross], ['2% WITHHOLDING TAX', gross * 0.02], ['TOTAL', gross - gross * 0.02], []);
+    rows.push(
+      [cycle.cycle_name, gross],
+      applyTax ? ['2% WITHHOLDING TAX', gross * 0.02] : ['', ''],
+      ['TOTAL', applyTax ? gross - gross * 0.02 : gross],
+      []
+    );
   });
-  const grandTotal = trips.reduce((sum, trip) => sum + money(trip.gross_rate) * 0.98, 0);
+  const grandTotal = trips.reduce((sum, trip) => sum + money(trip.gross_rate) * (applyTax ? 0.98 : 1), 0);
   rows.push(['GRAND TOTAL', grandTotal], [], ['Prepared By:', '', '', 'Received By:'], ['____________________________', '', '', '____________________________'], ['Date Prepared:', formatDateDisplay(new Date().toISOString().slice(0, 10)), '', 'Date Received: ______________']);
   const tableTitle = 15;
   const totalStart = tableTitle + 3 + trips.length;

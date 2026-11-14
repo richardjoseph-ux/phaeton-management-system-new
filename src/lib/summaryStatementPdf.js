@@ -61,7 +61,7 @@ const drawLogo = (doc, cx, y, imgData) => {
   }
 };
 
-export async function generateSummaryStatementPDF({ groups = [], client, preparedBy }) {
+export async function generateSummaryStatementPDF({ groups = [], client, preparedBy, applyTax = true }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   doc.setFont('helvetica');
   doc.setTextColor(TEXT.r, TEXT.g, TEXT.b);
@@ -292,10 +292,10 @@ export async function generateSummaryStatementPDF({ groups = [], client, prepare
   groups.forEach((g) => {
     const totalGross = (g.trips || []).reduce((s, t) => s + (t.gross_rate || 0), 0);
     const totalTax = totalGross * 0.02;
-    const amountDue = totalGross - totalTax;
+    const amountDue = applyTax ? totalGross - totalTax : totalGross;
     y += 2;
     totalLine((g.cycle?.cycle_name || '—').toUpperCase(), totalGross, true);
-    totalLine('2% WITH HOLDING TAX (IF APPLICABLE)', totalTax);
+    if (applyTax) totalLine('2% WITH HOLDING TAX (IF APPLICABLE)', totalTax);
     totalLine('TOTAL (VAT INC, IF APPLICABLE)', amountDue, true);
     y += 3;
   });

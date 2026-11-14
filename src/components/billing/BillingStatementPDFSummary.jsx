@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { Download, Loader2, Check, ChevronDown, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { useAppData } from '@/lib/AppDataContext';
@@ -30,6 +31,7 @@ export default function BillingStatementPDFSummary() {
   const [loadingIds, setLoadingIds] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [openMenus, setOpenMenus] = useState({});
+  const [applyTax, setApplyTax] = useState(true);
 
   const availableCycles = useMemo(
     () => cycles.filter(c => !c.is_archived).sort((a, b) => (b.cycle_name || '').localeCompare(a.cycle_name || '')),
@@ -96,6 +98,7 @@ export default function BillingStatementPDFSummary() {
         groups,
         client: selectedClient,
         preparedBy: user?.full_name,
+        applyTax,
       });
     } finally {
       setGenerating(false);
@@ -106,7 +109,7 @@ export default function BillingStatementPDFSummary() {
     if (!hasSelection) return;
     setGenerating(true);
     try {
-      exportSummaryExcel({ cycles: selectedCycles, trips: allTrips, client: selectedClient, soaDate, periodCovered });
+      exportSummaryExcel({ cycles: selectedCycles, trips: allTrips, client: selectedClient, soaDate, periodCovered, applyTax });
     } finally {
       setGenerating(false);
     }
@@ -253,11 +256,11 @@ export default function BillingStatementPDFSummary() {
             const trips = tripMap[c.id] || [];
             const totalGross = trips.reduce((s, t) => s + (t.gross_rate || 0), 0);
             const totalTax = totalGross * 0.02;
-            const amountDue = totalGross - totalTax;
+            const amountDue = applyTax ? totalGross - totalTax : totalGross;
             return (
               <div key={c.id} className="w-80 space-y-1 text-sm">
                 <TotalLine label={c.cycle_name.toUpperCase()} value={totalGross} bold />
-                <TotalLine label="2% WITH HOLDING TAX (IF APPLICABLE)" value={totalTax} />
+                {applyTax && <TotalLine label="2% WITH HOLDING TAX (IF APPLICABLE)" value={totalTax} />}
                 <TotalLine label="TOTAL (VAT INC, IF APPLICABLE)" value={amountDue} bold />
                 <div className="border-t my-1" />
               </div>
@@ -286,6 +289,17 @@ export default function BillingStatementPDFSummary() {
             <div className="border-b pb-1">&nbsp;</div>
             <div className="text-xs text-muted-foreground">Date Received: ____________________</div>
           </div>
+        </div>
+      </section>
+
+      {/* Tax Option */}
+      <section className={`bg-card border rounded-lg p-4 ${dimClass}`}>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Deduct 2% Withholding Tax</p>
+            <p className="text-xs text-muted-foreground">When off, the full gross amount is shown as the total due.</p>
+          </div>
+          <Switch checked={applyTax} onCheckedChange={setApplyTax} />
         </div>
       </section>
 
